@@ -2,16 +2,18 @@
 import DataTableCard from '../components/common/DataTableCard.vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import MetricsGrid from '../components/dashboard/MetricsGrid.vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
+const { t } = useI18n()
 
 const planColumns = [
-  { label: '套餐名称', prop: 'name' },
-  { label: '流量', prop: 'transfer' },
-  { label: '价格', prop: 'price' },
-  { label: '周期', prop: 'cycle' },
-  { label: '状态', slot: 'status' },
+  { label: t('plans.columns.name'), prop: 'name' },
+  { label: t('plans.columns.transfer'), prop: 'transfer' },
+  { label: t('plans.columns.price'), prop: 'price' },
+  { label: t('plans.columns.cycle'), prop: 'cycle' },
+  { label: t('plans.columns.status'), slot: 'status' },
 ]
 
 const planMetrics = adminStore.metrics.slice(0, 3)
@@ -21,12 +23,11 @@ const planMetrics = adminStore.metrics.slice(0, 3)
   <section class="page-stack">
     <MetricsGrid :metrics="planMetrics" />
 
-    <SectionCard
-      description="集中展示套餐价格、周期与销售状态，方便继续拆出新增/编辑弹窗。"
-      title="套餐列表"
-    >
+    <SectionCard :description="t('plans.description')" :title="t('plans.title')">
       <template #actions>
-        <el-button class="primary-btn small" type="success">新建套餐</el-button>
+        <el-button class="primary-btn small" type="success">
+          {{ t('plans.create') }}
+        </el-button>
       </template>
 
       <DataTableCard :columns="planColumns" :data="adminStore.plans">

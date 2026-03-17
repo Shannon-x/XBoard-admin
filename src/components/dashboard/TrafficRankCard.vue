@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 const props = defineProps({
   loading: {
     type: Boolean,
@@ -21,6 +22,8 @@ const props = defineProps({
     required: true,
   },
 })
+
+const { t } = useI18n()
 
 function progressWidth(value, maxValue) {
   if (!maxValue) {
@@ -51,10 +54,10 @@ function changeClass(change) {
         <h3>{{ title }}</h3>
         <p>
           {{ description }}
-          <template v-if="rankData.updatedAt">· 更新于 {{ rankData.updatedAt }}</template>
+          <template v-if="rankData.updatedAt">· {{ t('traffic.updatedAt', { time: rankData.updatedAt }) }}</template>
         </p>
       </div>
-      <span class="traffic-rank-badge">Top {{ rankData.list.length }}</span>
+      <span class="traffic-rank-badge">{{ t('traffic.topLabel', { count: rankData.list.length }) }}</span>
     </div>
 
     <div v-if="rankData.list.length" class="traffic-rank-list">
@@ -67,7 +70,7 @@ function changeClass(change) {
           <span class="traffic-rank-index">{{ String(item.rank).padStart(2, '0') }}</span>
           <div class="traffic-rank-copy">
             <strong>{{ item.name }}</strong>
-            <small>昨日 {{ item.previousTrafficText }}</small>
+            <small>{{ t('traffic.previousLabel', { value: item.previousTrafficText }) }}</small>
           </div>
         </div>
 

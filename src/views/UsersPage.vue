@@ -1,26 +1,27 @@
 <script setup>
 import DataTableCard from '../components/common/DataTableCard.vue'
 import SectionCard from '../components/common/SectionCard.vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
+const { t } = useI18n()
 
 const userColumns = [
-  { label: '邮箱', minWidth: 220, prop: 'email' },
-  { label: '套餐', prop: 'plan' },
-  { label: '余额', prop: 'balance' },
-  { label: '状态', slot: 'status' },
+  { label: t('users.columns.email'), minWidth: 220, prop: 'email' },
+  { label: t('users.columns.plan'), prop: 'plan' },
+  { label: t('users.columns.balance'), prop: 'balance' },
+  { label: t('users.columns.status'), slot: 'status' },
 ]
 </script>
 
 <template>
   <section class="page-stack">
-    <SectionCard
-      description="统一用户列表、订阅套餐与余额状态，为后续接搜索筛选和操作列预留结构。"
-      title="用户列表"
-    >
+    <SectionCard :description="t('users.description')" :title="t('users.title')">
       <template #actions>
-        <el-button class="ghost-btn small" type="info" plain>批量导出</el-button>
+        <el-button class="ghost-btn small" type="info" plain>
+          {{ t('users.export') }}
+        </el-button>
       </template>
 
       <DataTableCard :columns="userColumns" :data="adminStore.users">

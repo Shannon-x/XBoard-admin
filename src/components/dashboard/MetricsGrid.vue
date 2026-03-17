@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import {
   Coin,
   Connection,
@@ -22,6 +23,8 @@ defineProps({
     required: true,
   },
 })
+
+const { t } = useI18n()
 
 const metricIconMap = {
   收入: Coin,
@@ -61,14 +64,14 @@ function resolveTrendText(changeText) {
   const state = resolveTrendClass(changeText)
 
   if (state === 'up') {
-    return '上升'
+    return t('metrics.trend.up')
   }
 
   if (state === 'down') {
-    return '下降'
+    return t('metrics.trend.down')
   }
 
-  return '稳定'
+  return t('metrics.trend.flat')
 }
 
 function isSplitMetric(metric) {

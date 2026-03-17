@@ -237,6 +237,58 @@ button {
   --el-main-padding: 28px;
 }
 
+.plugin-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.plugin-overview__card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(140deg, rgba(34, 197, 94, 0.12), rgba(15, 23, 42, 0.85));
+  box-shadow: var(--shadow);
+}
+
+.plugin-overview__card strong {
+  font-size: 24px;
+  font-family: 'Fira Code', monospace;
+}
+
+.plugin-filter {
+  min-width: 190px;
+}
+
+.plugin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugin-status__icon {
+  font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+  .plugin-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .plugin-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plugin-filter {
+    min-width: 140px;
+  }
+}
+
 .topbar {
   display: flex;
   align-items: center;

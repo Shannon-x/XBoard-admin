@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 defineProps({
   loading: {
     type: Boolean,
@@ -10,6 +11,8 @@ defineProps({
   },
 })
 
+const { t } = useI18n()
+
 function statusTagType(tone) {
   const typeMap = {
     danger: 'danger',
@@ -20,7 +23,7 @@ function statusTagType(tone) {
 }
 
 function booleanText(value) {
-  return value ? '开启' : '关闭'
+  return value ? t('userInfo.status.on') : t('userInfo.status.off')
 }
 </script>
 
@@ -28,8 +31,8 @@ function booleanText(value) {
   <el-card v-loading="loading" class="section-card user-info-card" shadow="never">
     <div class="section-head user-info-head">
       <div>
-        <h3>当前用户信息</h3>
-        <p>基于 /api/v2/user/info 接口展示当前登录管理员的账户状态。</p>
+        <h3>{{ t('userInfo.title') }}</h3>
+        <p>{{ t('userInfo.description') }}</p>
       </div>
 
       <el-tag :type="statusTagType(userInfo.statusTone)" effect="dark">
@@ -41,7 +44,7 @@ function booleanText(value) {
       <img
         v-if="userInfo.avatarUrl"
         :src="userInfo.avatarUrl"
-        alt="User avatar"
+        :alt="t('userInfo.avatarAlt')"
         class="user-info-avatar"
       />
       <div v-else class="user-info-avatar user-info-avatar--fallback">
@@ -50,52 +53,54 @@ function booleanText(value) {
 
       <div class="user-info-copy">
         <strong>{{ userInfo.email }}</strong>
-        <span>套餐 {{ userInfo.planId }} · 佣金比例 {{ userInfo.commissionRate }}</span>
+        <span>
+          {{ t('userInfo.planMeta', { plan: userInfo.planId, rate: userInfo.commissionRate }) }}
+        </span>
       </div>
     </div>
 
     <div class="user-info-metrics">
       <article>
-        <span>账户余额</span>
+        <span>{{ t('userInfo.balance') }}</span>
         <strong>{{ userInfo.balance }}</strong>
       </article>
       <article>
-        <span>佣金余额</span>
+        <span>{{ t('userInfo.commissionBalance') }}</span>
         <strong>{{ userInfo.commissionBalance }}</strong>
       </article>
       <article>
-        <span>总流量</span>
+        <span>{{ t('userInfo.totalTraffic') }}</span>
         <strong>{{ userInfo.transferEnable }}</strong>
       </article>
       <article>
-        <span>到期时间</span>
+        <span>{{ t('userInfo.expireAt') }}</span>
         <strong>{{ userInfo.expiredAt }}</strong>
       </article>
     </div>
 
     <div class="user-info-grid">
       <div class="user-info-item">
-        <span>最近登录</span>
+        <span>{{ t('userInfo.lastLogin') }}</span>
         <strong>{{ userInfo.lastLoginAt }}</strong>
       </div>
       <div class="user-info-item">
-        <span>注册时间</span>
+        <span>{{ t('userInfo.createdAt') }}</span>
         <strong>{{ userInfo.createdAt }}</strong>
       </div>
       <div class="user-info-item">
-        <span>Telegram ID</span>
+        <span>{{ t('userInfo.telegramId') }}</span>
         <strong>{{ userInfo.telegramId }}</strong>
       </div>
       <div class="user-info-item">
-        <span>到期提醒</span>
+        <span>{{ t('userInfo.remindExpire') }}</span>
         <strong>{{ booleanText(userInfo.remindExpire) }}</strong>
       </div>
       <div class="user-info-item">
-        <span>流量提醒</span>
+        <span>{{ t('userInfo.remindTraffic') }}</span>
         <strong>{{ booleanText(userInfo.remindTraffic) }}</strong>
       </div>
       <div class="user-info-item user-info-item--wide">
-        <span>UUID</span>
+        <span>{{ t('userInfo.uuid') }}</span>
         <strong>{{ userInfo.uuid }}</strong>
       </div>
     </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import IncomeOverviewCard from '../components/dashboard/IncomeOverviewCard.vue'
 import JobDetailCard from '../components/dashboard/JobDetailCard.vue'
@@ -10,6 +11,7 @@ import TrafficRankCard from '../components/dashboard/TrafficRankCard.vue'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
+const { t } = useI18n()
 
 function handleIncomeRangeChange(rangeSelection) {
   if (typeof rangeSelection === 'string') {
@@ -38,7 +40,7 @@ onMounted(function loadStatsOnMount() {
       :closable="false"
       class="dashboard-alert"
       show-icon
-      title="仪表盘统计接口加载失败，当前显示默认占位数据"
+      :title="t('dashboard.statsError')"
       type="warning"
     >
       <template #default>
@@ -57,7 +59,7 @@ onMounted(function loadStatsOnMount() {
         :closable="false"
         class="dashboard-alert"
         show-icon
-        title="收入概览接口加载失败，当前显示空图表占位"
+        :title="t('dashboard.incomeError')"
         type="warning"
       >
         <template #default>
@@ -77,7 +79,7 @@ onMounted(function loadStatsOnMount() {
         :closable="false"
         class="dashboard-alert"
         show-icon
-        title="节点流量排行接口加载失败，当前显示空状态占位"
+        :title="t('dashboard.nodeTrafficError')"
         type="warning"
       >
         <template #default>
@@ -86,13 +88,13 @@ onMounted(function loadStatsOnMount() {
       </el-alert>
 
       <div class="traffic-rank-grid">
-        <TrafficRankCard
-          :loading="adminStore.nodeTrafficRankLoading"
-          :rank-data="adminStore.nodeTrafficRank"
-          description="按当前时间范围统计节点消耗流量"
-          empty-text="暂无节点流量排行数据"
-          title="节点流量排行"
-        />
+      <TrafficRankCard
+        :loading="adminStore.nodeTrafficRankLoading"
+        :rank-data="adminStore.nodeTrafficRank"
+        :description="t('traffic.nodeDescription')"
+        :empty-text="t('traffic.emptyNode')"
+        :title="t('traffic.nodeTitle')"
+      />
 
         <div class="page-stack compact-stack">
           <el-alert
@@ -100,7 +102,7 @@ onMounted(function loadStatsOnMount() {
             :closable="false"
             class="dashboard-alert"
             show-icon
-            title="用户流量排行接口加载失败，当前显示空状态占位"
+            :title="t('dashboard.userTrafficError')"
             type="warning"
           >
             <template #default>
@@ -111,9 +113,9 @@ onMounted(function loadStatsOnMount() {
           <TrafficRankCard
             :loading="adminStore.userTrafficRankLoading"
             :rank-data="adminStore.userTrafficRank"
-            description="按当前时间范围统计用户消耗流量"
-            empty-text="暂无用户流量排行数据"
-            title="用户流量排行"
+            :description="t('traffic.userDescription')"
+            :empty-text="t('traffic.emptyUser')"
+            :title="t('traffic.userTitle')"
           />
         </div>
       </div>
@@ -123,7 +125,7 @@ onMounted(function loadStatsOnMount() {
         :closable="false"
         class="dashboard-alert"
         show-icon
-        title="队列状态接口加载失败，当前显示默认占位数据"
+        :title="t('dashboard.queueError')"
         type="warning"
       >
         <template #default>
@@ -148,7 +150,7 @@ onMounted(function loadStatsOnMount() {
         :closable="false"
         class="dashboard-alert"
         show-icon
-        title="系统状态接口加载失败，当前显示默认占位数据"
+        :title="t('dashboard.systemError')"
         type="warning"
       >
         <template #default>

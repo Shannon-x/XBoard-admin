@@ -26,6 +26,8 @@ function createFallbackNodeModel(node, index) {
         name: node.name,
         type: node.type,
         rate: node.rate,
+        show: true,
+        showUpdating: false,
         status: node.status === "正常" ? "在线" : node.status,
         load:
             node.status === "高负载"
@@ -53,6 +55,8 @@ function createFallbackNodeModel(node, index) {
 function cloneManagedNode(node) {
     return {
         ...node,
+        show: Boolean(node?.show),
+        showUpdating: false,
         groupIds: Array.isArray(node.groupIds) ? [...node.groupIds] : [],
         groupNames: Array.isArray(node.groupNames) ? [...node.groupNames] : [],
         tags: Array.isArray(node.rawTags)
@@ -702,6 +706,35 @@ function handleKeywordClear() {
     handleKeywordSearch();
 }
 
+async function handleShowToggle(node, value) {
+    const nextValue = Boolean(value);
+    const previousValue = Boolean(node.show);
+    const nodeId = node?.rawId || node?.id;
+
+    if (!nodeId) {
+        ElMessage.error("节点ID缺失，无法更新显示状态");
+        return;
+    }
+
+    if (nextValue === previousValue) {
+        return;
+    }
+
+    try {
+        node.showUpdating = true;
+        node.show = nextValue;
+        await adminStore.updateManagedNodeShowItem(nodeId, nextValue);
+        ElMessage.success("显示状态已更新");
+    } catch (error) {
+        node.show = previousValue;
+        ElMessage.error(
+            error instanceof Error ? error.message : "更新显示状态失败",
+        );
+    } finally {
+        node.showUpdating = false;
+    }
+}
+
 function handlePageSizeChange(limit) {
     adminStore.loadManagedNodes({
         page: 1,
@@ -748,59 +781,43 @@ onUnmounted(function clearDebounceOnUnmount() {
             </template>
         </el-alert>
 
-        <el-card class="section-card nodes-hero" shadow="never">
-            <div class="nodes-hero__intro">
-                <div>
-                    <span class="nodes-hero__eyebrow">Node Control Center</span>
-                    <h2>节点管理</h2>
-                    <p>
-                        保留当前深色配色，并将节点列表重组为更接近参考图的运营视图：顶部摘要、快捷筛选、紧凑表格与分页操作。
-                    </p>
-                </div>
-
-                <el-space wrap>
-                    <el-button
-                        class="ghost-btn"
-                        type="primary"
-                        @click="openCreateNodeDialog('shadowsocks')"
-                    >
-                        <el-icon><Plus /></el-icon>
-                        添加 Shadowsocks
-                    </el-button>
-                    <el-button
-                        class="ghost-btn"
-                        type="primary"
-                        plain
-                        @click="openCreateNodeDialog('vmess')"
-                    >
-                        <el-icon><Plus /></el-icon>
-                        添加 VMess
-                    </el-button>
-                    <el-button
-                        class="ghost-btn"
-                        type="info"
-                        plain
-                        @click="runBatchHealthCheck"
-                    >
-                        <el-icon><Refresh /></el-icon>
-                        刷新节点
-                    </el-button>
-                </el-space>
+        <div class="nodes-header">
+            <div>
+                <h2>节点管理</h2>
+                <p>管理所有节点，包括添加、删除、编辑等操作。</p>
             </div>
-        </el-card>
+
+            <div class="nodes-header__actions">
+                <el-dropdown trigger="click" @command="handleCreateNodeCommand">
+                    <el-button class="ghost-btn" type="primary">
+                        <el-icon><Plus /></el-icon>
+                        添加节点
+                    </el-button>
+                    <template #dropdown>
+                        <el-dropdown-menu class="node-action-menu">
+                            <el-dropdown-item
+                                v-for="protocol in protocolOptions"
+                                :key="protocol"
+                                :command="protocol"
+                            >
+                                添加 {{ protocol.toUpperCase() }}
+                            </el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+                <el-button
+                    class="ghost-btn"
+                    type="info"
+                    plain
+                    @click="runBatchHealthCheck"
+                >
+                    <el-icon><Refresh /></el-icon>
+                    刷新节点
+                </el-button>
+            </div>
+        </div>
 
         <el-card class="section-card nodes-workspace" shadow="never">
-            <template #header>
-                <div class="section-head">
-                    <div>
-                        <h3>节点列表</h3>
-                        <p>
-                            通过类型、状态筛选快速定位节点，先聚焦真实可用的列表管理能力。
-                        </p>
-                    </div>
-                </div>
-            </template>
-
             <div class="node-toolbar">
                 <el-input
                     v-model="filters.keyword"
@@ -818,15 +835,29 @@ onUnmounted(function clearDebounceOnUnmount() {
                 <el-select
                     v-model="filters.protocol"
                     class="node-select"
-                    placeholder="协议"
+                    placeholder="类型"
                     @change="handleProtocolChange"
                 >
-                    <el-option label="全部协议" value="all" />
+                    <el-option label="全部类型" value="all" />
                     <el-option
                         v-for="protocol in protocolOptions"
                         :key="protocol"
                         :label="protocol"
                         :value="protocol"
+                    />
+                </el-select>
+
+                <el-select
+                    v-model="filters.group"
+                    class="node-select"
+                    placeholder="权限组"
+                >
+                    <el-option label="全部权限组" value="all" />
+                    <el-option
+                        v-for="group in groupOptions"
+                        :key="group.value"
+                        :label="group.label"
+                        :value="String(group.value)"
                     />
                 </el-select>
 
@@ -848,7 +879,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"
             >
-                <el-table-column label="ID" min-width="80">
+                <el-table-column label="节点ID" min-width="90">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <el-tag
@@ -867,15 +898,26 @@ onUnmounted(function clearDebounceOnUnmount() {
                         </div>
                     </template>
                 </el-table-column>
-                <el-table-column label="节点" min-width="120">
+                <el-table-column label="显示" width="90">
+                    <template #default="{ row }">
+                        <el-switch
+                            :model-value="Boolean(row.show)"
+                            size="small"
+                            :loading="row.showUpdating"
+                            @change="handleShowToggle(row, $event)"
+                        />
+                    </template>
+                </el-table-column>
+                <el-table-column label="节点" min-width="160">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <strong>{{ row.name }}</strong>
+                            <span>{{ row.type }}</span>
                         </div>
                     </template>
                 </el-table-column>
 
-                <el-table-column label="地址" min-width="200">
+                <el-table-column label="地址" min-width="220">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <strong
@@ -893,15 +935,22 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="倍率" min-width="40" prop="rate" />
-
                 <el-table-column
                     label="在线用户"
-                    min-width="40"
+                    min-width="80"
                     prop="onlineUsers"
-                />
+                >
+                    <template #default="{ row }">
+                        <div class="node-online">
+                            <el-icon><Monitor /></el-icon>
+                            {{ row.onlineUsers }}
+                        </div>
+                    </template>
+                </el-table-column>
 
-                <el-table-column label="状态" min-width="50">
+                <el-table-column label="倍率" min-width="60" prop="rate" />
+
+                <el-table-column label="状态" min-width="70">
                     <template #default="{ row }">
                         <el-tag
                             :type="resolveStatusType(row.status)"
@@ -912,7 +961,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="权限组" min-width="80">
+                <el-table-column label="权限组" min-width="140">
                     <template #default="{ row }">
                         <div class="node-tags">
                             <el-tag
@@ -1010,163 +1059,30 @@ onUnmounted(function clearDebounceOnUnmount() {
     gap: 18px;
 }
 
-.nodes-hero {
-    border: 1px solid var(--line);
-    background:
-        radial-gradient(
-            circle at top left,
-            rgba(59, 130, 246, 0.14),
-            transparent 34%
-        ),
-        radial-gradient(
-            circle at bottom right,
-            rgba(34, 197, 94, 0.12),
-            transparent 30%
-        ),
-        linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 17, 34, 0.92));
-}
-
-.nodes-hero__intro {
+.nodes-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 18px;
-}
-
-.nodes-hero__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(8, 17, 34, 0.58);
-    color: #cbd5e1;
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-}
-
-.nodes-hero__intro h2 {
-    margin: 14px 0 10px;
-    font-size: 30px;
-    line-height: 1.15;
-}
-
-.nodes-hero__intro p {
-    max-width: 760px;
-    margin: 0;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.7;
-}
-
-.node-stat-grid--flat {
     gap: 16px;
+    padding: 4px 2px 0;
 }
 
-.node-stat-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.node-stat-card {
-    padding: 20px;
-    border: 1px solid var(--line);
-    border-radius: 18px;
-    background: linear-gradient(
-        180deg,
-        rgba(15, 23, 42, 0.96),
-        rgba(8, 17, 34, 0.9)
-    );
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.05);
-}
-
-.node-stat-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: var(--muted);
-    font-size: 13px;
-}
-
-.node-stat-card strong {
-    display: block;
-    margin-top: 2px;
-    font-family: "Fira Code", monospace;
-    font-size: 30px;
+.nodes-header h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
     line-height: 1.2;
 }
 
-.node-stat-card p {
-    margin: 10px 0 0;
+.nodes-header p {
+    margin: 0;
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
 }
 
-.nodes-workspace {
-    border: 1px solid var(--line);
-}
-
-.nodes-workspace__meta {
-    display: inline-flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 10px;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.nodes-workspace__meta span {
-    padding: 7px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    background: rgba(8, 17, 34, 0.48);
-}
-
-.node-status-tabs {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.node-status-tab {
+.nodes-header__actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 15px 16px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: rgba(8, 17, 34, 0.5);
-    color: var(--muted);
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-.node-status-tab span {
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.node-status-tab strong {
-    color: var(--text);
-    font-family: "Fira Code", monospace;
-    font-size: 18px;
-}
-
-.node-status-tab:hover,
-.node-status-tab.active {
-    border-color: rgba(74, 222, 128, 0.34);
-    background: linear-gradient(
-        145deg,
-        rgba(34, 197, 94, 0.16),
-        rgba(59, 130, 246, 0.08)
-    );
-    color: #dbeafe;
+    gap: 10px;
 }
 
 .node-toolbar {
@@ -1174,6 +1090,18 @@ onUnmounted(function clearDebounceOnUnmount() {
     grid-template-columns: minmax(260px, 2.2fr) repeat(3, minmax(140px, 1fr));
     gap: 12px;
     margin-bottom: 14px;
+}
+
+.node-online {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.node-online :deep(.el-icon) {
+    color: var(--muted);
 }
 
 .node-toolbar--sub {
@@ -1578,17 +1506,12 @@ onUnmounted(function clearDebounceOnUnmount() {
 }
 
 @media (max-width: 1380px) {
-    .node-stat-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .nodes-hero__intro,
+    .nodes-header,
     .node-pagination {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    .node-status-tabs,
     .node-toolbar {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1599,8 +1522,6 @@ onUnmounted(function clearDebounceOnUnmount() {
 }
 
 @media (max-width: 900px) {
-    .node-stat-grid,
-    .node-status-tabs,
     .node-toolbar {
         grid-template-columns: 1fr;
     }

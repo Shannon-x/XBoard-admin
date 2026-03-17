@@ -1,5 +1,8 @@
-import { readStoredAuth } from "./auth";
-import { buildDashboardApiUrl, requestDashboardApi } from "./dashboard";
+import {
+  buildDashboardApiUrl,
+  getDashboardApiHeaders,
+  requestDashboardApi,
+} from "./api";
 
 export function createEmptyManagedNodes() {
   return [];
@@ -29,23 +32,6 @@ export function createEmptyManagedNodeRoutes() {
   return [];
 }
 
-function getDashboardApiHeaders() {
-  const storedSession = readStoredAuth();
-  const storedAuthData = storedSession?.authData;
-  const apiToken = import.meta.env.VITE_DASHBOARD_API_TOKEN;
-  const authorizationValue =
-    storedAuthData || (apiToken ? `Bearer ${apiToken}` : "");
-  const headers = {
-    Accept: "application/json, text/plain, */*",
-    "Content-Type": "application/json",
-  };
-
-  if (authorizationValue) {
-    headers.Authorization = authorizationValue;
-  }
-
-  return headers;
-}
 
 function formatTimestamp(value) {
   const timestamp = Number(value || 0);
@@ -148,6 +134,32 @@ function resolveNodeStatus(node) {
   return "在线";
 }
 
+function resolveNodeShow(node) {
+  const rawShow = node?.show;
+
+  if (rawShow === true || rawShow === false) {
+    return rawShow;
+  }
+
+  if (rawShow === 1 || rawShow === "1") {
+    return true;
+  }
+
+  if (rawShow === 0 || rawShow === "0") {
+    return false;
+  }
+
+  if (rawShow === "true") {
+    return true;
+  }
+
+  if (rawShow === "false") {
+    return false;
+  }
+
+  return false;
+}
+
 function normalizeManagedNode(node, index) {
   const status = resolveNodeStatus(node);
   const onlineUsers = Boolean(node.online || node.is_online)
@@ -183,6 +195,7 @@ function normalizeManagedNode(node, index) {
     parentId: node.parent_id,
     name: node.name || `节点 ${index + 1}`,
     type: String(node.type || "--").toUpperCase(),
+    show: resolveNodeShow(node),
     host: node.host,
     port: node.port,
     serverPort: node.server_port,
@@ -293,7 +306,10 @@ async function requestManagedNodeAction(path, payload) {
   const apiUrl = buildDashboardApiUrl(path);
   const response = await fetch(apiUrl, {
     method: "POST",
-    headers: getDashboardApiHeaders(),
+    headers: {
+      ...getDashboardApiHeaders(),
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
   });
 
@@ -327,6 +343,13 @@ export async function deleteManagedNode(id) {
 export async function copyManagedNode(id) {
   return requestManagedNodeAction("server/manage/copy", {
     id: Number(id || 0),
+  });
+}
+
+export async function updateManagedNodeShow(id, show) {
+  return requestManagedNodeAction("server/manage/update", {
+    id: Number(id || 0),
+    show: Number(show ? 1 : 0),
   });
 }
 
@@ -387,7 +410,10 @@ export async function saveManagedNode(payload = {}) {
 
   const response = await fetch(apiUrl, {
     method: "POST",
-    headers: getDashboardApiHeaders(),
+    headers: {
+      ...getDashboardApiHeaders(),
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(requestBody),
   });
 
