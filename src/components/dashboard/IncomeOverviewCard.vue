@@ -61,6 +61,10 @@ const currentRangeLabel = computed(function currentRangeLabel() {
     return props.range.label
   }
 
+  if (props.range?.labelKey) {
+    return t(props.range.labelKey)
+  }
+
   const matchedOption = rangeOptions.find(function findOption(option) {
     return option.value === props.range?.key
   })
