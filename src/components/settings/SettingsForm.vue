@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 defineProps({
   configFields: {
     type: Array,
@@ -13,6 +15,8 @@ defineProps({
     required: true,
   },
 })
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -21,7 +25,7 @@ defineProps({
       <el-form-item
         v-for="field in configFields"
         :key="field.label"
-        :label="field.label"
+        :label="field.labelKey ? t(field.labelKey) : field.label"
       >
         <el-input v-model="form[field.key]" />
       </el-form-item>
@@ -31,7 +35,7 @@ defineProps({
         :key="item.label"
         class="switch-row"
       >
-        <span>{{ item.label }}</span>
+        <span>{{ item.labelKey ? t(item.labelKey) : item.label }}</span>
         <el-switch v-model="form[item.key]" />
       </div>
     </div>

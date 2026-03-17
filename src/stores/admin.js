@@ -52,11 +52,11 @@ import {
 export const useAdminStore = defineStore("admin", () => {
   const defaultDashboardStats = createDefaultDashboardStats();
   const incomeRangePresets = {
-    "7d": { days: 7, label: "最近7天" },
-    "30d": { days: 30, label: "最近30天" },
-    "90d": { days: 90, label: "最近90天" },
-    "180d": { days: 180, label: "最近180天" },
-    "365d": { days: 365, label: "最近一年" },
+    "7d": { days: 7, labelKey: "income.range.last7Days" },
+    "30d": { days: 30, labelKey: "income.range.last30Days" },
+    "90d": { days: 90, labelKey: "income.range.last90Days" },
+    "180d": { days: 180, labelKey: "income.range.last180Days" },
+    "365d": { days: 365, labelKey: "income.range.lastYear" },
   };
   const searchKeyword = ref("");
   const dashboardSummary = ref(defaultDashboardStats.summary);
@@ -109,27 +109,31 @@ export const useAdminStore = defineStore("admin", () => {
 
   const navigationGroups = [
     {
-      title: "总览",
+      titleKey: "nav.overview",
       items: [
-        { label: "仪表盘", icon: DataAnalysis, routeName: "dashboard" },
-        { label: "公告管理", icon: Bell, routeName: "notices" },
+        {
+          labelKey: "nav.dashboard",
+          icon: DataAnalysis,
+          routeName: "dashboard",
+        },
+        { labelKey: "nav.notices", icon: Bell, routeName: "notices" },
       ],
     },
     {
-      title: "系统管理",
+      titleKey: "nav.system",
       items: [
-        { label: "系统配置", icon: Setting, routeName: "settings" },
-        { label: "节点管理", icon: Monitor, routeName: "nodes" },
-        { label: "插件管理", icon: Operation, routeName: "plugins" },
+        { labelKey: "nav.settings", icon: Setting, routeName: "settings" },
+        { labelKey: "nav.nodes", icon: Monitor, routeName: "nodes" },
+        { labelKey: "nav.plugins", icon: Operation, routeName: "plugins" },
       ],
     },
     {
-      title: "业务模块",
+      titleKey: "nav.business",
       items: [
-        { label: "套餐管理", icon: Files, routeName: "plans" },
-        { label: "订单管理", icon: ShoppingCart, routeName: "orders" },
-        { label: "用户管理", icon: User, routeName: "users" },
-        { label: "工单管理", icon: Service, routeName: "tickets" },
+        { labelKey: "nav.plans", icon: Files, routeName: "plans" },
+        { labelKey: "nav.orders", icon: ShoppingCart, routeName: "orders" },
+        { labelKey: "nav.users", icon: User, routeName: "users" },
+        { labelKey: "nav.tickets", icon: Service, routeName: "tickets" },
       ],
     },
   ];
@@ -280,15 +284,15 @@ export const useAdminStore = defineStore("admin", () => {
   ];
 
   const configFields = [
-    { label: "站点名称", key: "siteName" },
-    { label: "安全路径", key: "securePath" },
-    { label: "默认货币", key: "currency" },
-    { label: "邮件后缀白名单", key: "emailWhitelist" },
+    { labelKey: "settings.fields.siteName", key: "siteName" },
+    { labelKey: "settings.fields.securePath", key: "securePath" },
+    { labelKey: "settings.fields.currency", key: "currency" },
+    { labelKey: "settings.fields.emailWhitelist", key: "emailWhitelist" },
   ];
 
   const switchFields = [
-    { label: "启用验证码", key: "enableCaptcha" },
-    { label: "新用户试用", key: "enableTrial" },
+    { labelKey: "settings.fields.enableCaptcha", key: "enableCaptcha" },
+    { labelKey: "settings.fields.enableTrial", key: "enableTrial" },
   ];
 
   const filteredNavigationGroups = computed(() => {
@@ -301,7 +305,8 @@ export const useAdminStore = defineStore("admin", () => {
     return navigationGroups
       .map(function mapGroup(group) {
         const items = group.items.filter(function filterItem(item) {
-          return item.label.toLowerCase().includes(keyword);
+          const label = String(item.label || item.labelKey || "");
+          return label.toLowerCase().includes(keyword);
         });
 
         return {
@@ -368,15 +373,16 @@ export const useAdminStore = defineStore("admin", () => {
     if (key === "custom") {
       const hasCustomRange = customRange.startDate && customRange.endDate;
 
-      return {
-        key: "custom",
-        label: hasCustomRange
-          ? `${customRange.startDate} 至 ${customRange.endDate}`
-          : "自定义范围",
-        startDate: customRange.startDate || "",
-        endDate: customRange.endDate || "",
-      };
-    }
+    return {
+      key: "custom",
+      label: hasCustomRange
+        ? `${customRange.startDate} 至 ${customRange.endDate}`
+        : "自定义范围",
+      labelKey: "income.range.custom",
+      startDate: customRange.startDate || "",
+      endDate: customRange.endDate || "",
+    };
+  }
 
     const preset = incomeRangePresets[key] || incomeRangePresets["30d"];
     const resolvedKey = incomeRangePresets[key] ? key : "30d";
@@ -384,7 +390,7 @@ export const useAdminStore = defineStore("admin", () => {
 
     return {
       key: resolvedKey,
-      label: preset.label,
+      labelKey: preset.labelKey,
       startDate: range.startDate,
       endDate: range.endDate,
     };

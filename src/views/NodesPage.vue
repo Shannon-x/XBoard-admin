@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { useI18n } from "vue-i18n";
 import {
     DataLine,
     Delete,
@@ -19,6 +20,7 @@ import NodeConfigDialog from "../components/nodes/NodeConfigDialog.vue";
 const adminStore = useAdminStore();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 
 function createFallbackNodeModel(node, index) {
     return {
@@ -28,7 +30,7 @@ function createFallbackNodeModel(node, index) {
         rate: node.rate,
         show: true,
         showUpdating: false,
-        status: node.status === "正常" ? "在线" : node.status,
+        status: node.status === "正常" ? t("nodes.statusOnline") : node.status,
         load:
             node.status === "高负载"
                 ? 86
@@ -36,16 +38,21 @@ function createFallbackNodeModel(node, index) {
                   ? 0
                   : 42 + index * 11,
         onlineUsers: node.status === "维护中" ? 0 : 132 + index * 37,
-        lastCheck: index === 0 ? "刚刚" : index === 1 ? "2 分钟前" : "9 分钟前",
+        lastCheck:
+            index === 0
+                ? t("time.justNow")
+                : index === 1
+                  ? t("time.minutesAgo", { count: 2 })
+                  : t("time.minutesAgo", { count: 9 }),
         priority: index + 1,
         groupIds: [],
         groupNames: [],
         tags:
             index === 0
-                ? ["主力", "低延迟"]
+                ? [t("nodes.tags.primary"), t("nodes.tags.lowLatency")]
                 : index === 1
-                  ? ["备用"]
-                  : ["维护"],
+                  ? [t("nodes.tags.backup")]
+                  : [t("nodes.tags.maintenance")],
         remark: "",
         lastPushAt: "--",
         cacheKey: "--",
@@ -95,9 +102,9 @@ const filters = reactive({
 
 const statusOptions = ["all", "1", "2", "0"];
 const statusLabelMap = new Map([
-    ["在线", "1"],
-    ["异常", "2"],
-    ["离线", "0"],
+    [t("nodes.statusOnline"), "1"],
+    [t("nodes.statusAbnormal"), "2"],
+    [t("nodes.statusOffline"), "0"],
 ]);
 
 function normalizeStatusFromQuery(status) {
@@ -117,15 +124,15 @@ function normalizeStatusFromQuery(status) {
 
 function resolveStatusLabel(status) {
     if (status === "1") {
-        return "在线";
+        return t("nodes.statusOnline");
     }
 
     if (status === "2") {
-        return "异常";
+        return t("nodes.statusAbnormal");
     }
 
     if (status === "0") {
-        return "离线";
+        return t("nodes.statusOffline");
     }
 
     return status;
@@ -410,19 +417,23 @@ const statusSummary = computed(function statusSummary() {
     }).length;
 
     return [
-        { value: "all", label: "全部节点", count: nodeList.value.length },
-        { value: "1", label: "在线节点", count: healthy },
-        { value: "2", label: "异常节点", count: idle },
-        { value: "0", label: "离线节点", count: offline },
+        {
+            value: "all",
+            label: t("nodes.summary.all"),
+            count: nodeList.value.length,
+        },
+        { value: "1", label: t("nodes.summary.online"), count: healthy },
+        { value: "2", label: t("nodes.summary.abnormal"), count: idle },
+        { value: "0", label: t("nodes.summary.offline"), count: offline },
     ];
 });
 
 function resolveStatusType(status) {
-    if (status === "在线" || status === "正常") {
+    if (status === t("nodes.statusOnline") || status === "正常") {
         return "success";
     }
 
-    if (status === "异常") {
+    if (status === t("nodes.statusAbnormal")) {
         return "warning";
     }
 
@@ -479,11 +490,14 @@ function resolveNodeGroups(node) {
 
     if (Array.isArray(node.groupIds) && node.groupIds.length > 0) {
         return node.groupIds.map(function mapGroupId(groupId) {
-            return groupNameById.value.get(groupId) || `组#${groupId}`;
+            return (
+                groupNameById.value.get(groupId) ||
+                t("nodes.groupFallback", { id: groupId })
+            );
         });
     }
 
-    return ["未分组"];
+    return [t("nodes.groupEmpty")];
 }
 
 function handleCreateNodeCommand(protocol) {
@@ -500,7 +514,7 @@ function runBatchHealthCheck() {
             status: filters.status,
         },
     });
-    ElMessage.success("已刷新当前节点列表");
+    ElMessage.success(t("nodes.messages.listRefreshed"));
 }
 
 function openCreateNodeDialog(protocol = "shadowsocks") {
@@ -534,12 +548,14 @@ function openEditNodeDialog(node) {
 async function handleDeleteNode(node) {
     try {
         await ElMessageBox.confirm(
-            `确认删除节点「${node?.name || ""}」吗？`,
-            "删除节点",
+            t("nodes.messages.deleteConfirmMessage", {
+                name: node?.name || "",
+            }),
+            t("nodes.messages.deleteConfirmTitle"),
             {
                 type: "warning",
-                confirmButtonText: "删除",
-                cancelButtonText: "取消",
+                confirmButtonText: t("nodes.messages.deleteConfirmOk"),
+                cancelButtonText: t("nodes.messages.deleteConfirmCancel"),
             },
         );
         await adminStore.deleteManagedNodeItem(node?.rawId || node?.id);
@@ -552,13 +568,15 @@ async function handleDeleteNode(node) {
                 status: filters.status,
             },
         });
-        ElMessage.success("节点已删除");
+        ElMessage.success(t("nodes.messages.deleteSuccess"));
     } catch (error) {
         if (error === "cancel") {
             return;
         }
         ElMessage.error(
-            error instanceof Error ? error.message : "删除节点失败",
+            error instanceof Error
+                ? error.message
+                : t("nodes.messages.deleteFailed"),
         );
     }
 }
@@ -575,10 +593,10 @@ async function handleCopyNode(node) {
                 status: filters.status,
             },
         });
-        ElMessage.success("节点已复制");
+        ElMessage.success(t("nodes.messages.copySuccess"));
     } catch (error) {
         ElMessage.error(
-            error instanceof Error ? error.message : "复制节点失败",
+            error instanceof Error ? error.message : t("nodes.messages.copyFailed"),
         );
     }
 }
@@ -642,15 +660,17 @@ async function handleNodeDialogSubmit(payload) {
         activeNode.value = null;
 
         if (isEditing) {
-            ElMessage.success("节点已更新");
+            ElMessage.success(t("nodes.messages.updated"));
         } else {
             ElMessage.success(
-                `${protocolType.toUpperCase()} 节点已添加`,
+                t("nodes.messages.added", {
+                    protocol: protocolType.toUpperCase(),
+                }),
             );
         }
     } catch (error) {
         ElMessage.error(
-            error instanceof Error ? error.message : "保存节点失败",
+            error instanceof Error ? error.message : t("nodes.messages.saveFailed"),
         );
     }
 }
@@ -712,7 +732,7 @@ async function handleShowToggle(node, value) {
     const nodeId = node?.rawId || node?.id;
 
     if (!nodeId) {
-        ElMessage.error("节点ID缺失，无法更新显示状态");
+        ElMessage.error(t("nodes.messages.showIdMissing"));
         return;
     }
 
@@ -724,11 +744,13 @@ async function handleShowToggle(node, value) {
         node.showUpdating = true;
         node.show = nextValue;
         await adminStore.updateManagedNodeShowItem(nodeId, nextValue);
-        ElMessage.success("显示状态已更新");
+        ElMessage.success(t("nodes.messages.showUpdated"));
     } catch (error) {
         node.show = previousValue;
         ElMessage.error(
-            error instanceof Error ? error.message : "更新显示状态失败",
+            error instanceof Error
+                ? error.message
+                : t("nodes.messages.showUpdateFailed"),
         );
     } finally {
         node.showUpdating = false;
@@ -777,21 +799,21 @@ onUnmounted(function clearDebounceOnUnmount() {
             type="warning"
         >
             <template #default>
-                节点接口加载失败，当前展示的是本地兜底节点数据。
+                {{ t("nodes.loadFallback") }}
             </template>
         </el-alert>
 
         <div class="nodes-header">
             <div>
-                <h2>节点管理</h2>
-                <p>管理所有节点，包括添加、删除、编辑等操作。</p>
+                <h2>{{ t("nodes.title") }}</h2>
+                <p>{{ t("nodes.description") }}</p>
             </div>
 
             <div class="nodes-header__actions">
                 <el-dropdown trigger="click" @command="handleCreateNodeCommand">
                     <el-button class="ghost-btn" type="primary">
                         <el-icon><Plus /></el-icon>
-                        添加节点
+                        {{ t("nodes.add") }}
                     </el-button>
                     <template #dropdown>
                         <el-dropdown-menu class="node-action-menu">
@@ -800,7 +822,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                                 :key="protocol"
                                 :command="protocol"
                             >
-                                添加 {{ protocol.toUpperCase() }}
+                                {{ t("nodes.add") }} {{ protocol.toUpperCase() }}
                             </el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
@@ -812,7 +834,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     @click="runBatchHealthCheck"
                 >
                     <el-icon><Refresh /></el-icon>
-                    刷新节点
+                    {{ t("nodes.refresh") }}
                 </el-button>
             </div>
         </div>
@@ -822,7 +844,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 <el-input
                     v-model="filters.keyword"
                     clearable
-                    placeholder="搜索节点名称/地区"
+                    :placeholder="t('nodes.searchPlaceholder')"
                     class="node-search"
                     @keyup.enter="handleKeywordSearch"
                     @clear="handleKeywordClear"
@@ -835,10 +857,10 @@ onUnmounted(function clearDebounceOnUnmount() {
                 <el-select
                     v-model="filters.protocol"
                     class="node-select"
-                    placeholder="类型"
+                    :placeholder="t('nodes.protocolPlaceholder')"
                     @change="handleProtocolChange"
                 >
-                    <el-option label="全部类型" value="all" />
+                    <el-option :label="t('nodes.protocolAll')" value="all" />
                     <el-option
                         v-for="protocol in protocolOptions"
                         :key="protocol"
@@ -850,9 +872,9 @@ onUnmounted(function clearDebounceOnUnmount() {
                 <el-select
                     v-model="filters.group"
                     class="node-select"
-                    placeholder="权限组"
+                    :placeholder="t('nodes.groupPlaceholder')"
                 >
-                    <el-option label="全部权限组" value="all" />
+                    <el-option :label="t('nodes.groupAll')" value="all" />
                     <el-option
                         v-for="group in groupOptions"
                         :key="group.value"
@@ -864,13 +886,13 @@ onUnmounted(function clearDebounceOnUnmount() {
                 <el-select
                     v-model="filters.status"
                     class="node-select"
-                    placeholder="状态"
+                    :placeholder="t('nodes.statusPlaceholder')"
                     @change="handleStatusChange"
                 >
-                    <el-option label="全部状态" value="all" />
-                    <el-option label="在线" value="1" />
-                    <el-option label="异常" value="2" />
-                    <el-option label="离线" value="0" />
+                    <el-option :label="t('nodes.statusAll')" value="all" />
+                    <el-option :label="t('nodes.statusOnline')" value="1" />
+                    <el-option :label="t('nodes.statusAbnormal')" value="2" />
+                    <el-option :label="t('nodes.statusOffline')" value="0" />
                 </el-select>
             </div>
 
@@ -879,7 +901,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"
             >
-                <el-table-column label="节点ID" min-width="90">
+                <el-table-column :label="t('nodes.table.id')" min-width="90">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <el-tag
@@ -898,7 +920,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                         </div>
                     </template>
                 </el-table-column>
-                <el-table-column label="显示" width="90">
+                <el-table-column :label="t('nodes.table.visible')" width="90">
                     <template #default="{ row }">
                         <el-switch
                             :model-value="Boolean(row.show)"
@@ -908,7 +930,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                         />
                     </template>
                 </el-table-column>
-                <el-table-column label="节点" min-width="160">
+                <el-table-column :label="t('nodes.table.node')" min-width="160">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <strong>{{ row.name }}</strong>
@@ -917,7 +939,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="地址" min-width="220">
+                <el-table-column :label="t('nodes.table.address')" min-width="220">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <strong
@@ -936,7 +958,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 </el-table-column>
 
                 <el-table-column
-                    label="在线用户"
+                    :label="t('nodes.table.onlineUsers')"
                     min-width="80"
                     prop="onlineUsers"
                 >
@@ -948,9 +970,9 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="倍率" min-width="60" prop="rate" />
+                <el-table-column :label="t('nodes.table.rate')" min-width="60" prop="rate" />
 
-                <el-table-column label="状态" min-width="70">
+                <el-table-column :label="t('nodes.table.status')" min-width="70">
                     <template #default="{ row }">
                         <el-tag
                             :type="resolveStatusType(row.status)"
@@ -961,7 +983,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="权限组" min-width="140">
+                <el-table-column :label="t('nodes.table.groups')" min-width="140">
                     <template #default="{ row }">
                         <div class="node-tags">
                             <el-tag
@@ -976,7 +998,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="90" fixed="right">
+                <el-table-column :label="t('nodes.table.actions')" width="90" fixed="right">
                     <template #default="{ row }">
                         <el-dropdown trigger="click">
                             <el-button class="node-action-trigger" type="primary" plain>
@@ -986,18 +1008,18 @@ onUnmounted(function clearDebounceOnUnmount() {
                                 <el-dropdown-menu class="node-action-menu">
                                     <el-dropdown-item @click="openEditNodeDialog(row)">
                                         <el-icon><Edit /></el-icon>
-                                        编辑
+                                        {{ t("nodes.actions.edit") }}
                                     </el-dropdown-item>
                                     <el-dropdown-item @click="handleCopyNode(row)">
                                         <el-icon><CopyDocument /></el-icon>
-                                        复制
+                                        {{ t("nodes.actions.copy") }}
                                     </el-dropdown-item>
                                     <el-dropdown-item
                                         class="node-action-menu__danger"
                                         @click="handleDeleteNode(row)"
                                     >
                                         <el-icon><Delete /></el-icon>
-                                        删除
+                                        {{ t("nodes.actions.delete") }}
                                     </el-dropdown-item>
                                 </el-dropdown-menu>
                             </template>
@@ -1008,22 +1030,29 @@ onUnmounted(function clearDebounceOnUnmount() {
 
             <div class="node-pagination">
                 <div class="node-pagination__summary">
-                    <span class="node-pagination__eyebrow">分页导航</span>
+                    <span class="node-pagination__eyebrow">
+                        {{ t("nodes.pagination.eyebrow") }}
+                    </span>
                     <strong>
-                        第 {{ pagination.page }} 页 · 共
                         {{
-                            Math.max(
-                                1,
-                                Math.ceil(
-                                    (pagination.total || 0) / pagination.limit,
+                            t("nodes.pagination.pageSummary", {
+                                page: pagination.page,
+                                total: Math.max(
+                                    1,
+                                    Math.ceil(
+                                        (pagination.total || 0) / pagination.limit,
+                                    ),
                                 ),
-                            )
+                            })
                         }}
-                        页
                     </strong>
                     <span>
-                        当前每页 {{ pagination.limit }} 条，累计
-                        {{ pagination.total }} 条节点记录
+                        {{
+                            t("nodes.pagination.pageDetail", {
+                                limit: pagination.limit,
+                                count: pagination.total,
+                            })
+                        }}
                     </span>
                 </div>
 

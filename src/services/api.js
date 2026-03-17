@@ -1,4 +1,5 @@
 import { readStoredAuth } from './auth'
+import i18n from '../i18n'
 
 const DEFAULT_API_ORIGIN = 'https://example.invalid'
 const DEFAULT_SECURE_PATH = 'change-me'
@@ -91,21 +92,23 @@ export async function requestDashboardApi(url) {
   })
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error('仪表盘接口鉴权失败，请先重新登录后再重试')
+    throw new Error(resolveMessage('defaults.dashboardStatsAuthFailed'))
   }
 
   if (!response.ok) {
-    throw new Error(`Dashboard request failed: ${response.status}`)
+    throw new Error(resolveMessage('defaults.dashboardRequestFailed', {
+      status: response.status,
+    }))
   }
 
   const payload = await response.json()
 
   if (payload?.status && payload.status !== 'success') {
-    throw new Error(payload.message || '仪表盘接口返回失败状态')
+    throw new Error(payload.message || resolveMessage('defaults.dashboardStatusFailed'))
   }
 
   if (payload?.code !== undefined && Number(payload.code) !== 0) {
-    throw new Error(payload.message || '仪表盘接口返回异常状态码')
+    throw new Error(payload.message || resolveMessage('defaults.dashboardCodeFailed'))
   }
 
   return payload
@@ -123,25 +126,43 @@ export async function requestDashboardMutation(url, payload, method = 'POST') {
   })
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error('仪表盘接口鉴权失败，请先重新登录后再重试')
+    throw new Error(resolveMessage('defaults.dashboardStatsAuthFailed'))
   }
 
   if (!response.ok) {
-    throw new Error(`Dashboard request failed: ${response.status}`)
+    throw new Error(resolveMessage('defaults.dashboardRequestFailed', {
+      status: response.status,
+    }))
   }
 
   const responsePayload = await response.json()
 
   if (responsePayload?.status && responsePayload.status !== 'success') {
-    throw new Error(responsePayload.message || '仪表盘接口返回失败状态')
+    throw new Error(responsePayload.message || resolveMessage('defaults.dashboardStatusFailed'))
   }
 
   if (
     responsePayload?.code !== undefined &&
     Number(responsePayload.code) !== 0
   ) {
-    throw new Error(responsePayload.message || '仪表盘接口返回异常状态码')
+    throw new Error(responsePayload.message || resolveMessage('defaults.dashboardCodeFailed'))
   }
 
   return responsePayload
+}
+
+function resolveMessage(key, values) {
+  if (i18n?.global?.te?.(key)) {
+    return i18n.global.t(key, values)
+  }
+
+  const fallbackMap = {
+    'defaults.dashboardStatsAuthFailed':
+      '仪表盘接口鉴权失败，请先重新登录后再重试',
+    'defaults.dashboardRequestFailed': `Dashboard request failed: ${values?.status ?? ''}`,
+    'defaults.dashboardStatusFailed': '仪表盘接口返回失败状态',
+    'defaults.dashboardCodeFailed': '仪表盘接口返回异常状态码',
+  }
+
+  return fallbackMap[key] || key
 }

@@ -1,30 +1,33 @@
 <script setup>
 import DataTableCard from '../components/common/DataTableCard.vue'
 import SectionCard from '../components/common/SectionCard.vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
+const { t } = useI18n()
 
 const ticketColumns = [
-  { label: '工单号', prop: 'id' },
-  { label: '主题', minWidth: 220, prop: 'subject' },
-  { label: '用户邮箱', minWidth: 220, prop: 'userEmail' },
-  { label: '优先级', slot: 'priority' },
-  { label: '最近更新', prop: 'updatedAt' },
-  { label: '状态', slot: 'status' },
+  { label: t('tickets.columns.id'), prop: 'id' },
+  { label: t('tickets.columns.subject'), minWidth: 220, prop: 'subject' },
+  { label: t('tickets.columns.userEmail'), minWidth: 220, prop: 'userEmail' },
+  { label: t('tickets.columns.priority'), slot: 'priority' },
+  { label: t('tickets.columns.updatedAt'), prop: 'updatedAt' },
+  { label: t('tickets.columns.status'), slot: 'status' },
 ]
 </script>
 
 <template>
   <section class="page-stack">
-    <SectionCard
-      description="工单页采用更贴近运营后台的列表结构，便于后续加入会话详情抽屉和客服分配。"
-      title="工单列表"
-    >
+    <SectionCard :description="t('tickets.description')" :title="t('tickets.title')">
       <template #actions>
         <el-space wrap>
-          <el-button class="ghost-btn small" type="info" plain>仅看未处理</el-button>
-          <el-button class="primary-btn small" type="success">分配客服</el-button>
+          <el-button class="ghost-btn small" type="info" plain>
+            {{ t('tickets.actions.pendingOnly') }}
+          </el-button>
+          <el-button class="primary-btn small" type="success">
+            {{ t('tickets.actions.assign') }}
+          </el-button>
         </el-space>
       </template>
 

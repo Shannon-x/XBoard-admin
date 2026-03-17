@@ -1,19 +1,20 @@
 <script setup>
 import SectionCard from '../components/common/SectionCard.vue'
 import SettingsForm from '../components/settings/SettingsForm.vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
+const { t } = useI18n()
 </script>
 
 <template>
   <section class="page-stack">
-    <SectionCard
-      description="将系统参数集中到统一的 Element Plus 表单结构中，方便后续对接真实配置 API。"
-      title="站点基础配置"
-    >
+    <SectionCard :description="t('settings.description')" :title="t('settings.title')">
       <template #actions>
-        <el-button class="primary-btn small" type="success">保存配置</el-button>
+        <el-button class="primary-btn small" type="success">
+          {{ t('settings.save') }}
+        </el-button>
       </template>
 
       <SettingsForm

@@ -17,7 +17,16 @@ const route = useRoute();
 const router = useRouter();
 const adminStore = useAdminStore();
 const authStore = useAuthStore();
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+const languageOptions = computed(function languageOptions() {
+    return [
+        {
+            value: "zh-CN",
+            label: t("app.languages.zhCN"),
+        },
+    ];
+});
 
 const pageTitle = computed(function pageTitle() {
     if (route.meta.titleKey) {
@@ -55,6 +64,22 @@ const headerUserEmail = computed(function headerUserEmail() {
         : t("app.adminFallback");
 });
 
+function resolveGroupTitle(group) {
+    if (group?.titleKey) {
+        return t(group.titleKey);
+    }
+
+    return group?.title || "";
+}
+
+function resolveItemLabel(item) {
+    if (item?.labelKey) {
+        return t(item.labelKey);
+    }
+
+    return item?.label || "";
+}
+
 function handleMenuSelect(routeName) {
     router.push({ name: routeName });
 }
@@ -83,7 +108,7 @@ function handleAccountCommand(command) {
             <el-input
                 v-model="adminStore.searchKeyword"
                 class="search-box"
-                :placeholder="t("search.placeholder")"
+                :placeholder="t('search.placeholder')"
             >
                 <template #prefix>
                     <el-icon><Search /></el-icon>
@@ -93,10 +118,10 @@ function handleAccountCommand(command) {
             <div class="nav-groups">
                 <section
                     v-for="group in adminStore.filteredNavigationGroups"
-                    :key="group.title"
+                    :key="group.titleKey || group.title"
                     class="nav-group"
                 >
-                    <div class="nav-title">{{ group.title }}</div>
+                    <div class="nav-title">{{ resolveGroupTitle(group) }}</div>
 
                     <el-menu
                         :default-active="String(activeMenu)"
@@ -108,13 +133,13 @@ function handleAccountCommand(command) {
                     >
                         <el-menu-item
                             v-for="item in group.items"
-                            :key="`${group.title}-${item.label}`"
+                            :key="`${group.titleKey || group.title}-${item.labelKey || item.label}`"
                             :index="item.routeName"
                             class="nav-item"
                             @click="handleMenuSelect(item.routeName)"
                         >
                             <el-icon><component :is="item.icon" /></el-icon>
-                            <span>{{ item.label }}</span>
+                            <span>{{ resolveItemLabel(item) }}</span>
                         </el-menu-item>
                     </el-menu>
                 </section>
@@ -134,6 +159,19 @@ function handleAccountCommand(command) {
                 </div>
 
                 <div class="topbar-actions">
+                    <el-select
+                        v-model="locale"
+                        class="topbar-language"
+                        size="small"
+                        :placeholder="t('app.language')"
+                    >
+                        <el-option
+                            v-for="option in languageOptions"
+                            :key="option.value"
+                            :label="option.label"
+                            :value="option.value"
+                        />
+                    </el-select>
                     <el-dropdown
                         class="header-account"
                         :class="{ loading: adminStore.userInfoLoading }"
@@ -182,3 +220,33 @@ function handleAccountCommand(command) {
         </el-main>
     </el-container>
 </template>
+
+<style scoped>
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-language {
+    min-width: 120px;
+}
+
+.topbar-language :deep(.el-input__inner) {
+    background: #0f1c2d;
+    border-color: #1f3144;
+    color: #dce7f4;
+}
+
+.topbar-language :deep(.el-input__inner::placeholder) {
+    color: #9fb3c7;
+}
+
+.topbar-language :deep(.el-input__wrapper) {
+    box-shadow: none;
+}
+
+.topbar-language :deep(.el-select__caret) {
+    color: #9fb3c7;
+}
+</style>
