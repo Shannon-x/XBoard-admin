@@ -1,91 +1,12 @@
-import { readStoredAuth } from "./auth";
+import {
+  buildCommonApiUrl,
+  buildDashboardApiUrl,
+  requestDashboardApi,
+} from "./api";
 
-const DEFAULT_API_ORIGIN = "https://example.invalid";
-const DEFAULT_SECURE_PATH = "change-me";
 const DEFAULT_OVERVIEW_RANGE_DAYS = 30;
 const DEFAULT_RANK_RANGE_DAYS = 1;
 
-function getApiOrigin() {
-  return import.meta.env.VITE_API_BASE_URL || DEFAULT_API_ORIGIN;
-}
-
-function getDashboardSecurePath() {
-  return import.meta.env.VITE_DASHBOARD_SECURE_PATH || DEFAULT_SECURE_PATH;
-}
-
-function getNormalizedApiOrigin() {
-  return getApiOrigin().replace(/\/$/, "");
-}
-
-function getNormalizedSecurePath() {
-  return getDashboardSecurePath().replace(/^\//, "");
-}
-
-export function buildDashboardApiUrl(endpointPath, queryEntries = []) {
-  const apiOrigin = getNormalizedApiOrigin();
-  const securePath = getNormalizedSecurePath();
-  const url = new URL(`${apiOrigin}/api/v3/${securePath}/${endpointPath}`);
-
-  queryEntries.forEach(function appendQueryEntry([key, value]) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  url.searchParams.set("t", String(Date.now()));
-
-  return url.toString();
-}
-
-export function buildSecureV2ApiUrl(endpointPath, queryEntries = []) {
-  const apiOrigin = getNormalizedApiOrigin();
-  const securePath = getNormalizedSecurePath();
-  const normalizedEndpoint = String(endpointPath || '').replace(/^\//, '');
-  const url = new URL(`${apiOrigin}/api/v2/${securePath}/${normalizedEndpoint}`);
-
-  queryEntries.forEach(function appendQueryEntry([key, value]) {
-    if (value !== undefined && value !== null && value !== '') {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  url.searchParams.set('t', String(Date.now()));
-
-  return url.toString();
-}
-
-function buildCommonApiUrl(endpointPath, queryEntries = []) {
-  const apiOrigin = getNormalizedApiOrigin();
-  const normalizedPath = String(endpointPath || "").replace(/^\//, "");
-  const url = new URL(`${apiOrigin}/api/v2/${normalizedPath}`);
-
-  queryEntries.forEach(function appendQueryEntry([key, value]) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  url.searchParams.set("t", String(Date.now()));
-
-  return url.toString();
-}
-
-function getApiHeaders() {
-  const storedSession = readStoredAuth();
-  const storedAuthData = storedSession?.authData;
-  const apiToken = import.meta.env.VITE_DASHBOARD_API_TOKEN;
-  const authorizationValue =
-    storedAuthData || (apiToken ? `Bearer ${apiToken}` : "");
-  const headers = {
-    Accept: "application/json, text/plain, */*",
-  };
-
-  if (authorizationValue) {
-    headers.Authorization = authorizationValue;
-  }
-
-  return headers;
-}
 
 function createDateRange(days) {
   const endDate = new Date();
@@ -183,31 +104,6 @@ function formatChangeText(value) {
   return `${prefix}${amount.toFixed(1)}%`;
 }
 
-export async function requestDashboardApi(url) {
-  const response = await fetch(url, {
-    headers: getApiHeaders(),
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("仪表盘接口鉴权失败，请先重新登录后再重试");
-  }
-
-  if (!response.ok) {
-    throw new Error(`Dashboard request failed: ${response.status}`);
-  }
-
-  const payload = await response.json();
-
-  if (payload?.status && payload.status !== "success") {
-    throw new Error(payload.message || "仪表盘接口返回失败状态");
-  }
-
-  if (payload?.code !== undefined && Number(payload.code) !== 0) {
-    throw new Error(payload.message || "仪表盘接口返回异常状态码");
-  }
-
-  return payload;
-}
 
 export function createDefaultDashboardStats() {
   return {

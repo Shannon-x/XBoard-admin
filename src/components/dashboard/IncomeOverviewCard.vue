@@ -1,6 +1,7 @@
 <script setup>
 import { ArrowDown } from '@element-plus/icons-vue'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   loading: {
@@ -18,6 +19,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['change-range'])
+const { t } = useI18n()
 
 const activeMetric = ref('amount')
 const dropdownRef = ref(null)
@@ -25,14 +27,14 @@ const customRange = ref([])
 
 const metricOptions = [
   {
-    label: '金额',
+    label: t('income.metricAmount'),
     value: 'amount',
-    hint: '收入',
+    hint: t('income.metricAmountHint'),
   },
   {
-    label: '数量',
+    label: t('income.metricCount'),
     value: 'count',
-    hint: '订单',
+    hint: t('income.metricCountHint'),
   },
 ]
 
@@ -46,12 +48,12 @@ const chartPadding = {
 }
 
 const rangeOptions = [
-  { label: '最近7天', value: '7d' },
-  { label: '最近30天', value: '30d' },
-  { label: '最近90天', value: '90d' },
-  { label: '最近180天', value: '180d' },
-  { label: '最近一年', value: '365d' },
-  { label: '自定义范围', value: 'custom' },
+  { label: t('income.range.last7Days'), value: '7d' },
+  { label: t('income.range.last30Days'), value: '30d' },
+  { label: t('income.range.last90Days'), value: '90d' },
+  { label: t('income.range.last180Days'), value: '180d' },
+  { label: t('income.range.lastYear'), value: '365d' },
+  { label: t('income.range.custom'), value: 'custom' },
 ]
 
 const currentRangeLabel = computed(function currentRangeLabel() {
@@ -63,7 +65,7 @@ const currentRangeLabel = computed(function currentRangeLabel() {
     return option.value === props.range?.key
   })
 
-  return matchedOption ? matchedOption.label : '最近30天'
+  return matchedOption ? matchedOption.label : t('income.range.last30Days')
 })
 
 const selectedRangeKey = ref(props.range?.key || '30d')
@@ -108,7 +110,7 @@ function handleApplyCustomRange() {
     key: 'custom',
     startDate: customRange.value[0],
     endDate: customRange.value[1],
-    label: '自定义范围',
+    label: t('income.customRangeLabel'),
   })
 
   dropdownRef.value?.handleClose?.()
@@ -140,7 +142,7 @@ function formatAxisValue(value) {
 
 function formatPointValue(value) {
   if (activeMetric.value === 'count') {
-    return `${Math.round(value)} 笔`
+    return `${Math.round(value)} ${t('income.countUnit')}`
   }
 
   return `¥${value.toFixed(2)}`

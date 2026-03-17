@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import {
     ArrowDown,
     FolderOpened,
@@ -16,13 +17,22 @@ const route = useRoute();
 const router = useRouter();
 const adminStore = useAdminStore();
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 const pageTitle = computed(function pageTitle() {
-    return route.meta.title ?? "仪表盘";
+    if (route.meta.titleKey) {
+        return t(route.meta.titleKey);
+    }
+
+    return route.meta.title ?? t("routes.dashboard.title");
 });
 
 const pageEyebrow = computed(function pageEyebrow() {
-    return route.meta.eyebrow ?? "LongtengCloud / 管理后台";
+    if (route.meta.eyebrowKey) {
+        return t(route.meta.eyebrowKey);
+    }
+
+    return route.meta.eyebrow ?? t("routes.dashboard.eyebrow");
 });
 
 const activeMenu = computed(function activeMenu() {
@@ -42,7 +52,7 @@ const headerUserInitial = computed(function headerUserInitial() {
 const headerUserEmail = computed(function headerUserEmail() {
     return adminStore.userInfo?.email && adminStore.userInfo.email !== "--"
         ? adminStore.userInfo.email
-        : "LongtengCloud Admin";
+        : t("app.adminFallback");
 });
 
 function handleMenuSelect(routeName) {
@@ -65,15 +75,15 @@ function handleAccountCommand(command) {
             <div class="brand-panel">
                 <div class="brand-mark">L</div>
                 <div>
-                    <strong>LongtengCloud</strong>
-                    <p>V2Board · Admin Console</p>
+                    <strong>{{ t("app.brand") }}</strong>
+                    <p>{{ t("app.console") }}</p>
                 </div>
             </div>
 
             <el-input
                 v-model="adminStore.searchKeyword"
                 class="search-box"
-                placeholder="搜索模块 / 用户 / 订单"
+                :placeholder="t("search.placeholder")"
             >
                 <template #prefix>
                     <el-icon><Search /></el-icon>
@@ -112,7 +122,7 @@ function handleAccountCommand(command) {
 
             <div class="sidebar-footer">
                 <span class="status-dot"></span>
-                <span>系统运行正常 · 队列与支付服务在线</span>
+                <span>{{ t("app.status.servicesHealthy") }}</span>
             </div>
         </el-aside>
 
@@ -160,7 +170,7 @@ function handleAccountCommand(command) {
                             <el-dropdown-menu class="header-account__menu">
                                 <el-dropdown-item command="logout">
                                     <el-icon><SwitchButton /></el-icon>
-                                    <span>退出登录</span>
+                                    <span>{{ t("auth.logout") }}</span>
                                 </el-dropdown-item>
                             </el-dropdown-menu>
                         </template>

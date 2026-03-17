@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 const props = defineProps({
   loading: {
     type: Boolean,
@@ -14,6 +15,8 @@ const props = defineProps({
   },
 })
 
+const { t } = useI18n()
+
 function statusTagType(tone) {
   const typeMap = {
     danger: 'danger',
@@ -28,45 +31,45 @@ function statusTagType(tone) {
   <el-card v-loading="loading" class="section-card system-log-card" shadow="never">
     <div class="section-head queue-card__head">
       <div>
-        <h3>系统日志</h3>
-        <p>展示调度器、Horizon 状态与日志级别分布。</p>
+        <h3>{{ t('system.logTitle') }}</h3>
+        <p>{{ t('system.logDescription') }}</p>
       </div>
 
       <div class="system-log-statuses">
         <el-tag :type="statusTagType(runtimeStatus.scheduleStatusTone)" effect="dark">
-          Schedule {{ runtimeStatus.scheduleStatusText }}
+          {{ t('system.schedule', { status: runtimeStatus.scheduleStatusText }) }}
         </el-tag>
         <el-tag :type="statusTagType(runtimeStatus.horizonStatusTone)" effect="dark">
-          Horizon {{ runtimeStatus.horizonStatusText }}
+          {{ t('system.horizon', { status: runtimeStatus.horizonStatusText }) }}
         </el-tag>
       </div>
     </div>
 
     <div class="system-log-grid">
       <article class="system-log-item system-log-item--info">
-        <span>信息</span>
+        <span>{{ t('system.info') }}</span>
         <strong>{{ systemLogs.info }}</strong>
       </article>
 
       <article class="system-log-item system-log-item--warning">
-        <span>警告</span>
+        <span>{{ t('system.warning') }}</span>
         <strong>{{ systemLogs.warning }}</strong>
       </article>
 
       <article class="system-log-item system-log-item--error">
-        <span>错误</span>
+        <span>{{ t('system.error') }}</span>
         <strong>{{ systemLogs.error }}</strong>
       </article>
     </div>
 
     <div class="system-log-footer">
       <div>
-        <span>总日志数</span>
+        <span>{{ t('system.totalLogs') }}</span>
         <strong>{{ systemLogs.total }}</strong>
       </div>
 
       <div>
-        <span>最近调度</span>
+        <span>{{ t('system.lastSchedule') }}</span>
         <strong>{{ runtimeStatus.scheduleLastRuntime }}</strong>
       </div>
     </div>

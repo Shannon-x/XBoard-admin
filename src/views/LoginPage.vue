@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { MagicStick, Message, Lock, Right } from '@element-plus/icons-vue'
 
 import { useAuthStore } from '../stores/auth'
@@ -15,13 +16,14 @@ const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const formRef = ref()
+const { t } = useI18n()
 
 const loginRules = {
   email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: ['blur', 'change'] },
+    { required: true, message: t('auth.loginRules.emailRequired'), trigger: 'blur' },
+    { type: 'email', message: t('auth.loginRules.emailInvalid'), trigger: ['blur', 'change'] },
   ],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+  password: [{ required: true, message: t('auth.loginRules.passwordRequired'), trigger: 'blur' }],
 }
 
 function resolveRedirectPath() {
@@ -51,10 +53,10 @@ async function handleLogin() {
       password: loginForm.password,
     })
 
-    ElMessage.success('登录成功，正在进入后台')
+    ElMessage.success(t('auth.loginSuccess'))
     await router.push(resolveRedirectPath())
   } catch {
-    ElMessage.error(authStore.loginError || '登录失败，请稍后重试')
+    ElMessage.error(authStore.loginError || t('auth.loginFailed'))
   }
 }
 </script>
@@ -68,13 +70,13 @@ async function handleLogin() {
 
     <div class="login-page__content">
       <header class="login-page__brand">
-        <h1>LongtengCloud</h1>
+        <h1>{{ t('app.brand') }}</h1>
       </header>
 
       <el-card shadow="never" class="login-card">
         <div class="login-card__head">
-          <h2>登录</h2>
-          <p>请输入您的邮箱和密码登录系统</p>
+          <h2>{{ t('auth.login') }}</h2>
+          <p>{{ t('auth.loginSubtitle') }}</p>
         </div>
 
         <el-form
@@ -94,10 +96,10 @@ async function handleLogin() {
             :title="authStore.loginError"
           />
 
-          <el-form-item label="邮箱地址" prop="email">
+          <el-form-item :label="t('auth.email')" prop="email">
             <el-input
               v-model="loginForm.email"
-              placeholder="name@example.com"
+              :placeholder="t('auth.emailPlaceholder')"
               size="large"
               autocomplete="username"
             >
@@ -112,10 +114,10 @@ async function handleLogin() {
             </el-input>
           </el-form-item>
 
-          <el-form-item label="密码" prop="password">
+          <el-form-item :label="t('auth.password')" prop="password">
             <el-input
               v-model="loginForm.password"
-              placeholder="请输入密码"
+              :placeholder="t('auth.passwordPlaceholder')"
               size="large"
               type="password"
               show-password
@@ -129,7 +131,7 @@ async function handleLogin() {
           </el-form-item>
 
           <div class="login-form__meta">
-            <button class="login-form__link" type="button">忘记密码？</button>
+            <button class="login-form__link" type="button">{{ t('auth.forgotPassword') }}</button>
           </div>
 
           <el-button
@@ -139,7 +141,7 @@ async function handleLogin() {
             :loading="authStore.loginLoading"
             @click="handleLogin"
           >
-            <span>登录</span>
+            <span>{{ t('auth.login') }}</span>
             <el-icon><Right /></el-icon>
           </el-button>
         </el-form>

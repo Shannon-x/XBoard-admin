@@ -32,17 +32,22 @@ import {
   createEmptyManagedNodeRoutes,
   createEmptyManagedNodes,
   createEmptyManagedNodesPagination,
-  createEmptyPlugins,
-  createEmptyPluginsFilters,
-  createEmptyPluginsPagination,
   deleteManagedNode,
   copyManagedNode,
+  updateManagedNodeShow,
   fetchManagedNodeGroups,
   fetchManagedNodeRoutes,
   fetchManagedNodes,
-  fetchPlugins,
   saveManagedNode,
 } from "../services/nodes";
+import {
+  createEmptyPlugins,
+  createEmptyPluginsFilters,
+  createEmptyPluginsPagination,
+  disablePlugin,
+  enablePlugin,
+  fetchPlugins,
+} from "../services/plugins";
 
 export const useAdminStore = defineStore("admin", () => {
   const defaultDashboardStats = createDefaultDashboardStats();
@@ -615,6 +620,19 @@ export const useAdminStore = defineStore("admin", () => {
     }
   }
 
+  async function updateManagedNodeShowItem(id, show) {
+    managedNodesError.value = "";
+
+    try {
+      return await updateManagedNodeShow(id, show);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "更新节点显示状态失败";
+      managedNodesError.value = message;
+      throw error;
+    }
+  }
+
   async function loadSystemStatus() {
     systemStatusLoading.value = true;
     systemStatusError.value = "";
@@ -666,6 +684,20 @@ export const useAdminStore = defineStore("admin", () => {
     }
   }
 
+  async function togglePlugin(code, enabled) {
+    const pluginCode = String(code || "").trim();
+
+    if (!pluginCode) {
+      throw new Error("缺少插件标识");
+    }
+
+    if (enabled) {
+      await enablePlugin(pluginCode);
+    } else {
+      await disablePlugin(pluginCode);
+    }
+  }
+
   return {
     activities,
     badgeType,
@@ -688,6 +720,7 @@ export const useAdminStore = defineStore("admin", () => {
     saveManagedNodeItem,
     deleteManagedNodeItem,
     copyManagedNodeItem,
+    updateManagedNodeShowItem,
     loadNodeTrafficRank,
     loadQueueStats,
     loadSystemStatus,
@@ -711,6 +744,7 @@ export const useAdminStore = defineStore("admin", () => {
     pluginsLoading,
     pluginsPagination,
     loadPlugins,
+    togglePlugin,
     navigationGroups,
     nodeTrafficRank,
     nodeTrafficRankError,
