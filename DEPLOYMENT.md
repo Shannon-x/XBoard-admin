@@ -34,14 +34,26 @@
 cp .env.example .env
 ```
 
-编辑 `.env`：
+编辑 `.env`，共 5 个变量（2 个必须、3 个可选）：
+
+### 必须配置
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
-| `VITE_API_BASE_URL` | Xboard 后端地址（**不含**尾部 `/`） | `https://board.yoursite.com` |
-| `VITE_DASHBOARD_SECURE_PATH` | 后台安全路径，**必须与 Xboard 后端设置一致** | `admin` |
+| `VITE_API_BASE_URL` | Xboard 后端根地址（**不含**尾部 `/`），所有 API 请求的基础 URL | `https://board.yoursite.com` |
+| `VITE_DASHBOARD_SECURE_PATH` | 后台安全路径，拼接到 API URL 中（如 `/api/v2/{此路径}/user/fetch`）。**必须与 Xboard 后端设置一致** | `admin` |
 
 > ⚠️ `VITE_DASHBOARD_SECURE_PATH` 与 Xboard 后端「系统设置 → 安全 → 后台路径」**必须完全匹配**，否则所有 API 请求将返回 404。
+
+### 可选配置
+
+| 变量 | 说明 | 默认行为 |
+|------|------|---------|
+| `VITE_DASHBOARD_API_TOKEN` | 管理面板 API 调试 Token。设置后可**跳过登录页面**，直接以 `Bearer {token}` 身份调用后端 API。**⚠️ 这不是节点对接 token**，是 Xboard 后端管理员登录后返回的 `auth_data`，仅用于开发调试。**生产环境必须留空或删除此行** | 留空时需通过登录页面获取鉴权 |
+| `VITE_DASHBOARD_STATS_URL` | 自定义仪表盘统计 API 完整地址。适用于统计接口部署在独立服务上的场景 | 留空时自动拼接为 `{BASE_URL}/api/v3/{SECURE_PATH}/stat/getStats` |
+| `VITE_AUTH_LOGIN_URL` | 自定义登录接口完整地址。适用于登录 API 走不同域名或路径的场景 | 留空时自动拼接为 `{BASE_URL}/api/v2/passport/auth/login` |
+
+> 💡 **大多数部署只需配置前两个必须变量**。后 3 个仅在特殊场景（调试、多域名、API 网关分流）下使用。
 
 ---
 
@@ -82,11 +94,14 @@ Cloudflare Pages 提供全球 CDN、自动 HTTPS、DDoS 防护，且免费额度
 
 4. 添加环境变量（**Settings → Environment Variables**）：
 
-| 变量名 | 值 |
-|--------|---|
-| `VITE_API_BASE_URL` | `https://board.yoursite.com` |
-| `VITE_DASHBOARD_SECURE_PATH` | `admin`（与后端一致） |
-| `NODE_VERSION` | `20` |
+| 变量名 | 值 | 必须 |
+|--------|---|------|
+| `NODE_VERSION` | `20` | ✅ |
+| `VITE_API_BASE_URL` | `https://board.yoursite.com` | ✅ |
+| `VITE_DASHBOARD_SECURE_PATH` | `admin`（与后端一致） | ✅ |
+| `VITE_DASHBOARD_API_TOKEN` | **留空或不设置**（生产环境禁止填写） | ❌ |
+| `VITE_DASHBOARD_STATS_URL` | 留空（自动拼接） | ❌ |
+| `VITE_AUTH_LOGIN_URL` | 留空（自动拼接） | ❌ |
 
 5. 在项目 `public/` 目录创建 `_redirects` 文件实现 SPA 路由：
 
