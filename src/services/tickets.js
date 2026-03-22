@@ -146,16 +146,17 @@ export async function fetchManagedTickets(options = {}) {
   }
 
   const payload = await response.json()
-  const listSource = Array.isArray(payload?.data) ? payload.data : []
+  const rawData = payload?.data ?? {}
+  const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
   return {
     list: listSource.map(function mapTicket(ticket) {
       return normalizeTicket(ticket)
     }),
     pagination: {
-      page: current,
-      pageSize,
-      total: Number(payload?.total || listSource.length),
+      page: Number(rawData?.current_page || current),
+      pageSize: Number(rawData?.per_page || pageSize),
+      total: Number(rawData?.total || payload?.total || listSource.length),
     },
   }
 }

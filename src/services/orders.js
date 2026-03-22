@@ -153,7 +153,7 @@ export async function fetchManagedOrders(options = {}) {
 
   const payload = await response.json()
   const rawData = payload?.data ?? {}
-  const listSource = Array.isArray(rawData?.data) ? rawData.data : []
+  const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
   return {
     list: listSource.map(function mapOrder(order) {
