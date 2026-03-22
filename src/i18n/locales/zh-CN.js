@@ -1,8 +1,8 @@
 export default {
   app: {
-    brand: 'LongtengCloud',
+    brand: 'XBoard',
     console: 'V2Board · Admin Console',
-    adminFallback: 'LongtengCloud Admin',
+    adminFallback: 'XBoard Admin',
     language: '语言',
     languages: {
       zhCN: '简体中文',
@@ -80,7 +80,7 @@ export default {
     login: '登录',
     loginSubtitle: '请输入您的邮箱和密码登录系统',
     email: '邮箱地址',
-    emailPlaceholder: 'name@example.com',
+    emailPlaceholder: '请输入邮箱',
     password: '密码',
     passwordPlaceholder: '请输入密码',
     forgotPassword: '忘记密码？',
