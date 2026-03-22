@@ -1,8 +1,9 @@
+import { buildCommonApiUrl } from './api'
+
 const AUTH_STORAGE_KEY = 'ltc-admin-auth'
-const DEFAULT_LOGIN_URL = 'https://example.invalid/api/v2/passport/auth/login'
 
 function getLoginUrl() {
-  return import.meta.env.VITE_AUTH_LOGIN_URL || DEFAULT_LOGIN_URL
+  return import.meta.env.VITE_AUTH_LOGIN_URL || buildCommonApiUrl('passport/auth/login')
 }
 
 function parseAuthStorage(rawValue) {
