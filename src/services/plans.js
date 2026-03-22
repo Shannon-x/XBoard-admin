@@ -77,7 +77,8 @@ function normalizePlan(plan) {
 export async function fetchManagedPlans() {
   const apiUrl = buildSecureV2ApiUrl('plan/fetch')
   const payload = await requestDashboardApi(apiUrl)
-  const list = Array.isArray(payload?.data) ? payload.data : []
+  const rawData = payload?.data ?? {}
+  const list = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
   return list.map(function mapPlan(plan) {
     return normalizePlan(plan)
