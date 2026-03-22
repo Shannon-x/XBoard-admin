@@ -144,7 +144,7 @@ const routes = [
         },
       },
       {
-        path: 'settings',
+        path: 'settings/:category?',
         name: 'settings',
         component: SettingsPage,
         meta: {

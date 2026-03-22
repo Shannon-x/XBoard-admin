@@ -1,447 +1,447 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
-import { marked } from "marked";
-import { useI18n } from "vue-i18n";
-import { useRoute, useRouter } from "vue-router";
-import { ElMessage, ElMessageBox } from "element-plus";
 import {
-    CircleCheck,
-    Close,
-    Document,
-    Lock,
-    Minus,
-    Loading,
-    Monitor,
-    SetUp,
-    Upload,
-} from "@element-plus/icons-vue";
+  CircleCheck,
+  Close,
+  Document,
+  Lock,
+  Minus,
+  Monitor,
+  SetUp,
+  Upload,
+} from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { marked } from 'marked'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 
-import SectionCard from "../components/common/SectionCard.vue";
-import PluginConfigDialog from "../components/plugins/PluginConfigDialog.vue";
-import { useAdminStore } from "../stores/admin";
+import SectionCard from '../components/common/SectionCard.vue'
+import PluginConfigDialog from '../components/plugins/PluginConfigDialog.vue'
+import { useAdminStore } from '../stores/admin'
 
-const adminStore = useAdminStore();
-const route = useRoute();
-const router = useRouter();
-const { t } = useI18n();
+const adminStore = useAdminStore()
+const route = useRoute()
+const router = useRouter()
+const { t } = useI18n()
 
-const pluginsLoadingFallback = ref(false);
-const uploadDialogVisible = ref(false);
-const uploadRef = ref(null);
-const uploadFileList = ref([]);
-const uploadSubmitting = ref(false);
-const configDialogVisible = ref(false);
-const activePlugin = ref(null);
-const readmeDialogVisible = ref(false);
-const readmePlugin = ref(null);
+const STATUS_ALL = 'all'
+const STATUS_ENABLED = 'enabled'
+const STATUS_DISABLED = 'disabled'
+const STATUS_NOT_INSTALLED = 'not_installed'
+const STATUS_PROTECTED = 'protected'
+const STATUS_UNKNOWN = 'unknown'
+const TYPE_FEATURE = 'feature'
 
-const renderedReadme = computed(() => {
-    const content = readmePlugin.value?.readme || "";
-    if (!content) {
-        return "";
-    }
-
-    return marked.parse(content, {
-        breaks: true,
-    });
-});
+const pluginsLoadingFallback = ref(false)
+const uploadDialogVisible = ref(false)
+const uploadRef = ref(null)
+const uploadFileList = ref([])
+const configDialogVisible = ref(false)
+const activePlugin = ref(null)
+const readmeDialogVisible = ref(false)
+const readmePlugin = ref(null)
 
 const filters = reactive({
-    keyword: "",
-    status: "all",
-    type: "all",
-});
-
-const statusOptions = [
-    { label: "全部", value: "all" },
-    { label: t("plugins.status.enabled"), value: "enabled" },
-    { label: t("plugins.status.disabled"), value: "disabled" },
-    { label: t("plugins.status.notInstalled"), value: "not_installed" },
-];
-
-const typeOptions = computed(() => {
-    const remoteTypes = adminStore.pluginTypes.map((type) => ({
-        label: type.label || type.value,
-        value: type.value,
-        description: type.description,
-        icon: type.icon,
-    }));
-
-    return [{ label: "全部", value: "all" }, ...remoteTypes];
-});
+  keyword: '',
+  status: STATUS_ALL,
+  type: STATUS_ALL,
+})
 
 const statusStyleMap = new Map([
-    ["enabled", { type: "success", icon: CircleCheck }],
-    ["disabled", { type: "info", icon: Minus }],
-    ["not_installed", { type: "danger", icon: Close }],
-    ["protected", { type: "primary", icon: Lock }],
-    ["unknown", { type: "warning", icon: Monitor }],
-]);
+  [STATUS_ENABLED, { type: 'success', icon: CircleCheck }],
+  [STATUS_DISABLED, { type: 'info', icon: Minus }],
+  [STATUS_NOT_INSTALLED, { type: 'danger', icon: Close }],
+  [STATUS_PROTECTED, { type: 'primary', icon: Lock }],
+  [STATUS_UNKNOWN, { type: 'warning', icon: Monitor }],
+])
+
+const renderedReadme = computed(function resolveRenderedReadme() {
+  const content = readmePlugin.value?.readme || ''
+
+  if (!content) {
+    return ''
+  }
+
+  return marked.parse(content, { breaks: true })
+})
+
+const statusOptions = computed(function resolveStatusOptions() {
+  return [
+    { label: '全部', value: STATUS_ALL },
+    { label: t('plugins.status.enabled'), value: STATUS_ENABLED },
+    { label: t('plugins.status.disabled'), value: STATUS_DISABLED },
+    { label: t('plugins.status.notInstalled'), value: STATUS_NOT_INSTALLED },
+  ]
+})
+
+const typeOptions = computed(function resolveTypeOptions() {
+  const remoteTypes = adminStore.pluginTypes.map((type) => ({
+    label: type.label || type.value,
+    value: type.value,
+    description: type.description,
+    icon: type.icon,
+  }))
+
+  return [{ label: '全部', value: STATUS_ALL }, ...remoteTypes]
+})
+
+const filteredPlugins = computed(function resolveFilteredPlugins() {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return adminStore.plugins.filter((plugin) => {
+    const matchKeyword = matchesPluginKeyword(plugin, keyword)
+    const matchStatus = matchesPluginStatus(plugin, filters.status)
+    const matchType = matchesPluginType(plugin, filters.type)
+
+    return matchKeyword && matchStatus && matchType
+  })
+})
+
+function normalizeQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
 
 function normalizeStatusKey(status) {
-    const normalized = String(status || "")
-        .trim()
-        .toLowerCase();
+  const normalized = String(status || '').trim().toLowerCase()
 
-    if (!normalized) {
-        return "unknown";
-    }
+  if (
+    normalized === STATUS_ENABLED ||
+    normalized === STATUS_DISABLED ||
+    normalized === STATUS_NOT_INSTALLED ||
+    normalized === STATUS_PROTECTED
+  ) {
+    return normalized
+  }
 
-    if (normalized === "protected") {
-        return "protected";
-    }
-
-    if (normalized === "enabled") {
-        return "enabled";
-    }
-
-    if (normalized === "disabled") {
-        return "disabled";
-    }
-
-    if (normalized === "not_installed") {
-        return "not_installed";
-    }
-
-    return "unknown";
+  return STATUS_UNKNOWN
 }
 
 function resolveStatusLabel(status) {
-    const normalized = normalizeStatusKey(status);
+  const normalized = normalizeStatusKey(status)
 
-    if (normalized === "enabled") {
-        return t("plugins.status.enabled");
-    }
+  if (normalized === STATUS_ENABLED) {
+    return t('plugins.status.enabled')
+  }
 
-    if (normalized === "disabled") {
-        return t("plugins.status.disabled");
-    }
+  if (normalized === STATUS_DISABLED) {
+    return t('plugins.status.disabled')
+  }
 
-    if (normalized === "not_installed") {
-        return t("plugins.status.notInstalled");
-    }
+  if (normalized === STATUS_NOT_INSTALLED) {
+    return t('plugins.status.notInstalled')
+  }
 
-    if (normalized === "protected") {
-        return t("plugins.status.protected");
-    }
+  if (normalized === STATUS_PROTECTED) {
+    return t('plugins.status.protected')
+  }
 
-    return status || "--";
+  return status || '--'
 }
 
 function resolveStatusType(status) {
-    const normalized = normalizeStatusKey(status);
-    return statusStyleMap.get(normalized)?.type || "info";
+  const normalized = normalizeStatusKey(status)
+  return statusStyleMap.get(normalized)?.type || 'info'
 }
 
 function resolveStatusIcon(status) {
-    const normalized = normalizeStatusKey(status);
-    return statusStyleMap.get(normalized)?.icon || SetUp;
+  const normalized = normalizeStatusKey(status)
+  return statusStyleMap.get(normalized)?.icon || SetUp
 }
 
 function resolveTypeLabel(type) {
-    const normalized = String(type || "")
-        .trim()
-        .toLowerCase();
+  const normalized = String(type || '').trim().toLowerCase()
 
-    if (normalized === "feature") {
-        return t("plugins.types.feature");
-    }
+  if (normalized === TYPE_FEATURE) {
+    return t('plugins.types.feature')
+  }
 
-    if (normalized === "payment") {
-        return t("plugins.types.payment");
-    }
+  if (normalized === 'payment') {
+    return t('plugins.types.payment')
+  }
 
-    if (normalized === "other") {
-        return t("plugins.types.other");
-    }
+  if (normalized === 'other') {
+    return t('plugins.types.other')
+  }
 
-    return type || t("plugins.types.other");
+  return type || t('plugins.types.other')
 }
 
 function normalizeStatusFromQuery(status) {
-    if (!status) {
-        return "all";
-    }
+  const normalized = normalizeQueryValue(status)
 
-    const normalized = Array.isArray(status) ? status[0] : status;
+  if (!normalized) {
+    return STATUS_ALL
+  }
 
-    return statusOptions.find((option) => option.value === normalized)
-        ? normalized
-        : "all";
+  const hasMatch = statusOptions.value.some((option) => option.value === normalized)
+  return hasMatch ? normalized : STATUS_ALL
 }
 
 function normalizeTypeFromQuery(type) {
-    if (!type) {
-        return "all";
-    }
+  const normalized = normalizeQueryValue(type)
 
-    const normalized = Array.isArray(type) ? type[0] : type;
-    const hasMatch = typeOptions.value.find(
-        (option) => option.value === normalized,
-    );
+  if (!normalized) {
+    return STATUS_ALL
+  }
 
-    return hasMatch ? normalized : "all";
+  const hasMatch = typeOptions.value.some((option) => option.value === normalized)
+  return hasMatch ? normalized : STATUS_ALL
 }
 
 function syncFiltersToRoute() {
-    const nextQuery = { ...route.query };
+  const nextQuery = { ...route.query }
 
-    if (filters.status && filters.status !== "all") {
-        nextQuery.status = filters.status;
-    } else {
-        delete nextQuery.status;
-    }
+  if (filters.status && filters.status !== STATUS_ALL) {
+    nextQuery.status = filters.status
+  } else {
+    delete nextQuery.status
+  }
 
-    if (filters.type && filters.type !== "all") {
-        nextQuery.type = filters.type;
-    } else {
-        delete nextQuery.type;
-    }
+  if (filters.type && filters.type !== STATUS_ALL) {
+    nextQuery.type = filters.type
+  } else {
+    delete nextQuery.type
+  }
 
-    if (filters.keyword) {
-        nextQuery.keyword = filters.keyword;
-    } else {
-        delete nextQuery.keyword;
-    }
+  if (filters.keyword) {
+    nextQuery.keyword = filters.keyword
+  } else {
+    delete nextQuery.keyword
+  }
 
-    router.replace({ query: nextQuery });
+  router.replace({ query: nextQuery })
 }
 
-const filteredPlugins = computed(() => {
-    const keyword = filters.keyword.trim().toLowerCase();
+function matchesPluginKeyword(plugin, keyword) {
+  if (!keyword) {
+    return true
+  }
 
-    return adminStore.plugins.filter((plugin) => {
-        const matchKeyword = keyword
-            ? [plugin.name, plugin.code, plugin.author]
-                  .filter(Boolean)
-                  .some((value) =>
-                      String(value).toLowerCase().includes(keyword),
-                  )
-            : true;
-        const matchStatus =
-            filters.status === "all"
-                ? true
-                : filters.status === "enabled"
-                  ? plugin.enabled
-                  : filters.status === "disabled"
-                    ? plugin.installed && !plugin.enabled
-                    : filters.status === "not_installed"
-                      ? !plugin.installed
-                      : true;
-        const matchType =
-            filters.type === "all"
-                ? true
-                : String(plugin.type || "").toLowerCase() === filters.type;
+  return [plugin.name, plugin.code, plugin.author]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(keyword))
+}
 
-        return matchKeyword && matchStatus && matchType;
-    });
-});
+function matchesPluginStatus(plugin, status) {
+  if (status === STATUS_ALL) {
+    return true
+  }
 
-const pluginSummary = computed(() => {
-    const total = adminStore.plugins.length;
-    const enabled = adminStore.plugins.filter(
-        (plugin) => plugin.enabled,
-    ).length;
-    const installed = adminStore.plugins.filter(
-        (plugin) => plugin.installed,
-    ).length;
-    const needUpgrade = adminStore.plugins.filter(
-        (plugin) => plugin.needUpgrade,
-    ).length;
+  if (status === STATUS_ENABLED) {
+    return plugin.enabled
+  }
 
-    return {
-        total,
-        enabled,
-        installed,
-        needUpgrade,
-    };
-});
+  if (status === STATUS_DISABLED) {
+    return plugin.installed && !plugin.enabled
+  }
+
+  if (status === STATUS_NOT_INSTALLED) {
+    return !plugin.installed
+  }
+
+  return true
+}
+
+function matchesPluginType(plugin, type) {
+  if (type === STATUS_ALL) {
+    return true
+  }
+
+  return String(plugin.type || '').toLowerCase() === type
+}
 
 async function fetchPlugins() {
-    pluginsLoadingFallback.value = true;
+  pluginsLoadingFallback.value = true
 
-    try {
-        await adminStore.loadPluginTypes();
-        await adminStore.loadPlugins({
-            filters: {
-                status: filters.status,
-                type: filters.type,
-            },
-        });
-    } catch (error) {
-        ElMessage.error("插件列表加载失败，请稍后重试");
-    } finally {
-        pluginsLoadingFallback.value = false;
-    }
+  try {
+    await adminStore.loadPluginTypes()
+    await adminStore.loadPlugins({
+      filters: {
+        status: filters.status,
+        type: filters.type,
+      },
+    })
+  } catch (error) {
+    ElMessage.error('插件列表加载失败，请稍后重试')
+  } finally {
+    pluginsLoadingFallback.value = false
+  }
 }
 
 function handleFilterChange() {
-    syncFiltersToRoute();
-    fetchPlugins();
+  syncFiltersToRoute()
+  fetchPlugins()
 }
 
 function handleRefresh() {
-    fetchPlugins();
+  fetchPlugins()
 }
 
 function openUploadDialog() {
-    uploadDialogVisible.value = true;
+  uploadDialogVisible.value = true
 }
 
 function handleUploadFileChange(file, fileList) {
-    uploadFileList.value = fileList.slice(-1);
+  uploadFileList.value = fileList.slice(-1)
 }
 
 function handleUploadRemove(file, fileList) {
-    uploadFileList.value = fileList;
+  uploadFileList.value = fileList
 }
 
 function handleUploadExceed() {
-    ElMessage.warning("一次只能上传一个插件包");
+  ElMessage.warning('一次只能上传一个插件包')
 }
 
 function resetUploadState() {
-    uploadSubmitting.value = false;
-    uploadFileList.value = [];
-    uploadRef.value?.clearFiles();
+  uploadFileList.value = []
+  uploadRef.value?.clearFiles()
 }
 
 async function handleUploadRequest(options) {
-    const file = options?.file;
+  const file = options?.file
 
-    if (!file) {
-        ElMessage.warning("请选择插件包");
-        options?.onError?.(new Error("缺少上传文件"));
-        return;
-    }
+  if (!file) {
+    const error = new Error('缺少上传文件')
+    ElMessage.warning('请选择插件包')
+    options?.onError?.(error)
+    return
+  }
 
-    uploadSubmitting.value = true;
-
-    try {
-        await adminStore.uploadPlugin(file);
-        options?.onSuccess?.({}, file);
-        ElMessage.success("插件上传成功");
-        uploadDialogVisible.value = false;
-        resetUploadState();
-        await fetchPlugins();
-    } catch (error) {
-        options?.onError?.(error);
-        ElMessage.error(error?.message || "插件上传失败");
-    } finally {
-        uploadSubmitting.value = false;
-    }
+  try {
+    await adminStore.uploadPlugin(file)
+    options?.onSuccess?.({}, file)
+    ElMessage.success('插件上传成功')
+    uploadDialogVisible.value = false
+    resetUploadState()
+    await fetchPlugins()
+  } catch (error) {
+    options?.onError?.(error)
+    ElMessage.error(error?.message || '插件上传失败')
+  }
 }
 
 function handleConfigure(plugin) {
-    if (!plugin.config || plugin.configCount === 0) {
-        ElMessage.info("该插件暂无可配置项");
-        return;
-    }
+  if (!plugin.config || plugin.configCount === 0) {
+    ElMessage.info('该插件暂无可配置项')
+    return
+  }
 
-    activePlugin.value = plugin;
-    configDialogVisible.value = true;
+  activePlugin.value = plugin
+  configDialogVisible.value = true
 }
 
 function handleReadme(plugin) {
-    readmePlugin.value = plugin;
-    readmeDialogVisible.value = true;
+  readmePlugin.value = plugin
+  readmeDialogVisible.value = true
 }
 
-function handleToggle(plugin) {
-    if (!plugin.installed) {
-        ElMessage.warning("插件尚未安装，暂不可启用");
-        return;
+async function runPluginAction(action, successMessage, errorMessage) {
+  try {
+    await action()
+    ElMessage.success(successMessage)
+    await fetchPlugins()
+  } catch (error) {
+    ElMessage.error(error?.message || errorMessage)
+  }
+}
+
+async function handleToggle(plugin) {
+  if (!plugin.installed) {
+    ElMessage.warning('插件尚未安装，暂不可启用')
+    return
+  }
+
+  const shouldEnable = !plugin.enabled
+  const successMessage = shouldEnable ? '插件启用成功' : '插件停用成功'
+
+  await runPluginAction(
+    () => adminStore.togglePlugin(plugin.code, shouldEnable),
+    successMessage,
+    '插件操作失败'
+  )
+}
+
+async function handleInstall(plugin) {
+  await runPluginAction(
+    () => adminStore.installPlugin(plugin.code),
+    '插件安装成功',
+    '插件安装失败'
+  )
+}
+
+function resolveConfirmButtonText(title) {
+  if (title === '删除插件') {
+    return '确认删除'
+  }
+
+  return '确认卸载'
+}
+
+async function confirmPluginAction(message, title, type, action, errorMessage) {
+  try {
+    await ElMessageBox.confirm(message, title, {
+      confirmButtonText: resolveConfirmButtonText(title),
+      cancelButtonText: '取消',
+      type,
+    })
+    await action()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.message || errorMessage)
     }
-
-    const shouldEnable = !plugin.enabled;
-
-    adminStore
-        .togglePlugin(plugin.code, shouldEnable)
-        .then(() => {
-            ElMessage.success(shouldEnable ? "插件启用成功" : "插件停用成功");
-            return fetchPlugins();
-        })
-        .catch((error) => {
-            ElMessage.error(error?.message || "插件操作失败");
-        });
+  }
 }
 
-function handleInstall(plugin) {
-    adminStore
-        .installPlugin(plugin.code)
-        .then(() => {
-            ElMessage.success("插件安装成功");
-            return fetchPlugins();
-        })
-        .catch((error) => {
-            ElMessage.error(error?.message || "插件安装失败");
-        });
+async function handleUninstall(plugin) {
+  if (!plugin.deletable) {
+    ElMessage.warning('系统插件不可卸载')
+    return
+  }
+
+  await confirmPluginAction(
+    `确认卸载插件「${plugin.name || plugin.code}」？`,
+    '卸载插件',
+    'warning',
+    () =>
+      runPluginAction(
+        () => adminStore.uninstallPlugin(plugin.code),
+        '插件卸载成功',
+        '插件卸载失败'
+      ),
+    '插件卸载失败'
+  )
 }
 
-function handleUninstall(plugin) {
-    if (!plugin.deletable) {
-        ElMessage.warning("系统插件不可卸载");
-        return;
-    }
+async function handleDelete(plugin) {
+  if (!plugin.deletable) {
+    ElMessage.warning('系统插件不可删除')
+    return
+  }
 
-    ElMessageBox.confirm(
-        `确认卸载插件「${plugin.name || plugin.code}」？`,
-        "卸载插件",
-        {
-            confirmButtonText: "确认卸载",
-            cancelButtonText: "取消",
-            type: "warning",
-        },
-    )
-        .then(() =>
-            adminStore.uninstallPlugin(plugin.code).then(() => {
-                ElMessage.success("插件卸载成功");
-                return fetchPlugins();
-            }),
-        )
-        .catch((error) => {
-            if (error !== "cancel") {
-                ElMessage.error(error?.message || "插件卸载失败");
-            }
-        });
+  await confirmPluginAction(
+    `确认删除插件「${plugin.name || plugin.code}」？此操作不可恢复。`,
+    '删除插件',
+    'error',
+    () =>
+      runPluginAction(
+        () => adminStore.deletePlugin(plugin.code),
+        '插件删除成功',
+        '插件删除失败'
+      ),
+    '插件删除失败'
+  )
 }
 
-function handleDelete(plugin) {
-    if (!plugin.deletable) {
-        ElMessage.warning("系统插件不可删除");
-        return;
-    }
+onMounted(function initializePluginsPage() {
+  filters.status = normalizeStatusFromQuery(route.query.status)
 
-    ElMessageBox.confirm(
-        `确认删除插件「${plugin.name || plugin.code}」？此操作不可恢复。`,
-        "删除插件",
-        {
-            confirmButtonText: "确认删除",
-            cancelButtonText: "取消",
-            type: "error",
-        },
-    )
-        .then(() =>
-            adminStore.deletePlugin(plugin.code).then(() => {
-                ElMessage.success("插件删除成功");
-                return fetchPlugins();
-            }),
-        )
-        .catch((error) => {
-            if (error !== "cancel") {
-                ElMessage.error(error?.message || "插件删除失败");
-            }
-        });
-}
+  const initialType = normalizeTypeFromQuery(route.query.type)
+  filters.type = initialType === STATUS_ALL ? TYPE_FEATURE : initialType
+  filters.keyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
 
-onMounted(() => {
-    filters.status = normalizeStatusFromQuery(route.query.status);
-    const initialType = normalizeTypeFromQuery(route.query.type);
-    filters.type = initialType === "all" ? "feature" : initialType;
-    filters.keyword =
-        typeof route.query.keyword === "string" ? route.query.keyword : "";
-    fetchPlugins();
-});
+  fetchPlugins()
+})
 </script>
 
 <template>
