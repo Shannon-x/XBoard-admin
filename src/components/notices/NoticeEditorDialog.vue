@@ -125,8 +125,8 @@ watch(
   <el-dialog
     :model-value="modelValue"
     :title="dialogTitle"
-    width="90vw"
-    top="4vh"
+    width="min(1100px, calc(100vw - 32px))"
+    top="16px"
     class="notice-editor-dialog"
     destroy-on-close
     @closed="handleClosed"
@@ -146,7 +146,7 @@ watch(
             :preview="true"
             preview-theme="default"
             code-theme="github"
-            style="height: 440px"
+            style="height: min(440px, 42vh)"
             placeholder="支持 Markdown / HTML 内容"
           />
         </div>
