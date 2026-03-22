@@ -20,7 +20,7 @@ function getNormalizedSecurePath() {
 export function buildDashboardApiUrl(endpointPath, queryEntries = []) {
   const apiOrigin = getNormalizedApiOrigin();
   const securePath = getNormalizedSecurePath();
-  const url = new URL(`${apiOrigin}/api/v3/${securePath}/${endpointPath}`);
+  const url = new URL(`${apiOrigin}/api/v2/${securePath}/${endpointPath}`);
 
   queryEntries.forEach(function appendQueryEntry([key, value]) {
     if (value !== undefined && value !== null && value !== "") {
@@ -55,7 +55,7 @@ export function buildSecureV2ApiUrl(endpointPath, queryEntries = []) {
 export function buildCommonApiUrl(endpointPath, queryEntries = []) {
   const apiOrigin = getNormalizedApiOrigin();
   const normalizedPath = String(endpointPath || "").replace(/^\//, "");
-  const url = new URL(`${apiOrigin}/api/v2/${normalizedPath}`);
+  const url = new URL(`${apiOrigin}/api/v1/${normalizedPath}`);
 
   queryEntries.forEach(function appendQueryEntry([key, value]) {
     if (value !== undefined && value !== null && value !== "") {
