@@ -2107,10 +2107,20 @@ button {
 
 .notice-editor-dialog .el-dialog {
     max-width: 1280px;
+    max-height: calc(100vh - 32px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .notice-editor-dialog .el-dialog__body {
     padding-top: 10px;
+    overflow-y: auto;
+}
+
+.notice-editor-dialog .el-dialog__header,
+.notice-editor-dialog .el-dialog__footer {
+    flex-shrink: 0;
 }
 
 .notice-editor-form--target .el-form-item {
@@ -2130,7 +2140,7 @@ button {
 }
 
 .notice-editor-form__markdown--wide .md-editor {
-    min-height: 440px;
+    min-height: min(440px, 42vh);
 }
 
 .notice-editor-form__markdown .md-editor {
@@ -2151,7 +2161,7 @@ button {
 }
 
 .notice-editor-form__markdown .md-editor-content {
-    min-height: 392px;
+    min-height: min(392px, 34vh);
 }
 
 .notice-editor-form__switch-row {
@@ -3067,6 +3077,15 @@ button {
 
     .notice-editor-form__grid {
         grid-template-columns: 1fr;
+    }
+
+    .notice-editor-dialog .el-dialog {
+        width: calc(100vw - 20px) !important;
+        max-height: calc(100vh - 20px);
+    }
+
+    .notice-editor-dialog .el-dialog__body {
+        padding: 10px 14px 0;
     }
 }
 
