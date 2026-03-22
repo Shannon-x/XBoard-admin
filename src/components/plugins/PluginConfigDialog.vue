@@ -1,10 +1,9 @@
 <script setup>
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
+import MonacoTemplateEditor from '../settings/MonacoTemplateEditor.vue'
 import { useAdminStore } from '../../stores/admin'
-import JSONEditor from 'jsoneditor'
-import 'jsoneditor/dist/jsoneditor.css'
 
 const props = defineProps({
   modelValue: {
@@ -20,6 +19,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const adminStore = useAdminStore()
+const JSON_FIELD_TYPE = 'json'
+const EMPTY_JSON_ERROR_MAP = {}
 
 const visible = computed({
   get() {
@@ -32,7 +33,7 @@ const visible = computed({
 
 const configFields = ref([])
 const formValues = ref({})
-const jsonEditors = new Map()
+const jsonFieldErrors = ref(EMPTY_JSON_ERROR_MAP)
 const saving = ref(false)
 
 function normalizeConfig(config) {
@@ -82,7 +83,7 @@ function normalizeFieldValue(field) {
     return normalizeBoolean(rawValue)
   }
 
-  if (type === 'json') {
+  if (type === JSON_FIELD_TYPE) {
     if (typeof rawValue === 'string') {
       return rawValue
     }
@@ -97,22 +98,6 @@ function normalizeFieldValue(field) {
   return rawValue ?? ''
 }
 
-function parseJsonValue(value) {
-  if (value === '' || value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value === 'object') {
-    return value
-  }
-
-  try {
-    return JSON.parse(String(value))
-  } catch (error) {
-    return null
-  }
-}
-
 function getFieldComponent(type, options) {
   const normalized = String(type || '').toLowerCase()
 
@@ -124,7 +109,7 @@ function getFieldComponent(type, options) {
     return 'el-input-number'
   }
 
-  if (normalized === 'text' || normalized === 'json') {
+  if (normalized === 'text') {
     return 'el-input'
   }
 
@@ -155,39 +140,59 @@ function getFieldProps(field) {
   return props
 }
 
-function initJsonEditor(container, field) {
-  if (!container || jsonEditors.has(field.key)) {
-    return
+function parseJsonFieldValue(value) {
+  if (value === '' || value === null || value === undefined) {
+    return {
+      valid: true,
+      error: '',
+    }
   }
 
-  const editor = new JSONEditor(container, {
-    mode: 'code',
-    modes: ['code'],
-    search: true,
-    history: true,
-    statusBar: false,
-    navigationBar: false,
-    mainMenuBar: false,
-    onChangeJSON: (value) => {
-      formValues.value[field.key] = JSON.stringify(value, null, 2)
-    },
-  })
-
-  const parsedValue = parseJsonValue(formValues.value[field.key])
-  if (parsedValue !== null) {
-    editor.set(parsedValue)
-  } else {
-    editor.set({})
+  try {
+    JSON.parse(String(value))
+    return {
+      valid: true,
+      error: '',
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      error: error?.message || 'JSON 格式无效',
+    }
   }
-
-  jsonEditors.set(field.key, editor)
 }
 
-function destroyJsonEditors() {
-  jsonEditors.forEach((editor) => {
-    editor.destroy()
+function setJsonFieldValue(fieldKey, value) {
+  formValues.value[fieldKey] = value
+
+  const result = parseJsonFieldValue(value)
+  jsonFieldErrors.value = {
+    ...jsonFieldErrors.value,
+    [fieldKey]: result.error,
+  }
+}
+
+function validateJsonFields() {
+  const nextErrors = {}
+  let hasError = false
+
+  configFields.value.forEach((field) => {
+    const type = String(field?.type || '').toLowerCase()
+
+    if (type !== JSON_FIELD_TYPE) {
+      return
+    }
+
+    const result = parseJsonFieldValue(formValues.value[field.key])
+    nextErrors[field.key] = result.error
+
+    if (!result.valid) {
+      hasError = true
+    }
   })
-  jsonEditors.clear()
+
+  jsonFieldErrors.value = nextErrors
+  return !hasError
 }
 
 function buildConfigPayload() {
@@ -198,7 +203,7 @@ function buildConfigPayload() {
     const type = String(field?.type || '').toLowerCase()
     const value = formValues.value[key]
 
-    if (type === 'json') {
+    if (type === JSON_FIELD_TYPE) {
       if (value === '' || value === null || value === undefined) {
         payload[key] = null
       } else {
@@ -216,6 +221,11 @@ function buildConfigPayload() {
 async function handleSave() {
   if (!props.plugin?.code) {
     ElMessage.error('缺少插件标识')
+    return
+  }
+
+  if (!validateJsonFields()) {
+    ElMessage.error('JSON 配置格式有误，请修正后再保存')
     return
   }
 
@@ -253,32 +263,25 @@ function getFieldOptions(field) {
 watch(
   () => props.plugin,
   (plugin) => {
-    destroyJsonEditors()
     const fields = normalizeConfig(plugin?.config)
     const values = {}
+    const nextJsonErrors = {}
 
     fields.forEach((field) => {
-      values[field.key] = normalizeFieldValue(field)
+      const fieldValue = normalizeFieldValue(field)
+      values[field.key] = fieldValue
+
+      if (String(field?.type || '').toLowerCase() === JSON_FIELD_TYPE) {
+        nextJsonErrors[field.key] = parseJsonFieldValue(fieldValue).error
+      }
     })
 
     configFields.value = fields
     formValues.value = values
+    jsonFieldErrors.value = nextJsonErrors
   },
   { immediate: true }
 )
-
-watch(
-  () => props.modelValue,
-  (visible) => {
-    if (!visible) {
-      destroyJsonEditors()
-    }
-  }
-)
-
-onUnmounted(() => {
-  destroyJsonEditors()
-})
 </script>
 
 <template>
@@ -297,26 +300,30 @@ onUnmounted(() => {
           : field.label || field.key"
         class="plugin-config__field"
       >
-        <div
-          v-if="String(field.type || '').toLowerCase() === 'boolean'"
-          class="plugin-config__switch-card"
-        >
-          <div class="plugin-config__switch-content">
-            <p class="plugin-config__switch-title">
-              {{ field.label || field.key }}
-            </p>
-            <p v-if="field.description" class="plugin-config__switch-desc">
-              {{ field.description }}
-            </p>
+        <template v-if="String(field.type || '').toLowerCase() === 'boolean'">
+          <div class="plugin-config__switch-card">
+            <div class="plugin-config__switch-content">
+              <p class="plugin-config__switch-title">
+                {{ field.label || field.key }}
+              </p>
+              <p v-if="field.description" class="plugin-config__switch-desc">
+                {{ field.description }}
+              </p>
+            </div>
+            <el-switch v-model="formValues[field.key]" />
           </div>
-          <el-switch v-model="formValues[field.key]" />
-        </div>
-        <div v-else-if="String(field.type || '').toLowerCase() === 'json'" class="plugin-config__json">
-          <div
-            class="plugin-config__json-editor"
-            :ref="(el) => initJsonEditor(el, field)"
-          ></div>
-        </div>
+        </template>
+        <template v-else-if="String(field.type || '').toLowerCase() === JSON_FIELD_TYPE">
+          <MonacoTemplateEditor
+            :language="JSON_FIELD_TYPE"
+            :min-height="220"
+            :model-value="String(formValues[field.key] || '')"
+            @update:model-value="setJsonFieldValue(field.key, $event)"
+          />
+          <p v-if="jsonFieldErrors[field.key]" class="plugin-config__json-error">
+            JSON 校验失败：{{ jsonFieldErrors[field.key] }}
+          </p>
+        </template>
         <div v-else class="plugin-config__control-wrap">
           <component
             :is="getFieldComponent(field.type, field.options)"
@@ -385,10 +392,6 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.plugin-config__json {
-  width: 100%;
-}
-
 .plugin-config__switch-card {
   display: flex;
   align-items: center;
@@ -419,14 +422,6 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
-}
-
-.plugin-config__json-editor {
-  width: 100%;
-  min-height: 220px;
-  border-radius: 10px;
-  border: 1px solid var(--el-border-color-lighter);
-  overflow: hidden;
 }
 
 .plugin-config__control {
@@ -464,6 +459,13 @@ onUnmounted(() => {
 .plugin-config__desc {
   margin: 8px 0 0;
   color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.plugin-config__json-error {
+  margin: 8px 0 0;
+  color: var(--el-color-danger);
   font-size: 12px;
   line-height: 1.5;
 }

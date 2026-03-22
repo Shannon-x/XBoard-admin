@@ -2,13 +2,20 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import {
   Bell,
+  Coin,
   DataAnalysis,
+  Document,
   Files,
+  Iphone,
+  Lock,
+  Message,
   Monitor,
   Operation,
+  Promotion,
   Service,
   Setting,
   ShoppingCart,
+  Tickets,
   User,
 } from "@element-plus/icons-vue";
 
@@ -41,6 +48,12 @@ import {
   saveManagedNode,
 } from "../services/nodes";
 import {
+  createEmptyManagedNotices,
+  fetchManagedNotices,
+  saveManagedNotice,
+  toggleManagedNoticeShow,
+} from '../services/notices'
+import {
   createEmptyPlugins,
   createEmptyPluginsFilters,
   createEmptyPluginsPagination,
@@ -55,6 +68,16 @@ import {
   uninstallPlugin,
   uploadPlugin,
 } from "../services/plugins";
+import {
+  createEmptySiteSettingsGroup,
+  createEmptySiteSettings,
+  fetchEmailTemplateOptions,
+  fetchSiteSettingsGroup,
+  fetchSiteSettings,
+  saveSiteSettings,
+  setupTelegramWebhook,
+  testSendMail,
+} from "../services/settings";
 
 export const useAdminStore = defineStore("admin", () => {
   const defaultDashboardStats = createDefaultDashboardStats();
@@ -94,6 +117,9 @@ export const useAdminStore = defineStore("admin", () => {
   const managedNodeRoutes = ref(createEmptyManagedNodeRoutes());
   const managedNodeRoutesLoading = ref(false);
   const managedNodeRoutesError = ref("");
+  const managedNotices = ref(createEmptyManagedNotices())
+  const managedNoticesLoading = ref(false)
+  const managedNoticesError = ref('')
   const systemStatus = ref(createEmptySystemStatus());
   const systemStatusLoading = ref(false);
   const systemStatusError = ref("");
@@ -108,14 +134,15 @@ export const useAdminStore = defineStore("admin", () => {
   const userInfo = ref(createEmptyUserInfo());
   const userInfoLoading = ref(false);
   const userInfoError = ref("");
-  const configForm = ref({
-    siteName: "LongtengCloud",
-    securePath: "/change-me",
-    currency: "CNY",
-    emailWhitelist: "gmail.com, outlook.com",
-    enableCaptcha: true,
-    enableTrial: false,
-  });
+  const siteSettings = ref(createEmptySiteSettings());
+  const siteSettingsInitial = ref(createEmptySiteSettings());
+  const loadedSiteSettingsGroups = ref([]);
+  const siteSettingsLoading = ref(false);
+  const siteSettingsSaving = ref(false);
+  const siteSettingsError = ref("");
+  const mailTestSending = ref(false);
+  const telegramWebhookSetting = ref(false);
+  const emailTemplateOptions = ref([]);
 
   const navigationGroups = [
     {
@@ -293,16 +320,817 @@ export const useAdminStore = defineStore("admin", () => {
     },
   ];
 
-  const configFields = [
-    { labelKey: "settings.fields.siteName", key: "siteName" },
-    { labelKey: "settings.fields.securePath", key: "securePath" },
-    { labelKey: "settings.fields.currency", key: "currency" },
-    { labelKey: "settings.fields.emailWhitelist", key: "emailWhitelist" },
-  ];
-
-  const switchFields = [
-    { labelKey: "settings.fields.enableCaptcha", key: "enableCaptcha" },
-    { labelKey: "settings.fields.enableTrial", key: "enableTrial" },
+  const systemSettingsGroups = [
+    {
+      key: "site",
+      icon: Setting,
+      titleKey: "systemSettings.groups.site.title",
+      descriptionKey: "systemSettings.groups.site.description",
+      fields: [
+        {
+          key: "appName",
+          labelKey: "systemSettings.fields.appName.label",
+          descriptionKey: "systemSettings.fields.appName.description",
+          placeholderKey: "systemSettings.fields.appName.placeholder",
+          type: "text",
+        },
+        {
+          key: "appDescription",
+          labelKey: "systemSettings.fields.appDescription.label",
+          descriptionKey: "systemSettings.fields.appDescription.description",
+          placeholderKey: "systemSettings.fields.appDescription.placeholder",
+          type: "text",
+        },
+        {
+          key: "appUrl",
+          labelKey: "systemSettings.fields.appUrl.label",
+          descriptionKey: "systemSettings.fields.appUrl.description",
+          placeholderKey: "systemSettings.fields.appUrl.placeholder",
+          type: "text",
+        },
+        {
+          key: "forceHttps",
+          labelKey: "systemSettings.fields.forceHttps.label",
+          descriptionKey: "systemSettings.fields.forceHttps.description",
+          type: "switch",
+        },
+        {
+          key: "logo",
+          labelKey: "systemSettings.fields.logo.label",
+          descriptionKey: "systemSettings.fields.logo.description",
+          placeholderKey: "systemSettings.fields.logo.placeholder",
+          type: "text",
+        },
+        {
+          key: "subscribeUrl",
+          labelKey: "systemSettings.fields.subscribeUrl.label",
+          descriptionKey: "systemSettings.fields.subscribeUrl.description",
+          placeholderKey: "systemSettings.fields.subscribeUrl.placeholder",
+          type: "textarea",
+          autosize: {
+            minRows: 2,
+            maxRows: 4,
+          },
+        },
+        {
+          key: "tosUrl",
+          labelKey: "systemSettings.fields.tosUrl.label",
+          descriptionKey: "systemSettings.fields.tosUrl.description",
+          placeholderKey: "systemSettings.fields.tosUrl.placeholder",
+          type: "text",
+        },
+        {
+          key: "stopRegister",
+          labelKey: "systemSettings.fields.stopRegister.label",
+          descriptionKey: "systemSettings.fields.stopRegister.description",
+          type: "switch",
+        },
+        {
+          key: "tryOutPlanId",
+          labelKey: "systemSettings.fields.tryOutPlanId.label",
+          descriptionKey: "systemSettings.fields.tryOutPlanId.description",
+          placeholderKey: "systemSettings.fields.tryOutPlanId.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "tryOutHour",
+          labelKey: "systemSettings.fields.tryOutHour.label",
+          descriptionKey: "systemSettings.fields.tryOutHour.description",
+          placeholderKey: "systemSettings.fields.tryOutHour.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "currency",
+          labelKey: "systemSettings.fields.currency.label",
+          descriptionKey: "systemSettings.fields.currency.description",
+          placeholderKey: "systemSettings.fields.currency.placeholder",
+          type: "text",
+        },
+        {
+          key: "currencySymbol",
+          labelKey: "systemSettings.fields.currencySymbol.label",
+          descriptionKey: "systemSettings.fields.currencySymbol.description",
+          placeholderKey: "systemSettings.fields.currencySymbol.placeholder",
+          type: "text",
+        },
+      ],
+    },
+    {
+      key: "security",
+      icon: Lock,
+      titleKey: "systemSettings.groups.security.title",
+      descriptionKey: "systemSettings.groups.security.description",
+      fields: [
+        {
+          key: "emailVerify",
+          labelKey: "systemSettings.fields.emailVerify.label",
+          descriptionKey: "systemSettings.fields.emailVerify.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "safeModeEnable",
+          labelKey: "systemSettings.fields.safeModeEnable.label",
+          descriptionKey: "systemSettings.fields.safeModeEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "banGmailAlias",
+          labelKey: "systemSettings.fields.banGmailAlias.label",
+          descriptionKey: "systemSettings.fields.banGmailAlias.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "securePath",
+          labelKey: "systemSettings.fields.securePath.label",
+          descriptionKey: "systemSettings.fields.securePath.description",
+          placeholderKey: "systemSettings.fields.securePath.placeholder",
+          type: "text",
+        },
+        {
+          key: "emailWhitelistEnable",
+          labelKey: "systemSettings.fields.emailWhitelistEnable.label",
+          descriptionKey: "systemSettings.fields.emailWhitelistEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "emailWhitelistSuffix",
+          labelKey: "systemSettings.fields.emailWhitelistSuffix.label",
+          descriptionKey: "systemSettings.fields.emailWhitelistSuffix.description",
+          placeholderKey: "systemSettings.fields.emailWhitelistSuffix.placeholder",
+          type: "textarea",
+          autosize: {
+            minRows: 2,
+            maxRows: 4,
+          },
+          visibleWhen: {
+            key: "emailWhitelistEnable",
+            equals: true,
+          },
+        },
+        {
+          key: "enableCaptcha",
+          labelKey: "systemSettings.fields.enableCaptcha.label",
+          descriptionKey: "systemSettings.fields.enableCaptcha.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "captchaType",
+          labelKey: "systemSettings.fields.captchaType.label",
+          descriptionKey: "systemSettings.fields.captchaType.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.captchaType",
+          visibleWhen: {
+            key: "enableCaptcha",
+            equals: true,
+          },
+        },
+        {
+          key: "recaptchaSiteKey",
+          labelKey: "systemSettings.fields.recaptchaSiteKey.label",
+          descriptionKey: "systemSettings.fields.recaptchaSiteKey.description",
+          placeholderKey: "systemSettings.fields.recaptchaSiteKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "recaptcha",
+              },
+            ],
+          },
+        },
+        {
+          key: "recaptchaKey",
+          labelKey: "systemSettings.fields.recaptchaKey.label",
+          descriptionKey: "systemSettings.fields.recaptchaKey.description",
+          placeholderKey: "systemSettings.fields.recaptchaKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "recaptcha",
+              },
+            ],
+          },
+        },
+        {
+          key: "recaptchaV3SiteKey",
+          labelKey: "systemSettings.fields.recaptchaV3SiteKey.label",
+          descriptionKey: "systemSettings.fields.recaptchaV3SiteKey.description",
+          placeholderKey: "systemSettings.fields.recaptchaV3SiteKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "recaptcha-v3",
+              },
+            ],
+          },
+        },
+        {
+          key: "recaptchaV3SecretKey",
+          labelKey: "systemSettings.fields.recaptchaV3SecretKey.label",
+          descriptionKey: "systemSettings.fields.recaptchaV3SecretKey.description",
+          placeholderKey: "systemSettings.fields.recaptchaV3SecretKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "recaptcha-v3",
+              },
+            ],
+          },
+        },
+        {
+          key: "recaptchaV3ScoreThreshold",
+          labelKey: "systemSettings.fields.recaptchaV3ScoreThreshold.label",
+          descriptionKey: "systemSettings.fields.recaptchaV3ScoreThreshold.description",
+          type: "number",
+          min: 0,
+          max: 1,
+          step: 0.1,
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "recaptcha-v3",
+              },
+            ],
+          },
+        },
+        {
+          key: "turnstileSiteKey",
+          labelKey: "systemSettings.fields.turnstileSiteKey.label",
+          descriptionKey: "systemSettings.fields.turnstileSiteKey.description",
+          placeholderKey: "systemSettings.fields.turnstileSiteKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "turnstile",
+              },
+            ],
+          },
+        },
+        {
+          key: "turnstileSecretKey",
+          labelKey: "systemSettings.fields.turnstileSecretKey.label",
+          descriptionKey: "systemSettings.fields.turnstileSecretKey.description",
+          placeholderKey: "systemSettings.fields.turnstileSecretKey.placeholder",
+          type: "text",
+          visibleWhen: {
+            all: [
+              {
+                key: "enableCaptcha",
+                equals: true,
+              },
+              {
+                key: "captchaType",
+                equals: "turnstile",
+              },
+            ],
+          },
+        },
+        {
+          key: "ipRegisterLimit",
+          labelKey: "systemSettings.fields.ipRegisterLimit.label",
+          descriptionKey: "systemSettings.fields.ipRegisterLimit.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "registerLimitCount",
+          labelKey: "systemSettings.fields.registerLimitCount.label",
+          descriptionKey: "systemSettings.fields.registerLimitCount.description",
+          placeholderKey: "systemSettings.fields.registerLimitCount.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "ipRegisterLimit",
+            equals: true,
+          },
+        },
+        {
+          key: "registerLimitDuration",
+          labelKey: "systemSettings.fields.registerLimitDuration.label",
+          descriptionKey: "systemSettings.fields.registerLimitDuration.description",
+          placeholderKey: "systemSettings.fields.registerLimitDuration.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "ipRegisterLimit",
+            equals: true,
+          },
+        },
+        {
+          key: "passwordLimit",
+          labelKey: "systemSettings.fields.passwordLimit.label",
+          descriptionKey: "systemSettings.fields.passwordLimit.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "passwordTryCount",
+          labelKey: "systemSettings.fields.passwordTryCount.label",
+          descriptionKey: "systemSettings.fields.passwordTryCount.description",
+          placeholderKey: "systemSettings.fields.passwordTryCount.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "passwordLimit",
+            equals: true,
+          },
+        },
+        {
+          key: "passwordLimitDuration",
+          labelKey: "systemSettings.fields.passwordLimitDuration.label",
+          descriptionKey: "systemSettings.fields.passwordLimitDuration.description",
+          placeholderKey: "systemSettings.fields.passwordLimitDuration.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "passwordLimit",
+            equals: true,
+          },
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "subscription",
+      icon: Tickets,
+      titleKey: "systemSettings.groups.subscription.title",
+      descriptionKey: "systemSettings.groups.subscription.description",
+      fields: [
+        {
+          key: "planChangeEnable",
+          labelKey: "systemSettings.fields.planChangeEnable.label",
+          descriptionKey: "systemSettings.fields.planChangeEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "resetTrafficMethod",
+          labelKey: "systemSettings.fields.resetTrafficMethod.label",
+          descriptionKey: "systemSettings.fields.resetTrafficMethod.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.resetTrafficMethod",
+          valueType: "number",
+        },
+        {
+          key: "surplusEnable",
+          labelKey: "systemSettings.fields.surplusEnable.label",
+          descriptionKey: "systemSettings.fields.surplusEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "newOrderEventId",
+          labelKey: "systemSettings.fields.newOrderEventId.label",
+          descriptionKey: "systemSettings.fields.newOrderEventId.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.orderEventId",
+          valueType: "number",
+        },
+        {
+          key: "renewOrderEventId",
+          labelKey: "systemSettings.fields.renewOrderEventId.label",
+          descriptionKey: "systemSettings.fields.renewOrderEventId.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.orderEventId",
+          valueType: "number",
+        },
+        {
+          key: "changeOrderEventId",
+          labelKey: "systemSettings.fields.changeOrderEventId.label",
+          descriptionKey: "systemSettings.fields.changeOrderEventId.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.orderEventId",
+          valueType: "number",
+        },
+        {
+          key: "subscribePath",
+          labelKey: "systemSettings.fields.subscribePath.label",
+          descriptionKey: "systemSettings.fields.subscribePath.description",
+          placeholderKey: "systemSettings.fields.subscribePath.placeholder",
+          type: "text",
+        },
+        {
+          key: "showInfoToServerEnable",
+          labelKey: "systemSettings.fields.showInfoToServerEnable.label",
+          descriptionKey: "systemSettings.fields.showInfoToServerEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "showProtocolToServerEnable",
+          labelKey: "systemSettings.fields.showProtocolToServerEnable.label",
+          descriptionKey: "systemSettings.fields.showProtocolToServerEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "invite",
+      icon: Coin,
+      titleKey: "systemSettings.groups.invite.title",
+      descriptionKey: "systemSettings.groups.invite.description",
+      fields: [
+        {
+          key: "inviteForce",
+          labelKey: "systemSettings.fields.inviteForce.label",
+          descriptionKey: "systemSettings.fields.inviteForce.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "inviteCommission",
+          labelKey: "systemSettings.fields.inviteCommission.label",
+          descriptionKey: "systemSettings.fields.inviteCommission.description",
+          placeholderKey: "systemSettings.fields.inviteCommission.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "inviteGenLimit",
+          labelKey: "systemSettings.fields.inviteGenLimit.label",
+          descriptionKey: "systemSettings.fields.inviteGenLimit.description",
+          placeholderKey: "systemSettings.fields.inviteGenLimit.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "inviteNeverExpire",
+          labelKey: "systemSettings.fields.inviteNeverExpire.label",
+          descriptionKey: "systemSettings.fields.inviteNeverExpire.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionFirstTimeEnable",
+          labelKey: "systemSettings.fields.commissionFirstTimeEnable.label",
+          descriptionKey: "systemSettings.fields.commissionFirstTimeEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionAutoCheckEnable",
+          labelKey: "systemSettings.fields.commissionAutoCheckEnable.label",
+          descriptionKey: "systemSettings.fields.commissionAutoCheckEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionWithdrawLimit",
+          labelKey: "systemSettings.fields.commissionWithdrawLimit.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawLimit.description",
+          placeholderKey: "systemSettings.fields.commissionWithdrawLimit.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "commissionWithdrawMethod",
+          labelKey: "systemSettings.fields.commissionWithdrawMethod.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawMethod.description",
+          placeholderKey: "systemSettings.fields.commissionWithdrawMethod.placeholder",
+          type: "textarea",
+          autosize: {
+            minRows: 3,
+            maxRows: 6,
+          },
+        },
+        {
+          key: "withdrawCloseEnable",
+          labelKey: "systemSettings.fields.withdrawCloseEnable.label",
+          descriptionKey: "systemSettings.fields.withdrawCloseEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionDistributionEnable",
+          labelKey: "systemSettings.fields.commissionDistributionEnable.label",
+          descriptionKey: "systemSettings.fields.commissionDistributionEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionDistributionL1",
+          labelKey: "systemSettings.fields.commissionDistributionL1.label",
+          descriptionKey: "systemSettings.fields.commissionDistributionL1.description",
+          placeholderKey: "systemSettings.fields.commissionDistributionL1.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "commissionDistributionEnable",
+            equals: true,
+          },
+        },
+        {
+          key: "commissionDistributionL2",
+          labelKey: "systemSettings.fields.commissionDistributionL2.label",
+          descriptionKey: "systemSettings.fields.commissionDistributionL2.description",
+          placeholderKey: "systemSettings.fields.commissionDistributionL2.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "commissionDistributionEnable",
+            equals: true,
+          },
+        },
+        {
+          key: "commissionDistributionL3",
+          labelKey: "systemSettings.fields.commissionDistributionL3.label",
+          descriptionKey: "systemSettings.fields.commissionDistributionL3.description",
+          placeholderKey: "systemSettings.fields.commissionDistributionL3.placeholder",
+          type: "number",
+          min: 0,
+          visibleWhen: {
+            key: "commissionDistributionEnable",
+            equals: true,
+          },
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "node",
+      icon: Monitor,
+      titleKey: "systemSettings.groups.node.title",
+      descriptionKey: "systemSettings.groups.node.description",
+      fields: [
+        {
+          key: "serverToken",
+          labelKey: "systemSettings.fields.serverToken.label",
+          descriptionKey: "systemSettings.fields.serverToken.description",
+          placeholderKey: "systemSettings.fields.serverToken.placeholder",
+          type: "text",
+        },
+        {
+          key: "serverPullInterval",
+          labelKey: "systemSettings.fields.serverPullInterval.label",
+          descriptionKey: "systemSettings.fields.serverPullInterval.description",
+          placeholderKey: "systemSettings.fields.serverPullInterval.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "serverPushInterval",
+          labelKey: "systemSettings.fields.serverPushInterval.label",
+          descriptionKey: "systemSettings.fields.serverPushInterval.description",
+          placeholderKey: "systemSettings.fields.serverPushInterval.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "deviceLimitMode",
+          labelKey: "systemSettings.fields.deviceLimitMode.label",
+          descriptionKey: "systemSettings.fields.deviceLimitMode.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.deviceLimitMode",
+          valueType: "number",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "mail",
+      icon: Message,
+      titleKey: "systemSettings.groups.mail.title",
+      descriptionKey: "systemSettings.groups.mail.description",
+      fields: [
+        {
+          key: "emailHost",
+          labelKey: "systemSettings.fields.emailHost.label",
+          descriptionKey: "systemSettings.fields.emailHost.description",
+          placeholderKey: "systemSettings.fields.emailHost.placeholder",
+          type: "text",
+        },
+        {
+          key: "emailPort",
+          labelKey: "systemSettings.fields.emailPort.label",
+          descriptionKey: "systemSettings.fields.emailPort.description",
+          placeholderKey: "systemSettings.fields.emailPort.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "emailEncryption",
+          labelKey: "systemSettings.fields.emailEncryption.label",
+          descriptionKey: "systemSettings.fields.emailEncryption.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.emailEncryption",
+        },
+        {
+          key: "emailUsername",
+          labelKey: "systemSettings.fields.emailUsername.label",
+          descriptionKey: "systemSettings.fields.emailUsername.description",
+          placeholderKey: "systemSettings.fields.emailUsername.placeholder",
+          type: "text",
+        },
+        {
+          key: "emailPassword",
+          labelKey: "systemSettings.fields.emailPassword.label",
+          descriptionKey: "systemSettings.fields.emailPassword.description",
+          placeholderKey: "systemSettings.fields.emailPassword.placeholder",
+          type: "text",
+        },
+        {
+          key: "emailFromAddress",
+          labelKey: "systemSettings.fields.emailFromAddress.label",
+          descriptionKey: "systemSettings.fields.emailFromAddress.description",
+          placeholderKey: "systemSettings.fields.emailFromAddress.placeholder",
+          type: "text",
+        },
+        {
+          key: "emailTemplate",
+          labelKey: "systemSettings.fields.emailTemplate.label",
+          descriptionKey: "systemSettings.fields.emailTemplate.description",
+          type: "select",
+          optionsKey: "systemSettings.dynamicOptions.emailTemplate",
+        },
+        {
+          key: "remindMailEnable",
+          labelKey: "systemSettings.fields.remindMailEnable.label",
+          descriptionKey: "systemSettings.fields.remindMailEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "mailTestAction",
+          labelKey: "systemSettings.fields.mailTestAction.label",
+          descriptionKey: "systemSettings.fields.mailTestAction.description",
+          type: "action",
+          actionKey: "testMail",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "telegram",
+      icon: Promotion,
+      titleKey: "systemSettings.groups.telegram.title",
+      descriptionKey: "systemSettings.groups.telegram.description",
+      fields: [
+        {
+          key: "telegramBotToken",
+          labelKey: "systemSettings.fields.telegramBotToken.label",
+          descriptionKey: "systemSettings.fields.telegramBotToken.description",
+          placeholderKey: "systemSettings.fields.telegramBotToken.placeholder",
+          type: "text",
+        },
+        {
+          key: "telegramWebhookAction",
+          labelKey: "systemSettings.fields.telegramWebhookAction.label",
+          descriptionKey: "systemSettings.fields.telegramWebhookAction.description",
+          type: "action",
+          actionKey: "setupTelegramWebhook",
+        },
+        {
+          key: "telegramBotEnable",
+          labelKey: "systemSettings.fields.telegramBotEnable.label",
+          descriptionKey: "systemSettings.fields.telegramBotEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "telegramDiscussLink",
+          labelKey: "systemSettings.fields.telegramDiscussLink.label",
+          descriptionKey: "systemSettings.fields.telegramDiscussLink.description",
+          placeholderKey: "systemSettings.fields.telegramDiscussLink.placeholder",
+          type: "text",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "app",
+      icon: Iphone,
+      titleKey: "systemSettings.groups.app.title",
+      descriptionKey: "systemSettings.groups.app.description",
+      fields: [
+        {
+          key: "windowsVersion",
+          labelKey: "systemSettings.fields.windowsVersion.label",
+          descriptionKey: "systemSettings.fields.windowsVersion.description",
+          placeholderKey: "systemSettings.fields.windowsVersion.placeholder",
+          type: "text",
+        },
+        {
+          key: "windowsDownloadUrl",
+          labelKey: "systemSettings.fields.windowsDownloadUrl.label",
+          descriptionKey: "systemSettings.fields.windowsDownloadUrl.description",
+          placeholderKey: "systemSettings.fields.windowsDownloadUrl.placeholder",
+          type: "text",
+        },
+        {
+          key: "macosVersion",
+          labelKey: "systemSettings.fields.macosVersion.label",
+          descriptionKey: "systemSettings.fields.macosVersion.description",
+          placeholderKey: "systemSettings.fields.macosVersion.placeholder",
+          type: "text",
+        },
+        {
+          key: "macosDownloadUrl",
+          labelKey: "systemSettings.fields.macosDownloadUrl.label",
+          descriptionKey: "systemSettings.fields.macosDownloadUrl.description",
+          placeholderKey: "systemSettings.fields.macosDownloadUrl.placeholder",
+          type: "text",
+        },
+        {
+          key: "androidVersion",
+          labelKey: "systemSettings.fields.androidVersion.label",
+          descriptionKey: "systemSettings.fields.androidVersion.description",
+          placeholderKey: "systemSettings.fields.androidVersion.placeholder",
+          type: "text",
+        },
+        {
+          key: "androidDownloadUrl",
+          labelKey: "systemSettings.fields.androidDownloadUrl.label",
+          descriptionKey: "systemSettings.fields.androidDownloadUrl.description",
+          placeholderKey: "systemSettings.fields.androidDownloadUrl.placeholder",
+          type: "text",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
+      key: "subscribeTemplate",
+      icon: Document,
+      titleKey: "systemSettings.groups.subscribeTemplate.title",
+      descriptionKey: "systemSettings.groups.subscribeTemplate.description",
+      fields: [
+        {
+          key: "subscribeTemplateSingbox",
+          labelKey: "systemSettings.fields.subscribeTemplateSingbox.label",
+          descriptionKey: "systemSettings.fields.subscribeTemplateSingbox.description",
+          type: "codeTabs",
+          tabs: [
+            {
+              key: "subscribeTemplateSingbox",
+              labelKey: "systemSettings.templateTabs.singbox",
+            },
+            {
+              key: "subscribeTemplateClash",
+              labelKey: "systemSettings.templateTabs.clash",
+            },
+            {
+              key: "subscribeTemplateClashmeta",
+              labelKey: "systemSettings.templateTabs.clashmeta",
+            },
+            {
+              key: "subscribeTemplateStash",
+              labelKey: "systemSettings.templateTabs.stash",
+            },
+            {
+              key: "subscribeTemplateSurge",
+              labelKey: "systemSettings.templateTabs.surge",
+            },
+            {
+              key: "subscribeTemplateSurfboard",
+              labelKey: "systemSettings.templateTabs.surfboard",
+            },
+          ],
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
   ];
 
   const filteredNavigationGroups = computed(() => {
@@ -512,6 +1340,131 @@ export const useAdminStore = defineStore("admin", () => {
     }
   }
 
+  async function loadSiteSettings(groupKey) {
+    siteSettingsLoading.value = true;
+    siteSettingsError.value = "";
+
+    try {
+      const normalizedGroupKey = String(groupKey || '').trim()
+
+      if (!normalizedGroupKey) {
+        const [settings, templateOptions] = await Promise.all([
+          fetchSiteSettings(),
+          fetchEmailTemplateOptions(),
+        ]);
+        siteSettings.value = settings;
+        siteSettingsInitial.value = { ...settings };
+        loadedSiteSettingsGroups.value = systemSettingsGroups.map(function mapGroup(group) {
+          return group.key
+        });
+        emailTemplateOptions.value = templateOptions;
+        return settings;
+      }
+
+      const tasks = [fetchSiteSettingsGroup(normalizedGroupKey)]
+
+      if (normalizedGroupKey === 'mail' && !emailTemplateOptions.value.length) {
+        tasks.push(fetchEmailTemplateOptions())
+      }
+
+      const [groupSettings, templateOptions] = await Promise.all(tasks)
+
+      siteSettings.value = {
+        ...siteSettings.value,
+        ...groupSettings,
+      };
+      siteSettingsInitial.value = {
+        ...siteSettingsInitial.value,
+        ...groupSettings,
+      };
+
+      if (!loadedSiteSettingsGroups.value.includes(normalizedGroupKey)) {
+        loadedSiteSettingsGroups.value = [
+          ...loadedSiteSettingsGroups.value,
+          normalizedGroupKey,
+        ];
+      }
+
+      if (Array.isArray(templateOptions)) {
+        emailTemplateOptions.value = templateOptions;
+      }
+
+      return groupSettings;
+    } catch (error) {
+      if (groupKey) {
+        const emptyGroupSettings = createEmptySiteSettingsGroup(groupKey)
+
+        siteSettings.value = {
+          ...siteSettings.value,
+          ...emptyGroupSettings,
+        };
+        siteSettingsInitial.value = {
+          ...siteSettingsInitial.value,
+          ...emptyGroupSettings,
+        };
+      } else {
+        siteSettings.value = createEmptySiteSettings();
+        siteSettingsInitial.value = createEmptySiteSettings();
+        loadedSiteSettingsGroups.value = [];
+        emailTemplateOptions.value = [];
+      }
+
+      siteSettingsError.value =
+        error instanceof Error ? error.message : "系统设置加载失败";
+      throw error;
+    } finally {
+      siteSettingsLoading.value = false;
+    }
+  }
+
+  async function saveSiteSettingsItem() {
+    siteSettingsSaving.value = true;
+    siteSettingsError.value = "";
+
+    try {
+      const savedSettings = await saveSiteSettings(
+        siteSettings.value,
+        siteSettingsInitial.value,
+        loadedSiteSettingsGroups.value,
+      );
+      siteSettings.value = {
+        ...siteSettings.value,
+        ...savedSettings,
+      };
+      siteSettingsInitial.value = {
+        ...siteSettingsInitial.value,
+        ...savedSettings,
+      };
+      return savedSettings;
+    } catch (error) {
+      siteSettingsError.value =
+        error instanceof Error ? error.message : "系统设置保存失败";
+      throw error;
+    } finally {
+      siteSettingsSaving.value = false;
+    }
+  }
+
+  async function testSendMailItem() {
+    mailTestSending.value = true;
+
+    try {
+      return await testSendMail();
+    } finally {
+      mailTestSending.value = false;
+    }
+  }
+
+  async function setupTelegramWebhookItem() {
+    telegramWebhookSetting.value = true;
+
+    try {
+      return await setupTelegramWebhook();
+    } finally {
+      telegramWebhookSetting.value = false;
+    }
+  }
+
   async function loadQueueStats() {
     queueStatsLoading.value = true;
     queueStatsError.value = "";
@@ -595,6 +1548,47 @@ export const useAdminStore = defineStore("admin", () => {
         error instanceof Error ? error.message : "路由组列表加载失败";
     } finally {
       managedNodeRoutesLoading.value = false;
+    }
+  }
+
+  async function loadManagedNotices() {
+    managedNoticesLoading.value = true
+    managedNoticesError.value = ''
+
+    try {
+      managedNotices.value = await fetchManagedNotices()
+    } catch (error) {
+      managedNotices.value = createEmptyManagedNotices()
+      managedNoticesError.value =
+        error instanceof Error ? error.message : '公告列表加载失败'
+    } finally {
+      managedNoticesLoading.value = false
+    }
+  }
+
+  async function toggleManagedNoticeShowItem(id) {
+    managedNoticesError.value = ''
+
+    try {
+      return await toggleManagedNoticeShow(id)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '更新公告显示状态失败'
+      managedNoticesError.value = message
+      throw error
+    }
+  }
+
+  async function saveManagedNoticeItem(payload) {
+    managedNoticesError.value = ''
+
+    try {
+      return await saveManagedNotice(payload)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : '保存公告失败'
+      managedNoticesError.value = message
+      throw error
     }
   }
 
@@ -782,8 +1776,6 @@ export const useAdminStore = defineStore("admin", () => {
   return {
     activities,
     badgeType,
-    configFields,
-    configForm,
     dashboardMetrics,
     dashboardStatsError,
     dashboardStatsLoading,
@@ -796,6 +1788,7 @@ export const useAdminStore = defineStore("admin", () => {
     loadIncomeOverview,
     loadManagedNodeGroups,
     loadManagedNodeRoutes,
+    loadManagedNotices,
     loadManagedNodes,
     saveManagedNode: saveManagedNodeItem,
     saveManagedNodeItem,
@@ -804,6 +1797,7 @@ export const useAdminStore = defineStore("admin", () => {
     updateManagedNodeShowItem,
     loadNodeTrafficRank,
     loadQueueStats,
+    loadSiteSettings,
     loadSystemStatus,
     loadUserInfo,
     loadUserTrafficRank,
@@ -814,6 +1808,11 @@ export const useAdminStore = defineStore("admin", () => {
     managedNodeRoutes,
     managedNodeRoutesError,
     managedNodeRoutesLoading,
+    managedNotices,
+    managedNoticesError,
+    managedNoticesLoading,
+    saveManagedNotice: saveManagedNoticeItem,
+    toggleManagedNoticeShow: toggleManagedNoticeShowItem,
     managedNodes,
     managedNodesError,
     managedNodesFilters,
@@ -824,6 +1823,7 @@ export const useAdminStore = defineStore("admin", () => {
     pluginsFilters,
     pluginsLoading,
     pluginsPagination,
+    emailTemplateOptions,
     pluginTypes,
     pluginTypesLoading,
     pluginTypesError,
@@ -847,10 +1847,19 @@ export const useAdminStore = defineStore("admin", () => {
     queueStatsError,
     queueStatsLoading,
     searchKeyword,
-    switchFields,
+    mailTestSending,
+    telegramWebhookSetting,
+    siteSettings,
+    siteSettingsError,
+    siteSettingsLoading,
+    siteSettingsSaving,
+    saveSiteSettings: saveSiteSettingsItem,
+    setupTelegramWebhook: setupTelegramWebhookItem,
+    testSendMail: testSendMailItem,
     systemStatus,
     systemStatusError,
     systemStatusLoading,
+    systemSettingsGroups,
     tickets,
     userTrafficRank,
     userTrafficRankError,

@@ -4,6 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
     ArrowDown,
+    Expand,
+    Fold,
     FolderOpened,
     Search,
     SwitchButton,
@@ -80,6 +82,10 @@ const pageEyebrow = computed(function pageEyebrow() {
 
 const activeMenu = computed(function activeMenu() {
     return route.name ?? "dashboard";
+});
+
+const isMenuCollapsed = computed(function isMenuCollapsed() {
+    return !isMobile.value && isSidebarCollapsed.value;
 });
 
 const headerUserInitial = computed(function headerUserInitial() {
@@ -159,14 +165,17 @@ onUnmounted(function detachResizeListener() {
     >
         <div class="sidebar-backdrop" @click="closeMobileNav"></div>
         <el-aside class="sidebar" width="288px">
-            <button
+            <el-button
                 v-if="!isMobile"
                 class="sidebar-toggle"
-                type="button"
+                circle
+                type="primary"
                 @click="toggleSidebar"
             >
-                <span class="sidebar-toggle__icon">‹</span>
-            </button>
+                <el-icon>
+                    <component :is="isSidebarCollapsed ? Expand : Fold" />
+                </el-icon>
+            </el-button>
             <div class="brand-panel">
                 <div class="brand-mark">L</div>
                 <div>
@@ -185,22 +194,23 @@ onUnmounted(function detachResizeListener() {
                 </template>
             </el-input>
 
-            <div class="nav-groups">
-                <section
-                    v-for="group in adminStore.filteredNavigationGroups"
-                    :key="group.titleKey || group.title"
-                    class="nav-group"
+            <el-scrollbar class="nav-scrollbar">
+                <el-menu
+                    :collapse="isMenuCollapsed"
+                    :collapse-transition="false"
+                    :default-active="String(activeMenu)"
+                    :router="false"
+                    class="nav-menu"
                 >
-                    <div class="nav-title">{{ resolveGroupTitle(group) }}</div>
-
-                    <el-menu
-                        :default-active="String(activeMenu)"
-                        :router="false"
-                        class="nav-menu"
-                        background-color="transparent"
-                        text-color="#dce7f4"
-                        active-text-color="#86efac"
+                    <el-menu-item-group
+                        v-for="group in adminStore.filteredNavigationGroups"
+                        :key="group.titleKey || group.title"
+                        class="nav-group"
                     >
+                        <template #title>
+                            <span class="nav-group__title">{{ resolveGroupTitle(group) }}</span>
+                        </template>
+
                         <el-menu-item
                             v-for="item in group.items"
                             :key="`${group.titleKey || group.title}-${item.labelKey || item.label}`"
@@ -211,9 +221,9 @@ onUnmounted(function detachResizeListener() {
                             <el-icon><component :is="item.icon" /></el-icon>
                             <span>{{ resolveItemLabel(item) }}</span>
                         </el-menu-item>
-                    </el-menu>
-                </section>
-            </div>
+                    </el-menu-item-group>
+                </el-menu>
+            </el-scrollbar>
         </el-aside>
 
         <el-main class="main-panel">
@@ -226,11 +236,16 @@ onUnmounted(function detachResizeListener() {
                 >
                     <el-icon><FolderOpened /></el-icon>
                 </button>
-                <div>
+                <div class="topbar-copy">
+                    <span class="topbar-kicker">{{ pageEyebrow }}</span>
                     <h1>{{ pageTitle }}</h1>
                 </div>
 
                 <div class="topbar-actions">
+                    <div class="topbar-badge">
+                        <span class="status-dot"></span>
+                        <span>{{ t("app.console") }}</span>
+                    </div>
                     <el-select
                         v-model="locale"
                         class="topbar-language"

@@ -58,7 +58,7 @@ export default {
       eyebrow: '内容运营',
     },
     settings: {
-      title: '系统配置',
+      title: '系统设置',
       eyebrow: '系统管理',
     },
   },
@@ -68,7 +68,7 @@ export default {
     business: '业务模块',
     dashboard: '仪表盘',
     notices: '公告管理',
-    settings: '系统配置',
+    settings: '系统设置',
     nodes: '节点管理',
     plugins: '插件管理',
     plans: '套餐管理',
@@ -211,17 +211,525 @@ export default {
       status: '状态',
     },
   },
-  settings: {
-    title: '站点基础配置',
-    description: '将系统参数集中到统一的 Element Plus 表单结构中，方便后续对接真实配置 API。',
-    save: '保存配置',
+  systemSettings: {
+    title: '系统设置',
+    description: '管理系统核心配置，包括站点、安全、订阅等基础参数。',
+    actions: {
+      save: '保存设置',
+      testMail: '发送测试邮件',
+    },
+    panel: {
+      fieldCount: '配置项',
+      status: '接入状态',
+      previous: '上一项',
+      next: '下一项',
+      first: '已是第一项',
+      last: '已是最后一项',
+    },
+    badges: {
+      live: '已接入',
+      planned: '待接入',
+    },
+    groups: {
+      site: {
+        title: '站点设置',
+        description: '配置站点基本信息，包括站点名称、描述、货币单位等核心设置。',
+      },
+      security: {
+        title: '安全设置',
+        description: '管理站点安全策略与注册入口，对外访问策略在这里集中控制。',
+      },
+      subscription: {
+        title: '订阅设置',
+        description: '管理用户订阅相关配置，包括可订阅线路状态、更新频率、流量统计等设置。',
+      },
+      invite: {
+        title: '邀请&佣金设置',
+        description: '邀请注册、佣金和提现设置。',
+      },
+      node: {
+        title: '节点配置',
+        description: '配置节点通信和同步设置，包括通信密钥、轮询间隔、负载均衡等高级选项。',
+      },
+      mail: {
+        title: '邮件设置',
+        description: '配置系统邮件服务，用于发送验证邮件、密码重置、通知等邮件，支持多种 SMTP 服务商。',
+      },
+      telegram: {
+        title: 'Telegram 设置',
+        description: '配置 Telegram 机器人功能，实现用户通知、账户绑定、指令交互等自动化服务。',
+      },
+      app: {
+        title: 'APP 设置',
+        description: '管理移动应用程序相关配置，包括 API 接口、版本控制、推送通知等功能设置。',
+      },
+      subscribeTemplate: {
+        title: '订阅模板',
+        description: '配置各个客户端的订阅模板。',
+      },
+    },
     fields: {
-      siteName: '站点名称',
-      securePath: '安全路径',
-      currency: '默认货币',
-      emailWhitelist: '邮件后缀白名单',
-      enableCaptcha: '启用验证码',
-      enableTrial: '新用户试用',
+      appName: {
+        label: '站点名称',
+        description: '用于显示需要站点名称的地方。',
+        placeholder: '请输入站点名称',
+      },
+      appDescription: {
+        label: '站点描述',
+        description: '用于显示需要站点描述的地方。',
+        placeholder: '请输入站点描述',
+      },
+      appUrl: {
+        label: '站点网址',
+        description: '当前网站最新地址，将会在邮件等需要用于网址处体现。',
+        placeholder: 'https://example.com',
+      },
+      forceHttps: {
+        label: '强制 HTTPS',
+        description: '当站点没有使用 HTTPS，CDN 或反代开启强制 HTTPS 时需要开启。',
+      },
+      emailVerify: {
+        label: '邮箱验证',
+        description: '开启后将会强制要求用户进行邮箱验证。',
+      },
+      safeModeEnable: {
+        label: '安全模式',
+        description: '开启后除了站点 URL 以外的绑定本站点的域名访问问都将会被拦截 403。',
+      },
+      banGmailAlias: {
+        label: '禁止使用 Gmail 多别名',
+        description: '开启后 Gmail 多别名将无法注册。',
+      },
+      emailWhitelistEnable: {
+        label: '邮箱后缀白名单',
+        description: '开启后在名单中的邮箱后缀才允许进行注册。',
+      },
+      securePath: {
+        label: '后台路径',
+        description: '后台管理路径，修改后将会改变管理员的 admin 路径。',
+        placeholder: '请输入后台路径',
+      },
+      emailWhitelistSuffix: {
+        label: '邮箱后缀白名单',
+        description: '开启后在名单中的邮箱后缀才允许进行注册。',
+        placeholder: '例如 qq.com,gmail.com',
+      },
+      enableCaptcha: {
+        label: '启用验证码',
+        description: '开启后用户注册时需要通过验证码验证。',
+      },
+      captchaType: {
+        label: '验证码类型',
+        description: '当前安全配置使用的验证码驱动类型。',
+        placeholder: 'recaptcha 或 turnstile',
+      },
+      recaptchaSiteKey: {
+        label: 'reCAPTCHA 站点密钥',
+        description: '输入分配给 reCAPTCHA 的站点密钥。',
+        placeholder: '请输入 reCAPTCHA 站点密钥',
+      },
+      recaptchaKey: {
+        label: 'reCAPTCHA 密钥',
+        description: '输入分配给 reCAPTCHA 的密钥。',
+        placeholder: '请输入 reCAPTCHA 密钥',
+      },
+      recaptchaV3SiteKey: {
+        label: 'reCAPTCHA v3 站点密钥',
+        description: '输入分配给 reCAPTCHA v3 的站点密钥。',
+        placeholder: '请输入 reCAPTCHA v3 站点密钥',
+      },
+      recaptchaV3SecretKey: {
+        label: 'reCAPTCHA v3 密钥',
+        description: '输入分配给 reCAPTCHA v3 的服务端密钥。',
+        placeholder: '请输入 reCAPTCHA v3 密钥',
+      },
+      recaptchaV3ScoreThreshold: {
+        label: 'reCAPTCHA v3 分数阈值',
+        description: '用于控制 reCAPTCHA v3 风险判定阈值。',
+      },
+      turnstileSiteKey: {
+        label: 'Turnstile 站点密钥',
+        description: '输入分配给 Cloudflare Turnstile 的站点密钥。',
+        placeholder: '请输入 Turnstile 站点密钥',
+      },
+      turnstileSecretKey: {
+        label: 'Turnstile 密钥',
+        description: '输入分配给 Cloudflare Turnstile 的服务端密钥。',
+        placeholder: '请输入 Turnstile 密钥',
+      },
+      ipRegisterLimit: {
+        label: 'IP 注册限制',
+        description: '开启后将限制同一 IP 的注册次数。',
+      },
+      registerLimitCount: {
+        label: '注册次数',
+        description: '同一 IP 允许的最大注册次数。',
+        placeholder: '请输入次数',
+      },
+      registerLimitDuration: {
+        label: '限制时长',
+        description: '注册限制的持续时间（分钟）。',
+        placeholder: '请输入分钟数',
+      },
+      passwordLimit: {
+        label: '密码尝试限制',
+        description: '开启后将限制密码尝试次数。',
+      },
+      passwordTryCount: {
+        label: '尝试次数',
+        description: '允许的最大密码尝试次数。',
+        placeholder: '请输入次数',
+      },
+      passwordLimitDuration: {
+        label: '锁定时长',
+        description: '账户锁定的持续时间（分钟）。',
+        placeholder: '请输入分钟数',
+      },
+      logo: {
+        label: 'LOGO',
+        description: '用于显示需要 LOGO 的地方。',
+        placeholder: '请输入 LOGO URL，不配置可留空',
+      },
+      subscribeUrl: {
+        label: '订阅 URL',
+        description: '多个订阅地址请使用英文逗号分隔。',
+        placeholder: 'https://sub.example.com,https://backup.example.com',
+      },
+      planChangeEnable: {
+        label: '允许用户更改订阅',
+        description: '开启后用户将会可以对订阅计划进行变更。',
+      },
+      resetTrafficMethod: {
+        label: '月流量重置方式',
+        description: '全局流量重置方式，默认每月 1 号，可以在订阅管理内订阅单独设置。',
+      },
+      surplusEnable: {
+        label: '开启折抵方案',
+        description: '开启后用户更换订阅将会由系统对原有订阅进行折抵，方案参考文档。',
+      },
+      newOrderEventId: {
+        label: '当订阅新购时触发事件',
+        description: '新购订阅完成时将触发该任务。',
+      },
+      renewOrderEventId: {
+        label: '当订阅续费时触发事件',
+        description: '续费订阅完成时将触发该任务。',
+      },
+      changeOrderEventId: {
+        label: '当订阅变更时触发事件',
+        description: '变更订阅完成时将触发该任务。',
+      },
+      subscribePath: {
+        label: '订阅路径',
+        description: '订阅路径，修改后将会改变原有的 subscribe 路径。当前订阅路径格式：{path}/xxxxxxxxxx，修改订阅路径后，可能需要重启服务才能生效。',
+        placeholder: '请输入订阅路径',
+      },
+      showInfoToServerEnable: {
+        label: '在订阅中展示订阅信息',
+        description: '开启后将会在用户订阅中展示订阅信息。',
+      },
+      showProtocolToServerEnable: {
+        label: '在订阅中线路名称中显示协议名称',
+        description: '开启后订阅线路名称将协议名称（例如：[Hy2]香港）。',
+      },
+      defaultRemindExpire: {
+        label: '默认到期提醒',
+        description: '新用户订阅默认开启到期提醒。',
+      },
+      defaultRemindTraffic: {
+        label: '默认流量提醒',
+        description: '新用户订阅默认开启流量提醒。',
+      },
+      inviteForce: {
+        label: '开启强制邀请',
+        description: '开启后只有被邀请的用户才可以进行注册。',
+      },
+      inviteCommission: {
+        label: '邀请佣金百分比',
+        description: '默认全局的佣金分配比例，你可以在用户管理单独配置单个比例。',
+        placeholder: '请输入佣金比例',
+      },
+      inviteGenLimit: {
+        label: '用户可创建邀请码上限',
+        description: '用户可创建邀请码上限。',
+        placeholder: '请输入邀请码上限',
+      },
+      inviteNeverExpire: {
+        label: '邀请码永不失效',
+        description: '开启后邀请码被使用后将不会失效，否则使用过后即失效。',
+      },
+      commissionFirstTimeEnable: {
+        label: '佣金仅首次发放',
+        description: '开启后被邀请人首次支付时才会产生佣金，可以在用户管理对用户进行单独配置。',
+      },
+      commissionAutoCheckEnable: {
+        label: '佣金自动确认',
+        description: '开启后佣金将在订单完成 3 日后自动进行确认。',
+      },
+      commissionWithdrawLimit: {
+        label: '提现单申请门槛(元)',
+        description: '小于门槛金额的提现单将不会被提交。',
+        placeholder: '请输入提现门槛',
+      },
+      commissionWithdrawMethod: {
+        label: '提现方式',
+        description: '可以支持的提现方式，多个用逗号分隔。',
+        placeholder: '请输入提现方式，多个用逗号分隔',
+      },
+      withdrawCloseEnable: {
+        label: '关闭提现',
+        description: '关闭后将禁止用户申请提现，且返消佣金将会直接进入用户余额。',
+      },
+      commissionDistributionEnable: {
+        label: '三级分销',
+        description: '开启后将佣金转按照设置的 3 成比例进行分成，三成比例合计请不要大于 100%。',
+      },
+      commissionDistributionL1: {
+        label: '一级分销比例',
+        description: '一级分销佣金比例。',
+        placeholder: '请输入一级分销比例',
+      },
+      commissionDistributionL2: {
+        label: '二级分销比例',
+        description: '二级分销佣金比例。',
+        placeholder: '请输入二级分销比例',
+      },
+      commissionDistributionL3: {
+        label: '三级分销比例',
+        description: '三级分销佣金比例。',
+        placeholder: '请输入三级分销比例',
+      },
+      serverToken: {
+        label: '通讯密钥',
+        description: 'Xboard 与节点通讯的密钥，以便数据不会被人获取。',
+        placeholder: '请输入通讯密钥',
+      },
+      serverPullInterval: {
+        label: '节点拉取动作轮询间隔',
+        description: '节点从面板获取数据的间隔频率。',
+        placeholder: '请输入轮询间隔',
+      },
+      serverPushInterval: {
+        label: '节点推送动作轮询间隔',
+        description: '节点推送数据回面板的间隔频率。',
+        placeholder: '请输入轮询间隔',
+      },
+      deviceLimitMode: {
+        label: '设备限制模式',
+        description: '宽松模式下，同一 IP 地址使用多个节点只统计为一个设备。',
+      },
+      emailHost: {
+        label: 'SMTP主机',
+        description: 'SMTP 服务器地址，例如：smtp.gmail.com',
+        placeholder: '请输入 SMTP 主机',
+      },
+      emailPort: {
+        label: 'SMTP端口',
+        description: 'SMTP 服务器端口，常用端口：25, 465, 587',
+        placeholder: '请输入 SMTP 端口',
+      },
+      emailEncryption: {
+        label: '加密方式',
+        description: '邮件加密方式。',
+      },
+      emailUsername: {
+        label: 'SMTP用户名',
+        description: 'SMTP 认证用户名。',
+        placeholder: '请输入 SMTP 用户名',
+      },
+      emailPassword: {
+        label: 'SMTP密码',
+        description: 'SMTP 认证密码或应用专用密码。',
+        placeholder: '请输入 SMTP 密码',
+      },
+      emailFromAddress: {
+        label: '发件人地址',
+        description: '发件人邮箱地址。',
+        placeholder: '请输入发件人地址',
+      },
+      emailTemplate: {
+        label: '邮件模板',
+        description: '自定义邮件模板方式请查看文档。',
+      },
+      remindMailEnable: {
+        label: '邮件提醒',
+        description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。',
+      },
+      mailTestAction: {
+        label: '发送测试邮件',
+        description: '立即使用当前邮件配置发送一封测试邮件。',
+      },
+      telegramBotToken: {
+        label: '机器人令牌',
+        description: '请填入从 BotFather 获取的令牌。',
+        placeholder: '请输入机器人令牌',
+      },
+      telegramWebhookAction: {
+        label: '设置Webhook',
+        description: '设置机器人的 webhook，不设置将无法收到 Telegram 通知。',
+      },
+      telegramBotEnable: {
+        label: '启用Telegram绑定引导',
+        description: '开启后将在用户端显示 Telegram 绑定引导，帮助用户绑定 Telegram 账户以接收通知。',
+      },
+      telegramDiscussLink: {
+        label: '群组链接',
+        description: '填写后将在用户端显示或在需要的地方使用。',
+        placeholder: '请输入群组链接',
+      },
+      windowsVersion: {
+        label: 'Windows版本',
+        description: 'Windows 客户端当前版本号',
+        placeholder: '请输入 Windows 版本',
+      },
+      windowsDownloadUrl: {
+        label: 'Windows下载地址',
+        description: 'Windows 客户端下载链接',
+        placeholder: '请输入 Windows 下载地址',
+      },
+      macosVersion: {
+        label: 'macOS版本',
+        description: 'macOS 客户端当前版本号',
+        placeholder: '请输入 macOS 版本',
+      },
+      macosDownloadUrl: {
+        label: 'macOS下载地址',
+        description: 'macOS 客户端下载链接',
+        placeholder: '请输入 macOS 下载地址',
+      },
+      androidVersion: {
+        label: 'Android版本',
+        description: 'Android 客户端当前版本号',
+        placeholder: '请输入 Android 版本',
+      },
+      androidDownloadUrl: {
+        label: 'Android下载地址',
+        description: 'Android 客户端下载链接',
+        placeholder: '请输入 Android 下载地址',
+      },
+      subscribeTemplateSingbox: {
+        label: '订阅模板',
+        description: '',
+      },
+      tosUrl: {
+        label: '用户协议 URL',
+        description: '用于注册页或前台跳转到服务条款说明。',
+        placeholder: 'https://example.com/tos',
+      },
+      stopRegister: {
+        label: '停止新用户注册',
+        description: '开启后，前台将关闭新的用户注册入口。',
+      },
+      tryOutPlanId: {
+        label: '试用套餐 ID',
+        description: '设置试用功能绑定的套餐 ID，0 表示关闭试用套餐。',
+        placeholder: '请输入套餐 ID',
+      },
+      tryOutHour: {
+        label: '试用时长',
+        description: '单位为小时，用于控制新用户试用套餐的持续时间。',
+        placeholder: '请输入试用小时数',
+      },
+      currency: {
+        label: '货币代码',
+        description: '用于订单与套餐显示的默认货币代码，例如 CNY、USD。',
+        placeholder: 'CNY',
+      },
+      currencySymbol: {
+        label: '货币符号',
+        description: '用于金额展示前缀，例如 ￥、$。',
+        placeholder: '￥',
+      },
+    },
+    templateTabs: {
+      singbox: 'Sing-box',
+      clash: 'Clash',
+      clashmeta: 'Clash Meta',
+      stash: 'Stash',
+      surge: 'Surge',
+      surfboard: 'Surfboard',
+    },
+    selectOptions: {
+      captchaType: {
+        recaptcha: 'Google reCAPTCHA v2',
+        'recaptcha-v3': 'Google reCAPTCHA v3',
+        turnstile: 'Cloudflare Turnstile',
+      },
+      resetTrafficMethod: {
+        0: '每月1号',
+        1: '按月重置',
+        2: '不重置',
+        3: '每年1月1号',
+        4: '按年重置',
+      },
+      orderEventId: {
+        0: '不执行任何动作',
+        1: '重置用户流量',
+      },
+      deviceLimitMode: {
+        0: '严格模式',
+        1: '宽松模式',
+      },
+      emailEncryption: {
+        none: '无',
+        ssl: 'SSL/TLS',
+        tls: 'STARTTLS',
+      },
+    },
+    preview: {
+      invite: {
+        rate: '返佣比例',
+        cycle: '结算周期',
+      },
+      node: {
+        sync: '节点同步策略',
+        audit: '审计策略',
+      },
+      mail: {
+        transport: '邮件通道',
+        sender: '发件身份',
+      },
+      telegram: {
+        bot: '机器人状态',
+        notify: '通知投递',
+      },
+      app: {
+        download: '下载地址',
+        release: '发布渠道',
+      },
+      template: {
+        user: '用户模板',
+        node: '节点模板',
+      },
+    },
+    previewValues: {
+      pending: '后续接入',
+    },
+    messages: {
+      saveSuccess: '系统设置已保存',
+      saveFailed: '系统设置保存失败',
+      testMailSuccess: '邮件发送成功',
+      testMailFailed: '发送测试邮件失败',
+      telegramWebhookSuccess: 'Telegram Webhook 设置成功',
+      telegramWebhookFailed: 'Telegram Webhook 设置失败',
+    },
+    testMail: {
+      title: '发送测试邮件',
+      successDescription: '测试邮件已成功发送，请检查收件邮箱',
+      detailTitle: '发送详情',
+      configTitle: '配置信息',
+      detail: {
+        email: '收件地址',
+        subject: '邮件主题',
+        template: '模板名称',
+      },
+      config: {
+        driver: '驱动',
+        host: '服务器',
+        port: '端口',
+        encryption: '加密方式',
+        from: '发件人',
+      },
     },
   },
   tickets: {
@@ -241,18 +749,43 @@ export default {
     },
   },
   notices: {
-    title: '公告列表',
-    description: '公告页补齐了内容运营入口，让后台更接近原始 V2Board 的管理操作节奏。',
+    title: '公告管理',
+    description: '精简展示公告列表，内容仅在新增或编辑弹窗中维护。',
     actions: {
-      draft: '草稿箱',
-      publish: '发布公告',
+      create: '添加公告',
+      refresh: '刷新列表',
     },
     columns: {
-      title: '公告标题',
-      audience: '可见范围',
-      publishAt: '发布时间',
-      status: '状态',
+      id: 'ID',
+      show: '显示状态',
+      title: '标题',
+      actions: '操作',
+      createdAtLabel: '创建',
+      updatedAtLabel: '更新',
     },
+    sort: {
+      empty: '未排序',
+    },
+    empty: {
+      title: '没有匹配的公告',
+      description: '试试清空搜索词或切换显示状态筛选。',
+    },
+    messages: {
+      refreshed: '公告列表已刷新',
+      createPending: '新增公告弹窗下一步接入',
+      createSuccess: '公告已新增',
+      sortingEnabled: '已进入排序模式，后续可接拖拽或数字排序保存。',
+      sortingDisabled: '已退出排序模式',
+      editPending: '编辑公告「{title}」的弹窗下一步接入',
+      editSuccess: '公告已保存',
+      deletePending: '删除公告「{title}」的操作下一步接入',
+      deleteConfirmTitle: '删除公告',
+      saveFailed: '保存公告失败',
+      showIdMissing: '公告ID缺失，无法更新显示状态',
+      showUpdated: '公告显示状态已更新',
+      showUpdateFailed: '更新公告显示状态失败',
+    },
+    searchPlaceholder: '搜索公告标题或 ID',
   },
   nodes: {
     title: '节点管理',
