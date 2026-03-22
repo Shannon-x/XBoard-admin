@@ -214,3 +214,14 @@ export async function savePluginConfig(code, config) {
     config,
   })
 }
+
+export async function upgradePlugin(code) {
+  if (!code) {
+    throw new Error('缺少插件标识')
+  }
+
+  const apiUrl = buildSecureV2ApiUrl('plugin/upgrade')
+  return requestDashboardMutation(apiUrl, {
+    code,
+  })
+}

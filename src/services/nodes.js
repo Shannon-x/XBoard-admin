@@ -573,3 +573,71 @@ export async function saveManagedNode(payload = {}) {
 
   return result;
 }
+
+export async function sortManagedNodes(ids) {
+  return requestManagedNodeAction("server/manage/sort", {
+    ids: ids.map(function mapId(id) {
+      return Number(id);
+    }),
+  });
+}
+
+export async function saveManagedNodeGroup(data) {
+  const apiUrl = buildDashboardApiUrl("server/group/save");
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      ...getDashboardApiHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`权限组操作失败: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (result?.code !== undefined && Number(result.code) !== 0) {
+    throw new Error(result.message || "权限组操作失败");
+  }
+
+  return result;
+}
+
+export async function deleteManagedNodeGroup(id) {
+  return requestManagedNodeAction("server/group/drop", {
+    id: Number(id || 0),
+  });
+}
+
+export async function saveManagedNodeRoute(data) {
+  const apiUrl = buildDashboardApiUrl("server/route/save");
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      ...getDashboardApiHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`路由操作失败: ${response.status}`);
+  }
+
+  const result = await response.json();
+
+  if (result?.code !== undefined && Number(result.code) !== 0) {
+    throw new Error(result.message || "路由操作失败");
+  }
+
+  return result;
+}
+
+export async function deleteManagedNodeRoute(id) {
+  return requestManagedNodeAction("server/route/drop", {
+    id: Number(id || 0),
+  });
+}
