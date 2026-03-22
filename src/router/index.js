@@ -56,9 +56,12 @@ const ROUTE_META_KEYS = {
   },
 }
 
+const frontendSecurePath = import.meta.env.VITE_FRONTEND_SECURE_PATH || import.meta.env.VITE_DASHBOARD_SECURE_PATH || 'admin'
+const basePath = frontendSecurePath ? `/${frontendSecurePath.replace(/^\//, '')}` : ''
+
 const routes = [
   {
-    path: '/login',
+    path: `${basePath}/login`,
     name: 'login',
     component: LoginPage,
       meta: {
@@ -68,7 +71,7 @@ const routes = [
       },
     },
   {
-    path: '/',
+    path: `${basePath}/`,
     component: AdminLayout,
     children: [
       {
@@ -154,6 +157,12 @@ const routes = [
       },
     ],
   },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('../views/NotFoundPage.vue'),
+    meta: { public: true },
+  },
 ]
 
 const router = createRouter({
@@ -165,7 +174,7 @@ router.beforeEach(function authGuard(to) {
   const isAuthenticated = hasStoredAuthSession()
 
   if (to.meta.public && isAuthenticated) {
-    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/'
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : `${basePath}/`
     return redirect
   }
 
