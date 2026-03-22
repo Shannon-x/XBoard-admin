@@ -163,3 +163,25 @@ export async function saveManagedNotice(payload = {}) {
 
   await requestDashboardMutation(apiUrl, requestPayload)
 }
+
+export async function deleteManagedNotice(id) {
+  const noticeId = Number(id || 0)
+
+  if (!noticeId) {
+    throw new Error('缺少公告ID')
+  }
+
+  const apiUrl = buildSecureV2ApiUrl('notice/drop')
+  await requestDashboardMutation(apiUrl, {
+    id: noticeId,
+  })
+}
+
+export async function sortManagedNotices(ids) {
+  const apiUrl = buildSecureV2ApiUrl('notice/sort')
+  await requestDashboardMutation(apiUrl, {
+    ids: ids.map(function mapId(id) {
+      return Number(id)
+    }),
+  })
+}
