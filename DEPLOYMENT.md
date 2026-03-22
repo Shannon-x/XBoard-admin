@@ -49,6 +49,7 @@ cp .env.example .env
 
 | 变量 | 说明 | 默认行为 |
 |------|------|---------|
+| `VITE_FRONTEND_SECURE_PATH` | 管理面板的**前端路由访问路径**（隐藏后台登录口）。设置后，只有访问 `域名/{路径}` 才能进入后台，直接访问根域名显示 404 NotFound，从而防止被扫描。 | 留空时自动读取 `VITE_DASHBOARD_SECURE_PATH` |
 | `VITE_DASHBOARD_API_TOKEN` | 管理面板 API 调试 Token。设置后可**跳过登录页面**，直接以 `Bearer {token}` 身份调用后端 API。**⚠️ 这不是节点对接 token**，是 Xboard 后端管理员登录后返回的 `auth_data`，仅用于开发调试。**生产环境必须留空或删除此行** | 留空时需通过登录页面获取鉴权 |
 | `VITE_DASHBOARD_STATS_URL` | 自定义仪表盘统计 API 完整地址。适用于统计接口部署在独立服务上的场景 | 留空时自动拼接为 `{BASE_URL}/api/v3/{SECURE_PATH}/stat/getStats` |
 | `VITE_AUTH_LOGIN_URL` | 自定义登录接口完整地址。适用于登录 API 走不同域名或路径的场景 | 留空时自动拼接为 `{BASE_URL}/api/v2/passport/auth/login` |
@@ -99,6 +100,7 @@ Cloudflare Pages 提供全球 CDN、自动 HTTPS、DDoS 防护，且免费额度
 | `NODE_VERSION` | `20` | ✅ |
 | `VITE_API_BASE_URL` | `https://board.yoursite.com` | ✅ |
 | `VITE_DASHBOARD_SECURE_PATH` | `admin`（与后端一致） | ✅ |
+| `VITE_FRONTEND_SECURE_PATH` | `自定义的后台路径`（如 `/2f809b7b`） | ❌ |
 | `VITE_DASHBOARD_API_TOKEN` | **留空或不设置**（生产环境禁止填写） | ❌ |
 | `VITE_DASHBOARD_STATS_URL` | 留空（自动拼接） | ❌ |
 | `VITE_AUTH_LOGIN_URL` | 留空（自动拼接） | ❌ |
