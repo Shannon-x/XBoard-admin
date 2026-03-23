@@ -164,6 +164,46 @@ const resetTrafficOptions = [
   { label: '按年重置（从订阅日起算）', value: 4 },
 ]
 
+const basePrice = ref(0)
+
+const mainPeriods = [
+  { key: 'month_price', label: '月付', sub: '(每月)' },
+  { key: 'quarter_price', label: '季付', sub: '(3个月)' },
+  { key: 'half_year_price', label: '半年付', sub: '(6个月)' },
+  { key: 'year_price', label: '年付', sub: '(12个月)' },
+  { key: 'two_year_price', label: '两年付', sub: '(24个月)' },
+  { key: 'three_year_price', label: '三年付', sub: '(36个月)' },
+]
+
+const periodMultipliers = {
+  month_price: 1,
+  quarter_price: 2.85,
+  half_year_price: 5.4,
+  year_price: 10.2,
+  two_year_price: 0,
+  three_year_price: 0,
+}
+
+function fillPricesFromBase() {
+  if (!basePrice.value || basePrice.value <= 0) {
+    ElMessage.warning('请先输入基础价格')
+    return
+  }
+  mainPeriods.forEach(p => {
+    const m = periodMultipliers[p.key]
+    if (m > 0) {
+      editForm.value.prices[p.key] = Number((basePrice.value * m).toFixed(2))
+    }
+  })
+}
+
+function clearAllPrices() {
+  Object.keys(editForm.value.prices).forEach(k => {
+    editForm.value.prices[k] = null
+  })
+  basePrice.value = 0
+}
+
 async function handleSortSave(ids) {
   try {
     await sortManagedPlans(ids)
@@ -260,14 +300,15 @@ onMounted(function onMount() {
     <el-dialog
       v-model="editDialogVisible"
       :title="isEditing ? '编辑套餐' : '创建套餐'"
-      width="700px"
+      width="520px"
       destroy-on-close
     >
-      <el-form :model="editForm" label-width="120px">
-        <el-form-item label="名称" required>
+      <el-form :model="editForm" label-position="top" style="padding: 0 8px">
+        <el-form-item label="套餐名称" required>
           <el-input v-model="editForm.name" placeholder="输入套餐名称" />
         </el-form-item>
-        <el-form-item label="权限组">
+
+        <el-form-item label="服务器分组">
           <el-select v-model="editForm.groupId" clearable placeholder="选择权限组" style="width: 100%">
             <el-option
               v-for="group in groups"
@@ -277,15 +318,67 @@ onMounted(function onMount() {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="流量（GB）">
-          <el-input-number v-model="editForm.transferEnableGB" :min="0" :step="10" />
+
+        <el-form-item label="流量">
+          <el-input v-model.number="editForm.transferEnableGB" placeholder="0" type="number">
+            <template #suffix><span style="color:var(--el-text-color-secondary)">GB</span></template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="速率限制（Mbps）">
-          <el-input-number v-model="editForm.speedLimit" :min="0" />
+
+        <el-form-item label="速度限制">
+          <el-input v-model.number="editForm.speedLimit" placeholder="不限制" type="number">
+            <template #suffix><span style="color:var(--el-text-color-secondary)">Mbps</span></template>
+          </el-input>
         </el-form-item>
-        <el-form-item label="设备限制">
-          <el-input-number v-model="editForm.deviceLimit" :min="0" />
-        </el-form-item>
+
+        <!-- 价格设置 -->
+        <el-divider content-position="left">价格设置</el-divider>
+
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px">
+          <span style="font-size: 13px; color: var(--el-text-color-regular)">¥ 基础价格</span>
+          <el-input-number v-model="basePrice" :min="0" :precision="2" :step="10" size="small" style="width: 140px" />
+          <el-button size="small" type="info" plain @click="fillPricesFromBase">应用</el-button>
+          <el-button size="small" @click="clearAllPrices">清空</el-button>
+        </div>
+
+        <div class="plan-price-grid">
+          <div class="plan-price-card" v-for="item in mainPeriods" :key="item.key">
+            <div class="plan-price-card__label">{{ item.label }} <span>{{ item.sub }}</span></div>
+            <el-input v-model.number="editForm.prices[item.key]" placeholder="0.00" type="number">
+              <template #prefix>¥</template>
+            </el-input>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 12px">
+          <div class="plan-price-card plan-price-card--special" style="flex:1">
+            <div class="plan-price-card__label">流量包 <span>一次性流量包，无时间限制</span></div>
+            <el-input v-model.number="editForm.prices.onetime_price" placeholder="0" type="number">
+              <template #prefix>¥</template>
+            </el-input>
+          </div>
+          <div class="plan-price-card plan-price-card--special" style="flex:1">
+            <div class="plan-price-card__label">重置包 <span>重置流量包，可多次使用</span></div>
+            <el-input v-model.number="editForm.prices.reset_price" placeholder="0" type="number">
+              <template #prefix>¥</template>
+            </el-input>
+          </div>
+        </div>
+
+        <!-- 设备限制 / 容量限制 -->
+        <div style="display: flex; gap: 16px; margin-top: 20px">
+          <el-form-item label="设备限制" style="flex: 1">
+            <el-input v-model.number="editForm.deviceLimit" placeholder="不限制" type="number">
+              <template #suffix><span style="color:var(--el-text-color-secondary)">台</span></template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="容量限制" style="flex: 1">
+            <el-input v-model.number="editForm.capacityLimit" placeholder="不限制" type="number">
+              <template #suffix><span style="color:var(--el-text-color-secondary)">人</span></template>
+            </el-input>
+          </el-form-item>
+        </div>
+
         <el-form-item label="流量重置方式">
           <el-select v-model="editForm.resetTrafficMethod" clearable style="width: 100%">
             <el-option
@@ -295,22 +388,12 @@ onMounted(function onMount() {
               :value="opt.value"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item label="容量限制">
-          <el-input-number v-model="editForm.capacityLimit" :min="0" placeholder="如留空则不限制" />
-        </el-form-item>
-
-        <el-divider>价格设置（元）</el-divider>
-
-        <el-form-item
-          v-for="[key, label] in periodLabelEntries"
-          :key="key"
-          :label="label"
-        >
-          <el-input-number v-model="editForm.prices[key]" :min="0" :precision="2" :step="1" />
+          <div style="font-size: 12px; color: var(--el-text-color-secondary); margin-top: 4px">
+            流量重置方式将决定如何重置流量
+          </div>
         </el-form-item>
 
-        <el-divider>显示设置</el-divider>
+        <el-divider content-position="left">显示设置</el-divider>
 
         <el-form-item label="显示">
           <el-switch v-model="editForm.show" />
@@ -329,8 +412,8 @@ onMounted(function onMount() {
           </span>
         </el-form-item>
 
-        <el-form-item label="描述">
-          <el-input v-model="editForm.content" type="textarea" :rows="3" placeholder="套餐描述（可选）" />
+        <el-form-item label="套餐说明">
+          <el-input v-model="editForm.content" type="textarea" :rows="4" placeholder="套餐描述（支持 Markdown）" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -347,3 +430,34 @@ onMounted(function onMount() {
     />
   </section>
 </template>
+
+<style scoped>
+.plan-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.plan-price-card {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--el-fill-color-lighter);
+}
+.plan-price-card--special {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--el-fill-color-lighter);
+}
+.plan-price-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  margin-bottom: 6px;
+}
+.plan-price-card__label span {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+}
+</style>

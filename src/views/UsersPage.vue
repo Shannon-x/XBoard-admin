@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Download, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, Download, Plus, Filter, Message, CirclePlus, Remove } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -12,6 +12,7 @@ import {
   resetManagedUserSecret,
   destroyManagedUser,
   dumpUsersCSV,
+  sendMailToUsers,
   createEmptyManagedUsersPagination,
 } from '../services/users'
 
@@ -22,6 +23,64 @@ const pagination = ref(createEmptyManagedUsersPagination())
 const loading = ref(false)
 const errorMsg = ref('')
 const searchKeyword = ref('')
+const showFilters = ref(false)
+const filterConditions = ref([])
+
+const sendMailDialogVisible = ref(false)
+const sendMailForm = ref({ subject: '', content: '' })
+const sendMailSending = ref(false)
+const sendMailScope = ref('all') // 'all' or 'filter'
+
+const filterFieldOptions = [
+  { id: 'email', label: '邮箱', type: 'text', operators: ['模糊', '精确'] },
+  { id: 'id', label: '用户ID', type: 'number', operators: ['等于', '大于', '小于'] },
+  { id: 'plan_id', label: '订阅', type: 'number', operators: ['等于'] },
+  { id: 'transfer_enable', label: '流量', type: 'number', operators: ['大于', '小于', '等于'] },
+  { id: 'd', label: '已用流量', type: 'number', operators: ['大于', '小于', '等于'] },
+  { id: 'online_count', label: '在线设备', type: 'number', operators: ['大于', '小于', '等于'] },
+  { id: 'expired_at', label: '到期时间', type: 'date', operators: ['早于', '晚于'] },
+  { id: 'uuid', label: 'UUID', type: 'text', operators: ['精确'] },
+  { id: 'token', label: 'Token', type: 'text', operators: ['精确'] },
+  { id: 'banned', label: '账号状态', type: 'select', operators: ['等于'], selectOptions: [{ label: '正常', value: '0' }, { label: '已封禁', value: '1' }] },
+  { id: 'remarks', label: '备注', type: 'text', operators: ['模糊'] },
+  { id: 'invite_user_email', label: '邀请人邮箱', type: 'text', operators: ['模糊', '精确'] },
+  { id: 'invite_user_id', label: '邀请人ID', type: 'number', operators: ['等于'] },
+  { id: 'is_admin', label: '管理员', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+  { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+]
+
+function getFieldDef(fieldId) {
+  return filterFieldOptions.find(f => f.id === fieldId)
+}
+
+function addFilterCondition() {
+  filterConditions.value.push({ field: '', operator: '', value: '' })
+}
+
+function removeFilterCondition(index) {
+  filterConditions.value.splice(index, 1)
+}
+
+function buildFilterArray() {
+  const filter = []
+  if (searchKeyword.value.trim()) {
+    filter.push({ id: 'email', value: searchKeyword.value.trim() })
+  }
+  filterConditions.value.forEach(cond => {
+    if (!cond.field || cond.value === '' || cond.value === null || cond.value === undefined) return
+    const def = getFieldDef(cond.field)
+    if (!def) return
+    let val = cond.value
+    if (cond.operator === '大于') val = `gt:${val}`
+    else if (cond.operator === '小于') val = `lt:${val}`
+    else if (cond.operator === '等于' || cond.operator === '精确') val = `eq:${val}`
+    else if (cond.operator === '早于') val = `lt:${val}`
+    else if (cond.operator === '晚于') val = `gt:${val}`
+    // '模糊' uses raw value (backend does LIKE)
+    filter.push({ id: cond.field, value: String(val) })
+  })
+  return filter
+}
 
 const editDialogVisible = ref(false)
 const editForm = ref({})
@@ -42,10 +101,7 @@ async function loadUsers() {
   loading.value = true
   errorMsg.value = ''
   try {
-    const filter = []
-    if (searchKeyword.value.trim()) {
-      filter.push({ id: 'email', value: searchKeyword.value.trim() })
-    }
+    const filter = buildFilterArray()
     const result = await fetchManagedUsers({
       page: pagination.value.page,
       pageSize: pagination.value.pageSize,
@@ -212,6 +268,40 @@ async function submitGenerate() {
   }
 }
 
+function openSendMailDialog(scope) {
+  sendMailScope.value = scope
+  sendMailForm.value = { subject: '', content: '' }
+  sendMailDialogVisible.value = true
+}
+
+async function submitSendMail() {
+  if (!sendMailForm.value.subject.trim()) {
+    ElMessage.warning('请输入邮件主题')
+    return
+  }
+  if (!sendMailForm.value.content.trim()) {
+    ElMessage.warning('请输入邮件内容')
+    return
+  }
+  sendMailSending.value = true
+  try {
+    const payload = {
+      subject: sendMailForm.value.subject,
+      content: sendMailForm.value.content,
+    }
+    if (sendMailScope.value === 'filter') {
+      payload.filter = buildFilterArray()
+    }
+    await sendMailToUsers(payload)
+    ElMessage.success('邮件发送任务已提交')
+    sendMailDialogVisible.value = false
+  } catch (err) {
+    ElMessage.error(err.message || '发送失败')
+  } finally {
+    sendMailSending.value = false
+  }
+}
+
 onMounted(function onMount() {
   loadUsers()
 })
@@ -227,13 +317,27 @@ onMounted(function onMount() {
             :prefix-icon="Search"
             clearable
             placeholder="搜索邮箱..."
-            style="width: 240px"
+            style="width: 200px"
             @keyup.enter="handleSearch"
             @clear="handleSearch"
           />
+          <el-button :icon="Filter" class="ghost-btn small" plain type="info" @click="showFilters = !showFilters">
+            筛选
+          </el-button>
           <el-button :icon="Search" class="ghost-btn small" plain type="info" @click="handleSearch">
             搜索
           </el-button>
+          <el-dropdown trigger="click">
+            <el-button :icon="Message" class="ghost-btn small" plain type="info">
+              发送邮件
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="openSendMailDialog('all')">发送给全部用户</el-dropdown-item>
+                <el-dropdown-item @click="openSendMailDialog('filter')">发送给筛选用户</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button :icon="Download" class="ghost-btn small" plain type="info" @click="handleExportCSV">
             导出 CSV
           </el-button>
@@ -242,6 +346,39 @@ onMounted(function onMount() {
           </el-button>
         </el-space>
       </template>
+
+      <!-- 高级筛选条件 -->
+      <div v-if="showFilters" class="user-filter-panel">
+        <div class="user-filter-panel__header">
+          <span>筛选条件</span>
+          <el-button :icon="CirclePlus" size="small" text type="primary" @click="addFilterCondition">添加条件</el-button>
+        </div>
+        <div v-for="(cond, idx) in filterConditions" :key="idx" class="user-filter-row">
+          <span class="user-filter-row__label">条件 {{ idx + 1 }}</span>
+          <el-select v-model="cond.field" placeholder="选择字段" style="width: 140px" @change="cond.operator = ''; cond.value = ''">
+            <el-option v-for="f in filterFieldOptions" :key="f.id" :label="f.label" :value="f.id" />
+          </el-select>
+          <el-select v-model="cond.operator" placeholder="条件" style="width: 100px" :disabled="!cond.field">
+            <el-option v-for="op in (getFieldDef(cond.field)?.operators || [])" :key="op" :label="op" :value="op" />
+          </el-select>
+          <template v-if="getFieldDef(cond.field)?.type === 'select'">
+            <el-select v-model="cond.value" placeholder="选择" style="width: 140px">
+              <el-option v-for="opt in (getFieldDef(cond.field)?.selectOptions || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+          </template>
+          <template v-else-if="getFieldDef(cond.field)?.type === 'date'">
+            <el-date-picker v-model="cond.value" type="datetime" placeholder="选择日期" value-format="X" style="width: 200px" />
+          </template>
+          <template v-else>
+            <el-input v-model="cond.value" placeholder="输入值" style="width: 180px" :type="getFieldDef(cond.field)?.type === 'number' ? 'number' : 'text'" />
+          </template>
+          <el-button :icon="Remove" size="small" text type="danger" @click="removeFilterCondition(idx)" />
+        </div>
+        <div v-if="filterConditions.length > 0" style="text-align: right; margin-top: 8px">
+          <el-button size="small" type="primary" @click="handleSearch">应用筛选</el-button>
+          <el-button size="small" @click="filterConditions = []; handleSearch()">清空</el-button>
+        </div>
+      </div>
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
@@ -352,5 +489,53 @@ onMounted(function onMount() {
         <el-button :loading="generateSaving" type="primary" @click="submitGenerate">生成</el-button>
       </template>
     </el-dialog>
+
+    <!-- 发送邮件对话框 -->
+    <el-dialog v-model="sendMailDialogVisible" :title="sendMailScope === 'all' ? '发送邮件给全部用户' : '发送邮件给筛选用户'" width="600px" destroy-on-close>
+      <el-alert v-if="sendMailScope === 'filter' && filterConditions.length === 0" type="warning" title="未设置筛选条件，将发送给所有用户" :closable="false" show-icon style="margin-bottom: 16px" />
+      <el-form :model="sendMailForm" label-position="top">
+        <el-form-item label="邮件主题" required>
+          <el-input v-model="sendMailForm.subject" placeholder="输入邮件主题" />
+        </el-form-item>
+        <el-form-item label="邮件内容" required>
+          <el-input v-model="sendMailForm.content" type="textarea" :rows="8" placeholder="支持 HTML 格式" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="sendMailDialogVisible = false">取消</el-button>
+        <el-button :loading="sendMailSending" type="primary" @click="submitSendMail">发送</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
+
+<style scoped>
+.user-filter-panel {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  background: var(--el-fill-color-lighter);
+}
+.user-filter-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.user-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.user-filter-row__label {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  min-width: 50px;
+}
+</style>

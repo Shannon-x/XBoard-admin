@@ -14,6 +14,7 @@ import {
   createEmptyManagedOrdersPagination,
   ORDER_STATUS_MAP,
 } from '../services/orders'
+import { fetchManagedPlans } from '../services/plans'
 
 const { t } = useI18n()
 
@@ -24,6 +25,7 @@ const errorMsg = ref('')
 const searchKeyword = ref('')
 const statusFilter = ref('')
 const isCommission = ref(false)
+const plans = ref([])
 
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -169,6 +171,7 @@ async function submitAssign() {
 
 onMounted(function onMount() {
   loadOrders()
+  fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
 })
 </script>
 
@@ -281,8 +284,15 @@ onMounted(function onMount() {
         <el-form-item label="用户邮箱" required>
           <el-input v-model="assignForm.email" placeholder="输入用户邮箱" />
         </el-form-item>
-        <el-form-item label="套餐 ID" required>
-          <el-input-number v-model="assignForm.planId" :min="1" />
+        <el-form-item label="套餐" required>
+          <el-select v-model="assignForm.planId" placeholder="选择套餐" style="width: 100%">
+            <el-option
+              v-for="plan in plans"
+              :key="plan.id"
+              :label="plan.name"
+              :value="plan.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="周期" required>
           <el-select v-model="assignForm.period" style="width: 100%">
