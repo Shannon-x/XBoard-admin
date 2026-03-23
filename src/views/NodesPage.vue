@@ -16,6 +16,8 @@ import {
 
 import { useAdminStore } from "../stores/admin";
 import NodeConfigDialog from "../components/nodes/NodeConfigDialog.vue";
+import SortDialog from "../components/common/SortDialog.vue";
+import { sortManagedNodes } from "../services/nodes";
 
 const adminStore = useAdminStore();
 const route = useRoute();
@@ -99,6 +101,7 @@ const nodeDialogVisible = ref(false);
 const nodeDialogMode = ref("create");
 const nodeDialogProtocol = ref("shadowsocks");
 const activeNode = ref(null);
+const sortDialogVisible = ref(false);
 
 const filters = reactive({
     keyword: adminStore.managedNodesFilters?.word || "",
@@ -1357,10 +1360,16 @@ onUnmounted(function clearDebounceOnUnmount() {
 }
 
 .node-toolbar {
-    display: grid;
-    grid-template-columns: minmax(260px, 2.2fr) repeat(3, minmax(140px, 1fr));
+    display: flex;
     gap: 12px;
     margin-bottom: 14px;
+}
+.node-toolbar > * {
+    flex: 1;
+}
+.node-toolbar > .toolbar__btn-sort,
+.node-toolbar > .toolbar__btn-add {
+    flex: none;
 }
 
 .node-online {

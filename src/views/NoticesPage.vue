@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n'
 
 import NoticeEditorDialog from '../components/notices/NoticeEditorDialog.vue'
 import SectionCard from '../components/common/SectionCard.vue'
+import SortDialog from '../components/common/SortDialog.vue'
 import { useAdminStore } from '../stores/admin'
 
 const adminStore = useAdminStore()
@@ -22,6 +23,7 @@ const editorVisible = ref(false)
 const editorMode = ref('create')
 const activeNotice = ref(null)
 const editorSubmitting = ref(false)
+const sortDialogVisible = ref(false)
 const filters = reactive({
   keyword: '',
 })
@@ -128,6 +130,17 @@ async function handleDelete(notice) {
   }
 }
 
+async function handleSortSave(ids) {
+  try {
+    await adminStore.sortManagedNotices(ids)
+    ElMessage.success('排序已保存')
+    sortDialogVisible.value = false
+    await loadNotices()
+  } catch (err) {
+    ElMessage.error(err.message || '排序保存失败')
+  }
+}
+
 onMounted(function loadNoticesOnMount() {
   loadNotices().catch(function ignoreLoadError() {
     return undefined
@@ -153,6 +166,8 @@ onMounted(function loadNoticesOnMount() {
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
+
+          <el-button @click="sortDialogVisible = true" :disabled="adminStore.managedNotices.length < 2">排序</el-button>
 
           <el-button class="ghost-btn" :loading="refreshing" @click="loadNotices(true)">
             <el-icon><Refresh /></el-icon>
@@ -242,6 +257,13 @@ onMounted(function loadNoticesOnMount() {
       :notice="activeNotice"
       :submitting="editorSubmitting"
       @submit="handleEditorSubmit"
+    />
+
+    <SortDialog
+      v-model:visible="sortDialogVisible"
+      :items="adminStore.managedNotices.map(notice => ({ id: notice.id, name: notice.title }))"
+      title="排序公告"
+      @save="handleSortSave"
     />
   </section>
 </template>
