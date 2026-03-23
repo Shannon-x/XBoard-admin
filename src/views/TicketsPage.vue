@@ -29,8 +29,9 @@ const replySending = ref(false)
 
 const statusOptions = [
   { label: '全部', value: '' },
-  { label: '待回复', value: '0' },
-  { label: '已关闭', value: '1' },
+  { label: '待回复', value: 'pending' },
+  { label: '已回复', value: 'replied' },
+  { label: '已关闭', value: 'closed' },
 ]
 
 async function loadTickets() {
@@ -41,8 +42,14 @@ async function loadTickets() {
       page: pagination.value.page,
       pageSize: pagination.value.pageSize,
     }
-    if (statusFilter.value !== '') {
-      options.status = statusFilter.value
+    if (statusFilter.value === 'pending') {
+      options.status = 0
+      options.replyStatus = [0]
+    } else if (statusFilter.value === 'replied') {
+      options.status = 0
+      options.replyStatus = [1]
+    } else if (statusFilter.value === 'closed') {
+      options.status = 1
     }
     if (emailSearch.value.trim()) {
       options.email = emailSearch.value.trim()
