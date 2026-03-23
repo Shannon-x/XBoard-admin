@@ -2,14 +2,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { hasStoredAuthSession } from '../services/auth'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import CouponsPage from '../views/CouponsPage.vue'
 import DashboardPage from '../views/DashboardPage.vue'
+import GiftCardsPage from '../views/GiftCardsPage.vue'
+import KnowledgePage from '../views/KnowledgePage.vue'
 import LoginPage from '../views/LoginPage.vue'
 import NodesPage from '../views/NodesPage.vue'
 import NoticesPage from '../views/NoticesPage.vue'
 import OrdersPage from '../views/OrdersPage.vue'
+import PaymentPage from '../views/PaymentPage.vue'
 import PlansPage from '../views/PlansPage.vue'
 import PluginsPage from '../views/PluginsPage.vue'
 import SettingsPage from '../views/SettingsPage.vue'
+import SystemLogsPage from '../views/SystemLogsPage.vue'
 import TicketsPage from '../views/TicketsPage.vue'
 import UsersPage from '../views/UsersPage.vue'
 
@@ -53,6 +58,26 @@ const ROUTE_META_KEYS = {
   settings: {
     title: 'routes.settings.title',
     eyebrow: 'routes.settings.eyebrow',
+  },
+  coupons: {
+    title: 'routes.coupons.title',
+    eyebrow: 'routes.coupons.eyebrow',
+  },
+  giftcards: {
+    title: 'routes.giftcards.title',
+    eyebrow: 'routes.giftcards.eyebrow',
+  },
+  knowledge: {
+    title: 'routes.knowledge.title',
+    eyebrow: 'routes.knowledge.eyebrow',
+  },
+  payment: {
+    title: 'routes.payment.title',
+    eyebrow: 'routes.payment.eyebrow',
+  },
+  logs: {
+    title: 'routes.logs.title',
+    eyebrow: 'routes.logs.eyebrow',
   },
 }
 
@@ -153,6 +178,51 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.settings.title,
           eyebrowKey: ROUTE_META_KEYS.settings.eyebrow,
+        },
+      },
+      {
+        path: 'coupons',
+        name: 'coupons',
+        component: CouponsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.coupons.title,
+          eyebrowKey: ROUTE_META_KEYS.coupons.eyebrow,
+        },
+      },
+      {
+        path: 'giftcards',
+        name: 'giftcards',
+        component: GiftCardsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.giftcards.title,
+          eyebrowKey: ROUTE_META_KEYS.giftcards.eyebrow,
+        },
+      },
+      {
+        path: 'knowledge',
+        name: 'knowledge',
+        component: KnowledgePage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.knowledge.title,
+          eyebrowKey: ROUTE_META_KEYS.knowledge.eyebrow,
+        },
+      },
+      {
+        path: 'payment',
+        name: 'payment',
+        component: PaymentPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.payment.title,
+          eyebrowKey: ROUTE_META_KEYS.payment.eyebrow,
+        },
+      },
+      {
+        path: 'logs',
+        name: 'logs',
+        component: SystemLogsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.logs.title,
+          eyebrowKey: ROUTE_META_KEYS.logs.eyebrow,
         },
       },
     ],

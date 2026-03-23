@@ -61,6 +61,26 @@ export default {
       title: '系统设置',
       eyebrow: '系统管理',
     },
+    coupons: {
+      title: '优惠券管理',
+      eyebrow: '营销工具',
+    },
+    giftcards: {
+      title: '礼品卡管理',
+      eyebrow: '营销工具',
+    },
+    knowledge: {
+      title: '知识库管理',
+      eyebrow: '内容运营',
+    },
+    payment: {
+      title: '支付管理',
+      eyebrow: '系统管理',
+    },
+    logs: {
+      title: '系统日志',
+      eyebrow: '系统管理',
+    },
   },
   nav: {
     overview: '总览',
@@ -75,6 +95,11 @@ export default {
     orders: '订单管理',
     users: '用户管理',
     tickets: '工单管理',
+    coupons: '优惠券管理',
+    giftcards: '礼品卡管理',
+    knowledge: '知识库',
+    payment: '支付管理',
+    logs: '系统日志',
   },
   auth: {
     login: '登录',

@@ -1,5 +1,6 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 const props = defineProps({
   loading: {
     type: Boolean,
@@ -16,6 +17,11 @@ const props = defineProps({
 })
 
 const { t } = useI18n()
+const router = useRouter()
+
+function goToLogs() {
+  router.push({ name: 'logs' })
+}
 
 function statusTagType(tone) {
   const typeMap = {
@@ -72,6 +78,10 @@ function statusTagType(tone) {
         <span>{{ t('system.lastSchedule') }}</span>
         <strong>{{ runtimeStatus.scheduleLastRuntime }}</strong>
       </div>
+
+      <el-button type="primary" link size="small" @click="goToLogs">
+        查看全部 →
+      </el-button>
     </div>
   </el-card>
 </template>
