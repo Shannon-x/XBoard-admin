@@ -42,7 +42,9 @@ function normalizePlan(plan) {
     if (priceValue !== null && priceValue !== undefined) {
       const amount = Number(priceValue) / 100
       prices[periodKey] = amount
-      priceTexts.push(`${PERIOD_LABELS[periodKey]}: ¥${amount.toFixed(2)}`)
+      if (amount > 0) {
+        priceTexts.push(`${PERIOD_LABELS[periodKey]}: ¥${amount.toFixed(2)}`)
+      }
     }
   })
 
