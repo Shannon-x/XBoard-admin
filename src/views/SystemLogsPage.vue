@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi } from '../services/api'
 
@@ -8,17 +8,37 @@ const loading = ref(false)
 const error = ref('')
 const activeLevel = ref('all')
 
+// Pagination
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
+
 async function loadLogs() {
   loading.value = true
   error.value = ''
   try {
-    const apiUrl = buildDashboardApiUrl('system/getSystemLog')
+    const params = new URLSearchParams({
+      current: currentPage.value,
+      pageSize: pageSize.value,
+    })
+    if (activeLevel.value !== 'all') {
+      params.set('level', activeLevel.value.toUpperCase())
+    }
+    const apiUrl = buildDashboardApiUrl('system/getSystemLog') + '&' + params.toString()
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
+
     if (Array.isArray(raw)) {
       logs.value = raw.map(normalizeLog)
+      // If the API returns total count
+      total.value = payload?.total || raw.length
+    } else if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
+      // Paginated response: { data: [...], total: N }
+      logs.value = raw.data.map(normalizeLog)
+      total.value = raw.total || raw.data.length
     } else {
       logs.value = []
+      total.value = 0
     }
   } catch (err) {
     error.value = err.message
@@ -36,7 +56,6 @@ function normalizeLog(item) {
   const host = item.host || ''
   const createdAt = item.created_at || 0
 
-  // Parse request data
   let requestData = null
   if (item.data) {
     if (typeof item.data === 'string') {
@@ -46,7 +65,6 @@ function normalizeLog(item) {
     }
   }
 
-  // Parse context
   let context = null
   if (item.context && item.context !== '[]' && item.context !== '{}') {
     if (typeof item.context === 'string') {
@@ -56,18 +74,7 @@ function normalizeLog(item) {
     }
   }
 
-  return {
-    id: item.id,
-    level,
-    title,
-    uri,
-    method,
-    ip,
-    host,
-    requestData,
-    context,
-    createdAt,
-  }
+  return { id: item.id, level, title, uri, method, ip, host, requestData, context, createdAt }
 }
 
 function formatTime(ts) {
@@ -75,19 +82,6 @@ function formatTime(ts) {
   const d = new Date(ts * 1000)
   return d.toLocaleString('zh-CN')
 }
-
-const displayLogs = computed(() => {
-  if (activeLevel.value === 'all') return logs.value
-  return logs.value.filter(log => log.level === activeLevel.value)
-})
-
-const levelCounts = computed(() => {
-  const counts = { all: logs.value.length, emergency: 0, alert: 0, critical: 0, error: 0, warning: 0, notice: 0, info: 0, debug: 0 }
-  logs.value.forEach(log => {
-    if (counts[log.level] !== undefined) counts[log.level]++
-  })
-  return counts
-})
 
 function levelTagType(level) {
   const map = {
@@ -107,12 +101,28 @@ function methodTagType(method) {
   return 'info'
 }
 
+function handlePageChange(page) {
+  currentPage.value = page
+  loadLogs()
+}
+
+function handleSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
+  loadLogs()
+}
+
+watch(activeLevel, () => {
+  currentPage.value = 1
+  loadLogs()
+})
+
 onMounted(loadLogs)
 </script>
 
 <template>
   <section class="page-stack">
-    <SectionCard title="系统日志" description="查看管理员操作日志，按级别筛选。">
+    <SectionCard title="系统日志" description="查看管理员操作日志，按级别筛选，支持翻页。">
       <template #actions>
         <el-button type="info" plain size="small" @click="loadLogs">刷新</el-button>
       </template>
@@ -121,14 +131,14 @@ onMounted(loadLogs)
 
       <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
         <el-radio-group v-model="activeLevel" size="small">
-          <el-radio-button value="all">全部 ({{ levelCounts.all }})</el-radio-button>
+          <el-radio-button value="all">全部</el-radio-button>
           <el-radio-button v-for="level in ['error', 'warning', 'info', 'debug']" :key="level" :value="level">
-            {{ level.toUpperCase() }} ({{ levelCounts[level] || 0 }})
+            {{ level.toUpperCase() }}
           </el-radio-button>
         </el-radio-group>
       </div>
 
-      <el-table :data="displayLogs" v-loading="loading" class="dashboard-table" max-height="640">
+      <el-table :data="logs" v-loading="loading" class="dashboard-table" max-height="640">
         <el-table-column label="ID" prop="id" width="70" sortable />
         <el-table-column label="级别" width="80">
           <template #default="{ row }">
@@ -183,6 +193,18 @@ onMounted(loadLogs)
           </template>
         </el-table-column>
       </el-table>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </SectionCard>
   </section>
 </template>

@@ -49,7 +49,22 @@ export async function fetchPaymentForm(payment, id = null) {
   }
 
   const payload = await response.json()
-  return payload?.data ?? []
+  console.log('[PaymentForm] Raw API response:', JSON.stringify(payload, null, 2))
+
+  // Handle various response shapes
+  let fields = payload?.data ?? payload
+
+  // If fields is a plain object (key-value config), convert to array format
+  if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+    fields = Object.entries(fields).map(([key, val]) => {
+      if (val && typeof val === 'object' && (val.label || val.field)) {
+        return { field: val.field || key, label: val.label || key, tips: val.tips || val.description || '', placeholder: val.placeholder || '' }
+      }
+      return { field: key, label: key, tips: '', placeholder: String(val ?? '') }
+    })
+  }
+
+  return Array.isArray(fields) ? fields : []
 }
 
 export async function savePayment(formData) {

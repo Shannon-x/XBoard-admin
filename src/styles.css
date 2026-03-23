@@ -2527,13 +2527,15 @@ button {
 }
 
 .settings-field--switch {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    align-items: flex-start;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    align-items: center;
 }
 
 .settings-field--switch .settings-field__control {
     max-width: none;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .settings-field--compact {
