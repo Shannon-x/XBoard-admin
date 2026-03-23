@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Download, Plus, Filter, Message, CirclePlus, Remove } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -18,6 +19,7 @@ import {
 import { fetchManagedPlans } from '../services/plans'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const users = ref([])
 const pagination = ref(createEmptyManagedUsersPagination())
@@ -234,6 +236,61 @@ async function handleDelete(user) {
   }
 }
 
+function handleAssignOrder(user) {
+  router.push({ path: 'orders', query: { assign_email: user.email } })
+}
+
+function copySubscribeUrl(user) {
+  if (!user.subscribeUrl) {
+    ElMessage.warning('该用户没有订阅URL')
+    return
+  }
+  navigator.clipboard.writeText(user.subscribeUrl).then(() => {
+    ElMessage.success('订阅URL已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+function copyLoginUrl(user) {
+  const origin = window.location.origin
+  const loginUrl = `${origin}/#/login?token=${user.token}`
+  if (!user.token) {
+    ElMessage.warning('该用户没有token')
+    return
+  }
+  navigator.clipboard.writeText(loginUrl).then(() => {
+    ElMessage.success('登录URL已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+function navigateToUserOrders(user) {
+  router.push({ path: 'orders', query: { user_email: user.email } })
+}
+
+function navigateToUserTickets(user) {
+  router.push({ path: 'tickets', query: { user_email: user.email } })
+}
+
+async function handleResetTraffic(user) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要重置用户 ${user.email} 的已用流量吗？上行和下行将清零。`,
+      '重置流量',
+      { type: 'warning' },
+    )
+    await updateManagedUser({ id: user.id, u: 0, d: 0 })
+    ElMessage.success('流量已重置')
+    loadUsers()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.message || '重置失败')
+    }
+  }
+}
+
 async function handleExportCSV() {
   try {
     await dumpUsersCSV({ scope: 'all' })
@@ -426,8 +483,12 @@ onMounted(function onMount() {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item @click="openEditDialog(row)">编辑</el-dropdown-item>
-                  <el-dropdown-item @click="handleBan(row)">封禁</el-dropdown-item>
-                  <el-dropdown-item @click="handleResetSecret(row)">重置密钥</el-dropdown-item>
+                  <el-dropdown-item @click="handleAssignOrder(row)">分配订单</el-dropdown-item>
+                  <el-dropdown-item divided @click="copySubscribeUrl(row)">复制订阅URL</el-dropdown-item>
+                  <el-dropdown-item @click="copyLoginUrl(row)">生成登录/订阅URL</el-dropdown-item>
+                  <el-dropdown-item divided @click="navigateToUserOrders(row)">TA的订单</el-dropdown-item>
+                  <el-dropdown-item @click="navigateToUserTickets(row)">TA的工单</el-dropdown-item>
+                  <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
