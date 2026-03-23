@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CopyDocument } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchPayments,
@@ -34,13 +34,7 @@ const form = reactive({
   handlingFeeFixed: null,
 })
 
-function notifyUrl(row) {
-  const base = row.notifyDomain || import.meta.env.VITE_API_BASE_URL || ''
-  if (!base) return '（未配置通知域名）'
-  return `${base.replace(/\/$/, '')}/api/v1/guest/payment/notify/${row.payment}/${row.id}`
-}
-
-function filteredPayments() {
+function getFilteredPayments() {
   if (!searchKeyword.value) return payments.value
   const kw = searchKeyword.value.toLowerCase()
   return payments.value.filter(p =>
@@ -66,7 +60,7 @@ async function loadPayments() {
   }
 }
 
-async function openCreateDialog() {
+function openCreateDialog() {
   dialogMode.value = 'create'
   Object.assign(form, {
     id: null, name: '', icon: '', payment: '', config: {},
@@ -83,22 +77,22 @@ async function openEditDialog(row) {
     name: row.name,
     icon: row.icon || '',
     payment: row.payment,
-    config: { ...row.config },
+    config: row.config ? JSON.parse(JSON.stringify(row.config)) : {},
     enable: row.enable,
     notifyDomain: row.notifyDomain || '',
     handlingFeePercent: row.handlingFeePercent,
     handlingFeeFixed: row.handlingFeeFixed,
   })
   formLoading.value = true
+  dialogVisible.value = true
   try {
     formFields.value = await fetchPaymentForm(row.payment, row.id)
   } catch (err) {
-    ElMessage.error(err.message)
+    ElMessage.warning('加载支付配置表单失败: ' + err.message)
     formFields.value = []
   } finally {
     formLoading.value = false
   }
-  dialogVisible.value = true
 }
 
 async function handlePaymentChange(payment) {
@@ -108,6 +102,7 @@ async function handlePaymentChange(payment) {
   try {
     formFields.value = await fetchPaymentForm(payment)
   } catch (err) {
+    ElMessage.warning('加载支付配置表单失败')
     formFields.value = []
   } finally {
     formLoading.value = false
@@ -153,13 +148,15 @@ async function handleToggleEnable(row) {
     await loadPayments()
   } catch (err) {
     ElMessage.error(err.message)
-    // revert
   }
 }
 
-function truncate(str, len = 40) {
-  if (!str) return '--'
-  return str.length > len ? str.slice(0, len) + '…' : str
+function copyNotifyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    ElMessage.success('通知地址已复制')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
 }
 
 onMounted(loadPayments)
@@ -169,36 +166,27 @@ onMounted(loadPayments)
   <section class="page-stack">
     <SectionCard title="支付配置" description="在这里可以配置支付方式，包括支付宝、微信等。">
       <template #actions>
-        <el-button type="primary" @click="openCreateDialog">
-          <el-icon><Plus /></el-icon>
-          添加支付方式
-        </el-button>
-        <el-input
-          v-model="searchKeyword"
-          placeholder="搜索支付方式..."
-          style="width: 180px; margin-left: 8px;"
-          clearable
-          size="default"
-        />
+        <el-space>
+          <el-button type="primary" @click="openCreateDialog">
+            <el-icon><Plus /></el-icon>
+            添加支付方式
+          </el-button>
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索支付方式..."
+            style="width: 180px;"
+            clearable
+          />
+        </el-space>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
-      <el-table
-        :data="filteredPayments()"
-        v-loading="loading"
-        class="dashboard-table"
-        @selection-change="() => {}"
-      >
-        <el-table-column type="selection" width="40" />
-        <el-table-column label="ID" prop="id" sortable width="80" />
+      <el-table :data="getFilteredPayments()" v-loading="loading" class="dashboard-table">
+        <el-table-column label="ID" prop="id" sortable width="70" />
         <el-table-column label="启用" width="70">
           <template #default="{ row }">
-            <el-switch
-              :model-value="row.enable"
-              size="small"
-              @change="handleToggleEnable(row)"
-            />
+            <el-switch :model-value="row.enable" size="small" @change="handleToggleEnable(row)" />
           </template>
         </el-table-column>
         <el-table-column label="显示名称" min-width="120">
@@ -214,13 +202,17 @@ onMounted(loadPayments)
             <el-tag size="small">{{ row.payment }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="通知地址" min-width="200">
+        <el-table-column label="通知地址" min-width="240">
           <template #default="{ row }">
-            <el-tooltip :content="notifyUrl(row)" placement="top" :show-after="300">
-              <span style="font-size:12px;color:var(--el-color-primary);cursor:default;">
-                {{ truncate(notifyUrl(row), 36) }}
+            <div v-if="row.notifyUrl" style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:12px;color:var(--el-text-color-regular);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                {{ row.notifyUrl }}
               </span>
-            </el-tooltip>
+              <el-button link size="small" type="primary" @click="copyNotifyUrl(row.notifyUrl)" style="flex-shrink:0;">
+                <el-icon :size="14"><CopyDocument /></el-icon>
+              </el-button>
+            </div>
+            <span v-else style="color:var(--el-text-color-placeholder);">--</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
@@ -236,7 +228,7 @@ onMounted(loadPayments)
       </el-table>
 
       <div style="margin-top: 12px; font-size: 12px; color: var(--el-text-color-secondary);">
-        已选择 0 项，共 {{ filteredPayments().length }} 项
+        共 {{ getFilteredPayments().length }} 项
       </div>
     </SectionCard>
 
@@ -244,7 +236,7 @@ onMounted(loadPayments)
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? '添加支付方式' : '编辑支付方式'"
-      width="560px"
+      width="540px"
     >
       <el-form label-position="top" v-loading="formLoading">
         <el-form-item label="显示名称">
@@ -259,29 +251,15 @@ onMounted(loadPayments)
 
         <el-form-item label="通知域名">
           <el-input v-model="form.notifyDomain" placeholder="https://www.example.com" />
-          <div class="form-help-text">网关通知将发送到该域名</div>
+          <div class="form-help-text">网关通知将发送到该域名，包括协议（http或https）</div>
         </el-form-item>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <el-form-item label="百分比手续费(%)">
-            <el-input-number
-              v-model="form.handlingFeePercent"
-              :min="0"
-              :max="100"
-              :precision="2"
-              style="width:100%;"
-              :controls="false"
-              placeholder="0.00"
-            />
+            <el-input v-model.number="form.handlingFeePercent" placeholder="0.00" />
           </el-form-item>
           <el-form-item label="固定手续费">
-            <el-input-number
-              v-model="form.handlingFeeFixed"
-              :min="0"
-              style="width:100%;"
-              :controls="false"
-              placeholder="0"
-            />
+            <el-input v-model.number="form.handlingFeeFixed" placeholder="0" />
           </el-form-item>
         </div>
 
@@ -291,6 +269,7 @@ onMounted(loadPayments)
             style="width:100%;"
             :disabled="dialogMode === 'edit'"
             placeholder="选择要使用的支付接口"
+            filterable
             @change="handlePaymentChange"
           >
             <el-option v-for="m in paymentMethods" :key="m" :value="m" :label="m" />
@@ -302,18 +281,16 @@ onMounted(loadPayments)
           <el-divider content-position="left">支付配置</el-divider>
           <el-form-item
             v-for="field in formFields"
-            :key="field.field"
+            :key="field.field || field.label"
             :label="field.label || field.field"
           >
             <el-input
               :model-value="form.config[field.field] ?? ''"
-              :placeholder="field.tips || field.placeholder || ''"
-              :type="field.type === 'password' ? 'password' : 'text'"
-              show-password
+              :placeholder="field.placeholder || field.tips || ''"
               @update:model-value="form.config[field.field] = $event"
             />
-            <div v-if="field.tips || field.description" class="form-help-text">
-              {{ field.tips || field.description }}
+            <div v-if="field.tips" class="form-help-text" style="color:var(--el-color-primary);">
+              {{ field.tips }}
             </div>
           </el-form-item>
         </template>
@@ -324,7 +301,7 @@ onMounted(loadPayments)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button type="primary" @click="handleSave">提交</el-button>
       </template>
     </el-dialog>
   </section>
