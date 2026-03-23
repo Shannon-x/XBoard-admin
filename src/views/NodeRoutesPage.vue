@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchManagedNodeRoutes,
@@ -16,13 +16,25 @@ const searchWord = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
-const form = ref({ id: null, remarks: '', match: [], action: 'block', action_value: '' })
+const form = ref(createEmptyForm())
 const saving = ref(false)
 
-const actionLabels = {
-  block: '禁止访问',
-  dns: '指定DNS服务器进行解析',
+function createEmptyForm() {
+  return {
+    id: null,
+    remarks: '',
+    matchText: '',
+    action: 'block',
+    action_value: '',
+  }
 }
+
+const actionOptions = [
+  { label: '禁止访问', value: 'block' },
+  { label: '直接连接', value: 'direct' },
+  { label: '指定DNS服务器进行解析', value: 'dns' },
+  { label: '代理访问', value: 'proxy' },
+]
 
 async function loadRoutes() {
   loading.value = true
@@ -44,7 +56,7 @@ const displayRoutes = computed(() => {
 
 function openCreateDialog() {
   dialogMode.value = 'create'
-  form.value = { id: null, remarks: '', match: [], action: 'block', action_value: '' }
+  form.value = createEmptyForm()
   dialogVisible.value = true
 }
 
@@ -53,8 +65,8 @@ function openEditDialog(route) {
   form.value = {
     id: route.id,
     remarks: route.remarks,
-    match: route.matchRaw || [],
-    action: route.actionRaw || route.action || 'block',
+    matchText: Array.isArray(route.match) ? route.match.join('\n') : '',
+    action: route.action || 'block',
     action_value: route.actionValue || '',
   }
   dialogVisible.value = true
@@ -62,7 +74,15 @@ function openEditDialog(route) {
 
 async function handleSave() {
   if (!form.value.remarks?.trim()) {
-    ElMessage.warning('请输入备注名称')
+    ElMessage.warning('请输入备注')
+    return
+  }
+  const matchArr = form.value.matchText
+    .split('\n')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  if (matchArr.length === 0) {
+    ElMessage.warning('请输入至少一条匹配规则')
     return
   }
   saving.value = true
@@ -70,7 +90,7 @@ async function handleSave() {
     await saveManagedNodeRoute({
       id: form.value.id || undefined,
       remarks: form.value.remarks.trim(),
-      match: form.value.match,
+      match: matchArr,
       action: form.value.action,
       action_value: form.value.action_value || '',
     })
@@ -96,8 +116,10 @@ async function handleDelete(route) {
 }
 
 function actionTagType(action) {
-  if (action === 'block' || action === '禁止访问') return 'danger'
+  if (action === 'block') return 'danger'
   if (action === 'dns') return 'primary'
+  if (action === 'direct') return 'success'
+  if (action === 'proxy') return 'warning'
   return 'info'
 }
 
@@ -119,15 +141,20 @@ onMounted(loadRoutes)
       <el-table :data="displayRoutes" v-loading="loading" class="dashboard-table">
         <el-table-column label="ID" prop="id" width="70" sortable />
         <el-table-column label="备注" prop="remarks" min-width="140" />
-        <el-table-column label="动作值" width="160">
+        <el-table-column label="动作值" min-width="200">
           <template #default="{ row }">
-            <span style="font-size:12px; color:var(--el-text-color-secondary)">{{ row.action === '--' ? '--' : row.action }}</span>
+            <div>
+              <div style="font-size:13px; color:var(--el-text-color-primary)">{{ row.actionDisplayValue }}</div>
+              <div style="font-size:11px; color:var(--el-text-color-secondary); margin-top:2px">
+                匹配{{ row.matchCount }}条规则
+              </div>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="动作" width="200">
           <template #default="{ row }">
             <el-tag :type="actionTagType(row.action)" size="small">
-              {{ actionLabels[row.action] || row.action }}
+              {{ row.actionLabel }}
             </el-tag>
           </template>
         </el-table-column>
@@ -140,21 +167,52 @@ onMounted(loadRoutes)
       </el-table>
     </SectionCard>
 
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '添加路由' : '编辑路由'" width="560px" destroy-on-close>
-      <el-form label-position="top">
-        <el-form-item label="备注" required>
-          <el-input v-model="form.remarks" placeholder="输入路由备注" />
-        </el-form-item>
-        <el-form-item label="动作">
+    <!-- 创建/编辑路由对话框 -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogMode === 'create' ? '创建路由' : '编辑路由'"
+      width="520px"
+      destroy-on-close
+    >
+      <div class="route-form">
+        <div class="route-form__field">
+          <label>备注</label>
+          <el-input v-model="form.remarks" placeholder="请输入备注" />
+        </div>
+
+        <div class="route-form__field">
+          <label>匹配规则</label>
+          <el-input
+            v-model="form.matchText"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 10 }"
+            placeholder="example.com&#10;*.example.com"
+          />
+          <div class="route-form__hint">每行一条规则，支持通配符 *</div>
+        </div>
+
+        <div class="route-form__field">
+          <label>动作</label>
           <el-select v-model="form.action" style="width: 100%">
-            <el-option label="禁止访问" value="block" />
-            <el-option label="指定DNS服务器进行解析" value="dns" />
+            <el-option
+              v-for="opt in actionOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
           </el-select>
-        </el-form-item>
-        <el-form-item v-if="form.action === 'dns'" label="动作值">
-          <el-input v-model="form.action_value" placeholder="DNS:IP地址 (如 DNS:1.1.1.1)" />
-        </el-form-item>
-      </el-form>
+        </div>
+
+        <div v-if="form.action === 'dns'" class="route-form__field">
+          <label>DNS 服务器地址</label>
+          <el-input v-model="form.action_value" placeholder="例: 1.1.1.1" />
+        </div>
+
+        <div v-if="form.action === 'proxy'" class="route-form__field">
+          <label>代理地址</label>
+          <el-input v-model="form.action_value" placeholder="代理服务器地址" />
+        </div>
+      </div>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
@@ -162,3 +220,28 @@ onMounted(loadRoutes)
     </el-dialog>
   </section>
 </template>
+
+<style scoped>
+.route-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.route-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.route-form__field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.route-form__hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+</style>

@@ -367,12 +367,35 @@ function normalizeManagedNodeGroup(group, index) {
 
 function normalizeManagedNodeRoute(route, index) {
   const remark = String(route?.remarks || "").trim();
+  const matchArr = Array.isArray(route?.match) ? route.match : [];
+  const action = String(route?.action || "block");
+  const actionValue = route?.action_value || "";
+
+  const ACTION_LABELS = {
+    block: '禁止访问',
+    direct: '直接连接',
+    dns: '指定DNS服务器进行解析',
+    proxy: '代理访问',
+  };
+
+  let actionDisplayValue = '';
+  if (action === 'dns' && actionValue) {
+    actionDisplayValue = `DNS: ${actionValue}`;
+  } else if (actionValue) {
+    actionDisplayValue = actionValue;
+  } else {
+    actionDisplayValue = ACTION_LABELS[action] || action;
+  }
 
   return {
     id: String(route?.id || index + 1),
     remarks: remark || `路由组 ${index + 1}`,
-    action: String(route?.action || "--"),
-    matchCount: Array.isArray(route?.match) ? route.match.length : 0,
+    action,
+    actionLabel: ACTION_LABELS[action] || action,
+    actionValue,
+    actionDisplayValue,
+    match: matchArr,
+    matchCount: matchArr.length,
     updatedAt: formatTimestamp(route?.updated_at),
   };
 }
