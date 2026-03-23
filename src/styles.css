@@ -2545,6 +2545,11 @@ button {
     padding: 12px 0;
 }
 
+.settings-field--switch.settings-field--compact {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+}
+
 .settings-field--code-tabs {
     grid-template-columns: 1fr;
 }
