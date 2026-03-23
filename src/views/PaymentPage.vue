@@ -10,7 +10,9 @@ import {
   savePayment,
   deletePayment,
   togglePaymentShow,
+  sortPayments,
 } from '../services/payment'
+import SortDialog from '../components/common/SortDialog.vue'
 
 const payments = ref([])
 const paymentMethods = ref([])
@@ -20,6 +22,7 @@ const searchKeyword = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
+const sortDialogVisible = ref(false)
 const formFields = ref([])
 const formLoading = ref(false)
 const form = reactive({
@@ -159,6 +162,17 @@ function copyNotifyUrl(url) {
   })
 }
 
+async function handleSortSave(ids) {
+  try {
+    await sortPayments(ids)
+    ElMessage.success('排序已保存')
+    sortDialogVisible.value = false
+    await loadPayments()
+  } catch (err) {
+    ElMessage.error(err.message || '排序保存失败')
+  }
+}
+
 onMounted(loadPayments)
 </script>
 
@@ -166,18 +180,22 @@ onMounted(loadPayments)
   <section class="page-stack">
     <SectionCard title="支付配置" description="在这里可以配置支付方式，包括支付宝、微信等。">
       <template #actions>
-        <el-space>
-          <el-button type="primary" @click="openCreateDialog">
-            <el-icon><Plus /></el-icon>
-            添加支付方式
-          </el-button>
+        <div style="display:flex; gap: 8px;">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索支付方式..."
-            style="width: 180px;"
+            placeholder="搜索支付方式名称/接口"
             clearable
-          />
-        </el-space>
+            style="width: 240px"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <el-button @click="sortDialogVisible = true" :disabled="payments.length < 2">排序</el-button>
+          <el-button type="primary" :icon="Plus" @click="openCreateDialog">
+            添加支付方式
+          </el-button>
+        </div>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
@@ -304,6 +322,13 @@ onMounted(loadPayments)
         <el-button type="primary" @click="handleSave">提交</el-button>
       </template>
     </el-dialog>
+
+    <SortDialog
+      v-model:visible="sortDialogVisible"
+      :items="payments"
+      title="排序支付方式"
+      @save="handleSortSave"
+    />
   </section>
 </template>
 

@@ -16,6 +16,7 @@ import {
 import {
   fetchManagedNodeGroups,
 } from '../services/nodes'
+import SortDialog from '../components/common/SortDialog.vue'
 
 const { t } = useI18n()
 
@@ -23,6 +24,7 @@ const plans = ref(createEmptyManagedPlans())
 const loading = ref(false)
 const errorMsg = ref('')
 const groups = ref([])
+const sortDialogVisible = ref(false)
 
 const editDialogVisible = ref(false)
 const editForm = ref(createEmptyPlanForm())
@@ -162,6 +164,17 @@ const resetTrafficOptions = [
   { label: '按年重置（从订阅日起算）', value: 4 },
 ]
 
+async function handleSortSave(ids) {
+  try {
+    await sortManagedPlans(ids)
+    ElMessage.success('排序已保存')
+    sortDialogVisible.value = false
+    await loadPlans()
+  } catch (err) {
+    ElMessage.error(err.message || '排序保存失败')
+  }
+}
+
 onMounted(function onMount() {
   loadPlans()
   loadGroups()
@@ -173,6 +186,7 @@ onMounted(function onMount() {
     <SectionCard description="管理套餐订阅计划，支持创建、编辑、删除等操作" title="套餐管理">
       <template #actions>
         <el-space wrap>
+          <el-button @click="sortDialogVisible = true" :disabled="plans.length < 2">排序</el-button>
           <el-button :icon="Plus" class="primary-btn small" type="success" @click="openCreateDialog">
             创建套餐
           </el-button>
@@ -324,5 +338,12 @@ onMounted(function onMount() {
         <el-button :loading="editSaving" type="primary" @click="saveForm">保存</el-button>
       </template>
     </el-dialog>
+
+    <SortDialog
+      v-model:visible="sortDialogVisible"
+      :items="plans"
+      title="排序套餐"
+      @save="handleSortSave"
+    />
   </section>
 </template>
