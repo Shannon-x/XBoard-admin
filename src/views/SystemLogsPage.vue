@@ -7,7 +7,6 @@ const logs = ref([])
 const loading = ref(false)
 const error = ref('')
 const activeLevel = ref('all')
-const rawDebug = ref('')
 
 async function loadLogs() {
   loading.value = true
@@ -16,12 +15,6 @@ async function loadLogs() {
     const apiUrl = buildDashboardApiUrl('system/getSystemLog')
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
-
-    // Debug: show raw structure of first entry
-    if (Array.isArray(raw) && raw.length > 0) {
-      rawDebug.value = JSON.stringify(raw[0], null, 2)
-    }
-
     if (Array.isArray(raw)) {
       logs.value = raw.map(normalizeLog)
     } else {
@@ -35,85 +28,52 @@ async function loadLogs() {
 }
 
 function normalizeLog(item) {
-  if (typeof item === 'string') {
-    return parseLogString(item)
-  }
-  if (item && typeof item === 'object') {
-    return parseLogObject(item)
-  }
-  return { level: 'info', message: String(item), datetime: '', context: null }
-}
+  const level = String(item.level || 'INFO').toLowerCase()
+  const title = item.title || ''
+  const uri = item.uri || ''
+  const method = item.method || ''
+  const ip = item.ip || ''
+  const host = item.host || ''
+  const createdAt = item.created_at || 0
 
-function parseLogString(str) {
-  // Laravel format: [2026-03-23 11:00:57] production.INFO: some message {"context":"value"}
-  const match = str.match(/^\[([^\]]+)\]\s*\S+\.(\w+):\s*(.*?)(\s*\{.*\})?\s*$/s)
-  if (match) {
-    let context = null
-    if (match[4]) {
-      try { context = JSON.parse(match[4].trim()) } catch {}
-    }
-    return {
-      level: (match[2] || 'info').toLowerCase(),
-      message: match[3] || '',
-      datetime: match[1],
-      context,
+  // Parse request data
+  let requestData = null
+  if (item.data) {
+    if (typeof item.data === 'string') {
+      try { requestData = JSON.parse(item.data) } catch { requestData = item.data }
+    } else {
+      requestData = item.data
     }
   }
-  return { level: 'info', message: str, datetime: '', context: null }
-}
 
-function parseLogObject(item) {
-  const level = String(item.level || item.level_name || 'info').toLowerCase()
-
-  // Try all possible message field names
-  const message = item.message
-    || item.msg
-    || item.text
-    || item.content
-    || item.log
-    || item.body
-    || item.description
-    || item.formatted
-    || item.channel_name
-    || ''
-
-  // Try all possible datetime field names
-  const datetime = item.datetime
-    || item.timestamp
-    || item.created_at
-    || item.date
-    || item.time
-    || item.logged_at
-    || ''
-
-  // Try all possible context fields
-  const context = item.context
-    || item.extra
-    || item.data
-    || item.details
-    || item.meta
-    || null
-
-  return { level, message, datetime, context }
-}
-
-function formatTime(dt) {
-  if (!dt) return '--'
-  if (typeof dt === 'number') {
-    const d = dt > 1e12 ? new Date(dt) : new Date(dt * 1000)
-    return d.toLocaleString('zh-CN')
-  }
-  if (typeof dt === 'string') {
-    const parsed = new Date(dt)
-    if (!isNaN(parsed.getTime())) {
-      return parsed.toLocaleString('zh-CN')
+  // Parse context
+  let context = null
+  if (item.context && item.context !== '[]' && item.context !== '{}') {
+    if (typeof item.context === 'string') {
+      try { context = JSON.parse(item.context) } catch { context = item.context }
+    } else {
+      context = item.context
     }
-    return dt
   }
-  if (dt && typeof dt === 'object' && dt.date) {
-    return formatTime(dt.date)
+
+  return {
+    id: item.id,
+    level,
+    title,
+    uri,
+    method,
+    ip,
+    host,
+    requestData,
+    context,
+    createdAt,
   }
-  return String(dt)
+}
+
+function formatTime(ts) {
+  if (!ts) return '--'
+  const d = new Date(ts * 1000)
+  return d.toLocaleString('zh-CN')
 }
 
 const displayLogs = computed(() => {
@@ -133,19 +93,18 @@ function levelTagType(level) {
   const map = {
     emergency: 'danger', alert: 'danger', critical: 'danger',
     error: 'danger', warning: 'warning', notice: 'info',
-    info: 'success', debug: '',
+    info: '', debug: '',
   }
   return map[level] || 'info'
 }
 
-function getLogPreview(item) {
-  // Try to find any renderable text from the original raw data
-  if (item.message) return item.message
-  // If context is a non-empty object, show JSON preview
-  if (item.context && typeof item.context === 'object' && Object.keys(item.context).length) {
-    return JSON.stringify(item.context).slice(0, 200)
-  }
-  return '--'
+function methodTagType(method) {
+  const m = (method || '').toUpperCase()
+  if (m === 'GET') return 'success'
+  if (m === 'POST') return 'warning'
+  if (m === 'DELETE') return 'danger'
+  if (m === 'PUT' || m === 'PATCH') return ''
+  return 'info'
 }
 
 onMounted(loadLogs)
@@ -153,52 +112,74 @@ onMounted(loadLogs)
 
 <template>
   <section class="page-stack">
-    <SectionCard title="系统日志" description="查看分类系统日志，按级别筛选。">
+    <SectionCard title="系统日志" description="查看管理员操作日志，按级别筛选。">
       <template #actions>
         <el-button type="info" plain size="small" @click="loadLogs">刷新</el-button>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
-      <!-- Debug: show raw data structure of first log entry -->
-      <el-collapse v-if="rawDebug" style="margin-bottom: 16px;">
-        <el-collapse-item title="🔍 调试: API 返回的原始日志条目格式 (第一条)">
-          <pre style="font-size: 11px; background: #1e1e2e; color: #a6adc8; padding: 12px; border-radius: 8px; overflow-x: auto;">{{ rawDebug }}</pre>
-        </el-collapse-item>
-      </el-collapse>
-
       <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
         <el-radio-group v-model="activeLevel" size="small">
           <el-radio-button value="all">全部 ({{ levelCounts.all }})</el-radio-button>
-          <el-radio-button v-for="level in ['error', 'warning', 'info', 'debug', 'critical', 'emergency']" :key="level" :value="level">
+          <el-radio-button v-for="level in ['error', 'warning', 'info', 'debug']" :key="level" :value="level">
             {{ level.toUpperCase() }} ({{ levelCounts[level] || 0 }})
           </el-radio-button>
         </el-radio-group>
       </div>
 
-      <el-table :data="displayLogs" v-loading="loading" class="dashboard-table" max-height="600">
-        <el-table-column label="级别" width="100">
+      <el-table :data="displayLogs" v-loading="loading" class="dashboard-table" max-height="640">
+        <el-table-column label="ID" prop="id" width="70" sortable />
+        <el-table-column label="级别" width="80">
           <template #default="{ row }">
             <el-tag size="small" :type="levelTagType(row.level)">{{ row.level.toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="时间" width="180">
-          <template #default="{ row }">{{ formatTime(row.datetime) }}</template>
+        <el-table-column label="时间" width="170">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="消息" min-width="400">
+        <el-table-column label="请求" min-width="300">
           <template #default="{ row }">
-            <div style="word-break: break-all; line-height: 1.5; font-size: 13px; white-space: pre-wrap;">{{ getLogPreview(row) }}</div>
+            <div style="line-height:1.6;">
+              <div style="font-size:13px;font-weight:500;color:var(--el-text-color-primary);">
+                <el-tag size="small" :type="methodTagType(row.method)" style="margin-right:6px;">{{ row.method }}</el-tag>
+                <span>{{ row.title }}</span>
+              </div>
+              <div style="font-size:11px;color:var(--el-text-color-secondary);margin-top:2px;">
+                {{ row.uri }}
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="上下文" width="100">
+        <el-table-column label="IP" width="130">
           <template #default="{ row }">
-            <el-popover v-if="row.context && typeof row.context === 'object' && Object.keys(row.context).length" placement="left" :width="400" trigger="click">
+            <span style="font-size:12px;font-family:monospace;">{{ row.ip || '--' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="详情" width="80">
+          <template #default="{ row }">
+            <el-popover placement="left" :width="480" trigger="click">
               <template #reference>
                 <el-button link size="small" type="primary">详情</el-button>
               </template>
-              <pre style="font-size: 12px; max-height: 300px; overflow: auto;">{{ JSON.stringify(row.context, null, 2) }}</pre>
+              <div style="max-height:400px;overflow:auto;">
+                <h4 style="margin:0 0 8px;">请求信息</h4>
+                <table style="font-size:12px;width:100%;border-collapse:collapse;">
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">方法</td><td style="padding:4px 8px;">{{ row.method }}</td></tr>
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">URI</td><td style="padding:4px 8px;word-break:break-all;">{{ row.uri }}</td></tr>
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">Host</td><td style="padding:4px 8px;">{{ row.host }}</td></tr>
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">IP</td><td style="padding:4px 8px;">{{ row.ip }}</td></tr>
+                </table>
+                <template v-if="row.requestData">
+                  <h4 style="margin:12px 0 8px;">请求数据</h4>
+                  <pre style="font-size:11px;background:#1e1e2e;color:#a6adc8;padding:10px;border-radius:8px;overflow-x:auto;margin:0;">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
+                </template>
+                <template v-if="row.context && ((typeof row.context === 'object' && Object.keys(row.context).length) || typeof row.context === 'string')">
+                  <h4 style="margin:12px 0 8px;">上下文</h4>
+                  <pre style="font-size:11px;background:#1e1e2e;color:#a6adc8;padding:10px;border-radius:8px;overflow-x:auto;margin:0;">{{ typeof row.context === 'string' ? row.context : JSON.stringify(row.context, null, 2) }}</pre>
+                </template>
+              </div>
             </el-popover>
-            <span v-else>--</span>
           </template>
         </el-table-column>
       </el-table>
