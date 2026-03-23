@@ -2481,7 +2481,13 @@ button {
 }
 
 .settings-field--switch {
-    align-items: center;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.settings-field--switch .settings-field__control {
+    max-width: none;
 }
 
 .settings-field--compact {

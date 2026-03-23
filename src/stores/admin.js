@@ -3,13 +3,16 @@ import { defineStore } from "pinia";
 import {
   Bell,
   Coin,
+  CreditCard,
   DataAnalysis,
   Document,
   Files,
+  Goods,
   Iphone,
   Lock,
   Message,
   Monitor,
+  Notebook,
   Operation,
   Promotion,
   Service,
@@ -17,6 +20,7 @@ import {
   ShoppingCart,
   Tickets,
   User,
+  Wallet,
 } from "@element-plus/icons-vue";
 
 import {
@@ -162,6 +166,8 @@ export const useAdminStore = defineStore("admin", () => {
         { labelKey: "nav.settings", icon: Setting, routeName: "settings" },
         { labelKey: "nav.nodes", icon: Monitor, routeName: "nodes" },
         { labelKey: "nav.plugins", icon: Operation, routeName: "plugins" },
+        { labelKey: "nav.payment", icon: Wallet, routeName: "payment" },
+        { labelKey: "nav.logs", icon: Document, routeName: "logs" },
       ],
     },
     {
@@ -171,6 +177,9 @@ export const useAdminStore = defineStore("admin", () => {
         { labelKey: "nav.orders", icon: ShoppingCart, routeName: "orders" },
         { labelKey: "nav.users", icon: User, routeName: "users" },
         { labelKey: "nav.tickets", icon: Service, routeName: "tickets" },
+        { labelKey: "nav.coupons", icon: Promotion, routeName: "coupons" },
+        { labelKey: "nav.giftcards", icon: CreditCard, routeName: "giftcards" },
+        { labelKey: "nav.knowledge", icon: Notebook, routeName: "knowledge" },
       ],
     },
   ];
