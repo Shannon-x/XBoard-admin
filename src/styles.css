@@ -3215,6 +3215,23 @@ button {
     }
 }
 
+/* Order filter bar */
+.order-filter-bar {
+    margin-bottom: 14px;
+    padding: 10px 0 6px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.order-filter-tag {
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.order-filter-tag:hover {
+    opacity: 0.8;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

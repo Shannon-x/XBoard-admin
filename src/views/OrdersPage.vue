@@ -25,6 +25,7 @@ const errorMsg = ref('')
 const searchKeyword = ref('')
 const statusFilter = ref('')
 const isCommission = ref(false)
+const commissionStatusFilter = ref('')
 const plans = ref([])
 
 const detailDialogVisible = ref(false)
@@ -70,6 +71,9 @@ async function loadOrders() {
     }
     if (statusFilter.value !== '') {
       filter.push({ id: 'status', value: `eq:${statusFilter.value}` })
+    }
+    if (commissionStatusFilter.value !== '') {
+      filter.push({ id: 'commission_status', value: `eq:${commissionStatusFilter.value}` })
     }
     const result = await fetchManagedOrders({
       page: pagination.value.page,
@@ -177,7 +181,7 @@ onMounted(function onMount() {
 
 <template>
   <section class="page-stack">
-    <SectionCard description="管理所有订单，支持筛选、确认支付、取消订单等操作" title="订单管理">
+    <SectionCard description="在这里可以查看用户订单。包括分配、查看、删除等操作。" title="订单管理">
       <template #actions>
         <el-space wrap>
           <el-input
@@ -185,58 +189,97 @@ onMounted(function onMount() {
             :prefix-icon="Search"
             clearable
             placeholder="搜索订单号..."
-            style="width: 220px"
+            style="width: 160px"
             @keyup.enter="handleSearch"
             @clear="handleSearch"
           />
-          <el-select v-model="statusFilter" placeholder="订单状态" style="width: 130px" @change="handleSearch">
-            <el-option
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
-          <el-checkbox v-model="isCommission" label="仅佣金订单" @change="handleSearch" />
           <el-button class="primary-btn small" type="success" @click="openAssignDialog">
             分配订单
           </el-button>
         </el-space>
       </template>
 
+      <!-- 筛选栏 -->
+      <div class="order-filter-bar">
+        <el-space wrap :size="6">
+          <el-tag
+            :effect="statusFilter === '' && !isCommission ? 'dark' : 'plain'"
+            class="order-filter-tag"
+            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; handleSearch()"
+          >全部</el-tag>
+          <el-tag
+            v-for="opt in statusOptions.slice(1)"
+            :key="opt.value"
+            :effect="statusFilter === opt.value ? 'dark' : 'plain'"
+            class="order-filter-tag"
+            @click="statusFilter = opt.value; handleSearch()"
+          >{{ opt.label }}</el-tag>
+          <el-divider direction="vertical" />
+          <el-tag
+            :effect="isCommission ? 'dark' : 'plain'"
+            class="order-filter-tag"
+            @click="isCommission = !isCommission; handleSearch()"
+          >仅佣金</el-tag>
+          <el-select
+            v-model="commissionStatusFilter"
+            placeholder="佣金状态"
+            style="width: 110px"
+            @change="handleSearch"
+            clearable
+          >
+            <el-option label="全部" value="" />
+            <el-option label="待确认" value="0" />
+            <el-option label="发放中" value="1" />
+            <el-option label="已发放" value="2" />
+            <el-option label="无效" value="3" />
+          </el-select>
+        </el-space>
+      </div>
+
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="orders" stripe style="width: 100%">
-        <el-table-column label="订单号" min-width="180" prop="tradeNo" show-overflow-tooltip />
-        <el-table-column label="类型" width="80" prop="typeText" />
-        <el-table-column label="套餐" width="120" prop="planName" />
-        <el-table-column label="周期" width="100" prop="period" />
-        <el-table-column label="金额" width="100">
+        <el-table-column label="订单号" width="160" show-overflow-tooltip>
           <template #default="{ row }">
-            {{ row.totalAmountText }}
+            <span style="font-family: monospace; font-size: 12px">{{ row.tradeNo }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="90">
+        <el-table-column label="类型" width="60" prop="typeText" />
+        <el-table-column label="订阅计划" min-width="140" prop="planName" show-overflow-tooltip />
+        <el-table-column label="周期" width="80" prop="period" />
+        <el-table-column label="支付金额" width="90">
+          <template #default="{ row }">{{ row.totalAmountText }}</template>
+        </el-table-column>
+        <el-table-column label="订单状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.statusType" effect="dark" size="small">
-              {{ row.statusText }}
-            </el-tag>
+            <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="佣金状态" width="100">
+        <el-table-column label="佣金金额" width="90">
           <template #default="{ row }">
-            <el-tag v-if="row.commissionStatus !== null" :type="row.commissionStatusType" size="small">
-              {{ row.commissionStatusText }}
-            </el-tag>
+            <span v-if="row.commissionBalance">¥{{ row.commissionBalance.toFixed(2) }}</span>
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="160" prop="createdAt" />
-        <el-table-column fixed="right" label="操作" width="190">
+        <el-table-column label="佣金状态" width="90">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="openDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 0" link size="small" type="success" @click="handleMarkPaid(row)">确认付款</el-button>
-            <el-button v-if="row.status === 0" link size="small" type="danger" @click="handleCancel(row)">取消</el-button>
+            <el-tag v-if="row.commissionStatus !== null" :type="row.commissionStatusType" size="small">{{ row.commissionStatusText }}</el-tag>
+            <span v-else>--</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="150" prop="createdAt" />
+        <el-table-column fixed="right" label="操作" width="80">
+          <template #default="{ row }">
+            <el-dropdown trigger="click">
+              <el-button link size="small" type="primary">操作</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openDetail(row)">详情</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 0" @click="handleMarkPaid(row)">确认付款</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 0" divided @click="handleCancel(row)" style="color:var(--el-color-danger)">取消</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>

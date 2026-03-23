@@ -405,8 +405,8 @@ onMounted(function onMount() {
             <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="订阅" prop="planName" width="140" show-overflow-tooltip />
-        <el-table-column label="已用/总量" width="150">
+        <el-table-column label="订阅" prop="planName" min-width="120" show-overflow-tooltip />
+        <el-table-column label="已用/总量" min-width="140">
           <template #default="{ row }">
             {{ row.totalUsed }} / {{ row.transferEnable }}
           </template>
