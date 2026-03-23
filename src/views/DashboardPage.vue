@@ -164,6 +164,7 @@ onMounted(function loadStatsOnMount() {
                 <QueueStatusCard
                     :loading="adminStore.queueStatsLoading"
                     :queue-status="adminStore.queueStats.queueStatus"
+                    @refresh="refreshQueueStats"
                 />
 
                 <JobDetailCard
