@@ -1,7 +1,9 @@
 import {
   buildCommonApiUrl,
   buildDashboardApiUrl,
+  buildSecureV2ApiUrl,
   requestDashboardApi,
+  requestDashboardMutation,
 } from "./api";
 
 const DEFAULT_OVERVIEW_RANGE_DAYS = 30;
@@ -603,4 +605,21 @@ export async function fetchSystemStatus() {
   const payload = await requestDashboardApi(apiUrl);
 
   return normalizeSystemStatus(payload);
+}
+
+export async function cleanSystemLogs(options = {}) {
+  const apiUrl = buildSecureV2ApiUrl('system/cleanLog')
+  return requestDashboardMutation(apiUrl, {
+    days: Number(options.days ?? 0),
+    level: options.level || '',
+    limit: Number(options.limit ?? 1000),
+  })
+}
+
+export async function getLogCleanupStats(options = {}) {
+  const apiUrl = buildSecureV2ApiUrl('system/getLogStats')
+  return requestDashboardMutation(apiUrl, {
+    days: Number(options.days ?? 0),
+    level: options.level || '',
+  })
 }

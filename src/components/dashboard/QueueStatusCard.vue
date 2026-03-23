@@ -1,4 +1,5 @@
 <script setup>
+import { Refresh } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 const props = defineProps({
   loading: {
@@ -11,6 +12,7 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits(['refresh'])
 const { t } = useI18n()
 
 function statusTagType(tone) {
@@ -34,6 +36,7 @@ function statusTagType(tone) {
       <el-tag :type="statusTagType(queueStatus.statusTone)" effect="dark">
         {{ queueStatus.statusText }}
       </el-tag>
+      <el-button :icon="Refresh" text size="small" @click="emit('refresh')" title="刷新" />
     </div>
 
     <div class="queue-card__metrics">
