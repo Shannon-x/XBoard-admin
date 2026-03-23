@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 
 import IncomeOverviewCard from "../components/dashboard/IncomeOverviewCard.vue";
 import JobDetailCard from "../components/dashboard/JobDetailCard.vue";
@@ -12,6 +13,7 @@ import { useAdminStore } from "../stores/admin";
 
 const adminStore = useAdminStore();
 const { t } = useI18n();
+const router = useRouter();
 
 function handleIncomeRangeChange(rangeSelection) {
     if (typeof rangeSelection === "string") {
@@ -20,6 +22,30 @@ function handleIncomeRangeChange(rangeSelection) {
     }
 
     adminStore.loadIncomeOverview(rangeSelection);
+}
+
+function handleMetricClick(label) {
+    if (label === '待处理工单') {
+        router.push({ path: 'tickets' });
+    } else if (label === '待处理佣金') {
+        router.push({ path: 'orders', query: { commission: '1' } });
+    }
+}
+
+function refreshNodeTraffic() {
+    adminStore.loadNodeTrafficRank();
+}
+
+function refreshUserTraffic() {
+    adminStore.loadUserTrafficRank();
+}
+
+function refreshQueueStats() {
+    adminStore.loadQueueStats();
+}
+
+function refreshSystemStatus() {
+    adminStore.loadSystemStatus();
 }
 
 onMounted(function loadStatsOnMount() {
@@ -51,6 +77,7 @@ onMounted(function loadStatsOnMount() {
         <MetricsGrid
             :loading="adminStore.dashboardStatsLoading"
             :metrics="adminStore.dashboardMetrics"
+            @metric-click="handleMetricClick"
         />
 
         <section class="hero-grid">
@@ -93,6 +120,7 @@ onMounted(function loadStatsOnMount() {
                     :rank-data="adminStore.nodeTrafficRank"
                     :empty-text="t('traffic.emptyNode')"
                     :title="t('traffic.nodeTitle')"
+                    @refresh="refreshNodeTraffic"
                 />
 
                 <div class="page-stack compact-stack">
@@ -114,6 +142,7 @@ onMounted(function loadStatsOnMount() {
                         :rank-data="adminStore.userTrafficRank"
                         :empty-text="t('traffic.emptyUser')"
                         :title="t('traffic.userTitle')"
+                        @refresh="refreshUserTraffic"
                     />
                 </div>
             </div>
@@ -160,6 +189,7 @@ onMounted(function loadStatsOnMount() {
                 :loading="adminStore.systemStatusLoading"
                 :runtime-status="adminStore.systemStatus.runtimeStatus"
                 :system-logs="adminStore.systemStatus.systemLogs"
+                @refresh="refreshSystemStatus"
             />
         </section>
     </section>

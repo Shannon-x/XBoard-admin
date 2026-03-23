@@ -1,4 +1,5 @@
 <script setup>
+import { Refresh } from '@element-plus/icons-vue'
 import { useI18n } from "vue-i18n";
 const props = defineProps({
     loading: {
@@ -18,6 +19,8 @@ const props = defineProps({
         required: true,
     },
 });
+
+const emit = defineEmits(['refresh'])
 
 const { t } = useI18n();
 
@@ -56,6 +59,7 @@ function changeClass(change) {
             <span class="traffic-rank-badge">{{
                 t("traffic.topLabel", { count: rankData.list.length })
             }}</span>
+            <el-button :icon="Refresh" text size="small" @click="emit('refresh')" title="刷新" />
         </div>
 
         <div v-if="rankData.list.length" class="traffic-rank-list">

@@ -24,6 +24,8 @@ defineProps({
     },
 });
 
+const emit = defineEmits(['metric-click'])
+
 const { t } = useI18n();
 
 const metricIconMap = {
@@ -115,8 +117,10 @@ function resolveMetricSegments(metric) {
             :class="[
                 'metric-card--unified',
                 { 'metric-card--compact': metric.compact },
+                { 'metric-card--clickable': metric.label === '待处理工单' || metric.label === '待处理佣金' },
             ]"
             shadow="never"
+            @click="emit('metric-click', metric.label)"
         >
             <div class="metric-head">
                 <span class="metric-label-wrap">

@@ -1690,6 +1690,16 @@ button {
     line-height: 1.35;
 }
 
+.metric-card--clickable {
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.metric-card--clickable:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
 .metric-split-value {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
