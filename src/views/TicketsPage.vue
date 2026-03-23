@@ -172,7 +172,7 @@ onMounted(function onMount() {
 
       <el-table v-loading="loading" :data="tickets" stripe style="width: 100%">
         <el-table-column label="ID" prop="id" width="70" />
-        <el-table-column label="主题" min-width="200" prop="subject" />
+        <el-table-column label="主题" width="200" prop="subject" show-overflow-tooltip />
         <el-table-column label="用户" width="180" prop="userEmail" />
         <el-table-column label="优先级" width="90">
           <template #default="{ row }">
@@ -205,7 +205,6 @@ onMounted(function onMount() {
       </el-table>
 
       <el-pagination
-        v-if="pagination.total > 0"
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
         :page-sizes="[10, 20, 50, 100]"

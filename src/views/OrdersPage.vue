@@ -207,7 +207,7 @@ onMounted(function onMount() {
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="orders" stripe style="width: 100%">
-        <el-table-column label="订单号" min-width="180" prop="tradeNo" />
+        <el-table-column label="订单号" width="200" prop="tradeNo" show-overflow-tooltip />
         <el-table-column label="类型" width="80" prop="typeText" />
         <el-table-column label="套餐" width="120" prop="planName" />
         <el-table-column label="周期" width="100" prop="period" />
@@ -242,7 +242,6 @@ onMounted(function onMount() {
       </el-table>
 
       <el-pagination
-        v-if="pagination.total > 0"
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
         :page-sizes="[10, 20, 50, 100]"
