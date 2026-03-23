@@ -16,6 +16,7 @@ const payments = ref([])
 const paymentMethods = ref([])
 const loading = ref(false)
 const error = ref('')
+const searchKeyword = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
@@ -24,6 +25,7 @@ const formLoading = ref(false)
 const form = reactive({
   id: null,
   name: '',
+  icon: '',
   payment: '',
   config: {},
   enable: true,
@@ -31,6 +33,21 @@ const form = reactive({
   handlingFeePercent: null,
   handlingFeeFixed: null,
 })
+
+function notifyUrl(row) {
+  const base = row.notifyDomain || import.meta.env.VITE_API_BASE_URL || ''
+  if (!base) return '（未配置通知域名）'
+  return `${base.replace(/\/$/, '')}/api/v1/guest/payment/notify/${row.payment}/${row.id}`
+}
+
+function filteredPayments() {
+  if (!searchKeyword.value) return payments.value
+  const kw = searchKeyword.value.toLowerCase()
+  return payments.value.filter(p =>
+    (p.name || '').toLowerCase().includes(kw) ||
+    (p.payment || '').toLowerCase().includes(kw)
+  )
+}
 
 async function loadPayments() {
   loading.value = true
@@ -52,7 +69,7 @@ async function loadPayments() {
 async function openCreateDialog() {
   dialogMode.value = 'create'
   Object.assign(form, {
-    id: null, name: '', payment: '', config: {},
+    id: null, name: '', icon: '', payment: '', config: {},
     enable: true, notifyDomain: '', handlingFeePercent: null, handlingFeeFixed: null,
   })
   formFields.value = []
@@ -64,10 +81,11 @@ async function openEditDialog(row) {
   Object.assign(form, {
     id: row.id,
     name: row.name,
+    icon: row.icon || '',
     payment: row.payment,
     config: { ...row.config },
     enable: row.enable,
-    notifyDomain: row.notifyDomain,
+    notifyDomain: row.notifyDomain || '',
     handlingFeePercent: row.handlingFeePercent,
     handlingFeeFixed: row.handlingFeeFixed,
   })
@@ -85,6 +103,7 @@ async function openEditDialog(row) {
 
 async function handlePaymentChange(payment) {
   form.payment = payment
+  form.config = {}
   formLoading.value = true
   try {
     formFields.value = await fetchPaymentForm(payment)
@@ -96,6 +115,14 @@ async function handlePaymentChange(payment) {
 }
 
 async function handleSave() {
+  if (!form.name) {
+    ElMessage.warning('请输入显示名称')
+    return
+  }
+  if (!form.payment) {
+    ElMessage.warning('请选择支付接口')
+    return
+  }
   try {
     await savePayment(form)
     ElMessage.success(dialogMode.value === 'create' ? '支付方式已添加' : '支付方式已更新')
@@ -119,14 +146,20 @@ async function handleDelete(row) {
   }
 }
 
-async function handleToggleShow(row) {
+async function handleToggleEnable(row) {
   try {
     await togglePaymentShow(row.id)
     ElMessage.success('状态已更新')
     await loadPayments()
   } catch (err) {
     ElMessage.error(err.message)
+    // revert
   }
+}
+
+function truncate(str, len = 40) {
+  if (!str) return '--'
+  return str.length > len ? str.slice(0, len) + '…' : str
 }
 
 onMounted(loadPayments)
@@ -134,39 +167,63 @@ onMounted(loadPayments)
 
 <template>
   <section class="page-stack">
-    <SectionCard title="支付管理" description="配置和管理系统支付方式，包括支付驱动、手续费和状态控制。">
+    <SectionCard title="支付配置" description="在这里可以配置支付方式，包括支付宝、微信等。">
       <template #actions>
         <el-button type="primary" @click="openCreateDialog">
           <el-icon><Plus /></el-icon>
           添加支付方式
         </el-button>
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索支付方式..."
+          style="width: 180px; margin-left: 8px;"
+          clearable
+          size="default"
+        />
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
-      <el-table :data="payments" v-loading="loading" class="dashboard-table">
-        <el-table-column label="ID" prop="id" width="60" />
-        <el-table-column label="名称" prop="name" min-width="120" />
-        <el-table-column label="支付驱动" prop="payment" min-width="120">
+      <el-table
+        :data="filteredPayments()"
+        v-loading="loading"
+        class="dashboard-table"
+        @selection-change="() => {}"
+      >
+        <el-table-column type="selection" width="40" />
+        <el-table-column label="ID" prop="id" sortable width="80" />
+        <el-table-column label="启用" width="70">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.enable"
+              size="small"
+              @change="handleToggleEnable(row)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="显示名称" min-width="120">
+          <template #default="{ row }">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <img v-if="row.icon" :src="row.icon" style="width:18px;height:18px;object-fit:contain;border-radius:3px;" />
+              <span>{{ row.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="支付接口" min-width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ row.payment }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="手续费" width="140">
+        <el-table-column label="通知地址" min-width="200">
           <template #default="{ row }">
-            <span v-if="row.handlingFeePercent">{{ row.handlingFeePercent }}%</span>
-            <span v-if="row.handlingFeePercent && row.handlingFeeFixed"> + </span>
-            <span v-if="row.handlingFeeFixed">¥{{ (row.handlingFeeFixed / 100).toFixed(2) }}</span>
-            <span v-if="!row.handlingFeePercent && !row.handlingFeeFixed">--</span>
+            <el-tooltip :content="notifyUrl(row)" placement="top" :show-after="300">
+              <span style="font-size:12px;color:var(--el-color-primary);cursor:default;">
+                {{ truncate(notifyUrl(row), 36) }}
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column label="启用" width="70">
-          <template #default="{ row }">
-            <el-switch :model-value="row.enable" size="small" @change="handleToggleShow(row)" />
-          </template>
-        </el-table-column>
-        <el-table-column label="排序" prop="sort" width="70" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button link size="small" type="primary" @click="openEditDialog(row)">
               <el-icon><Edit /></el-icon>
@@ -177,41 +234,87 @@ onMounted(loadPayments)
           </template>
         </el-table-column>
       </el-table>
+
+      <div style="margin-top: 12px; font-size: 12px; color: var(--el-text-color-secondary);">
+        已选择 0 项，共 {{ filteredPayments().length }} 项
+      </div>
     </SectionCard>
 
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '添加支付方式' : '编辑支付方式'" width="580px">
+    <!-- Add / Edit Dialog -->
+    <el-dialog
+      v-model="dialogVisible"
+      :title="dialogMode === 'create' ? '添加支付方式' : '编辑支付方式'"
+      width="560px"
+    >
       <el-form label-position="top" v-loading="formLoading">
-        <el-form-item label="名称">
-          <el-input v-model="form.name" placeholder="例如：支付宝" />
+        <el-form-item label="显示名称">
+          <el-input v-model="form.name" placeholder="支付宝" />
+          <div class="form-help-text">用于前端显示</div>
         </el-form-item>
-        <el-form-item label="支付驱动">
+
+        <el-form-item label="图标URL">
+          <el-input v-model="form.icon" placeholder="https://..." />
+          <div class="form-help-text">用于前端显示的图标地址</div>
+        </el-form-item>
+
+        <el-form-item label="通知域名">
+          <el-input v-model="form.notifyDomain" placeholder="https://www.example.com" />
+          <div class="form-help-text">网关通知将发送到该域名</div>
+        </el-form-item>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <el-form-item label="百分比手续费(%)">
+            <el-input-number
+              v-model="form.handlingFeePercent"
+              :min="0"
+              :max="100"
+              :precision="2"
+              style="width:100%;"
+              :controls="false"
+              placeholder="0.00"
+            />
+          </el-form-item>
+          <el-form-item label="固定手续费">
+            <el-input-number
+              v-model="form.handlingFeeFixed"
+              :min="0"
+              style="width:100%;"
+              :controls="false"
+              placeholder="0"
+            />
+          </el-form-item>
+        </div>
+
+        <el-form-item label="支付接口">
           <el-select
             v-model="form.payment"
-            style="width: 100%;"
+            style="width:100%;"
             :disabled="dialogMode === 'edit'"
+            placeholder="选择要使用的支付接口"
             @change="handlePaymentChange"
           >
             <el-option v-for="m in paymentMethods" :key="m" :value="m" :label="m" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="回调域名">
-          <el-input v-model="form.notifyDomain" placeholder="https://example.com" />
-        </el-form-item>
-        <el-form-item label="手续费率（%）">
-          <el-input-number v-model="form.handlingFeePercent" :min="0" :max="100" :precision="2" style="width: 100%;" />
-        </el-form-item>
-        <el-form-item label="固定手续费（分）">
-          <el-input-number v-model="form.handlingFeeFixed" :min="0" style="width: 100%;" />
+          <div class="form-help-text">选择要使用的支付接口</div>
         </el-form-item>
 
         <template v-if="formFields.length > 0">
-          <el-divider>支付驱动配置</el-divider>
-          <el-form-item v-for="field in formFields" :key="field.field || field.label" :label="field.label || field.field">
+          <el-divider content-position="left">支付配置</el-divider>
+          <el-form-item
+            v-for="field in formFields"
+            :key="field.field"
+            :label="field.label || field.field"
+          >
             <el-input
-              :model-value="form.config[field.field] || ''"
+              :model-value="form.config[field.field] ?? ''"
               :placeholder="field.tips || field.placeholder || ''"
+              :type="field.type === 'password' ? 'password' : 'text'"
+              show-password
               @update:model-value="form.config[field.field] = $event"
             />
+            <div v-if="field.tips || field.description" class="form-help-text">
+              {{ field.tips || field.description }}
+            </div>
           </el-form-item>
         </template>
 
@@ -226,3 +329,12 @@ onMounted(loadPayments)
     </el-dialog>
   </section>
 </template>
+
+<style scoped>
+.form-help-text {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+</style>
