@@ -189,6 +189,17 @@ watch(
     },
 );
 
+async function handleSortSave(ids) {
+    try {
+        await sortManagedNodes(ids);
+        ElMessage.success("排序已保存");
+        sortDialogVisible.value = false;
+        adminStore.fetchManagedNodes();
+    } catch (err) {
+        ElMessage.error(err.message || "排序保存失败");
+    }
+}
+
 onMounted(function loadManagedNodesOnMount() {
     const initialStatus = normalizeStatusFromQuery(route.query.status);
     filters.status = initialStatus;
@@ -1054,6 +1065,13 @@ onUnmounted(function clearDebounceOnUnmount() {
                     <el-icon><Refresh /></el-icon>
                     {{ t("nodes.refresh") }}
                 </el-button>
+                <el-button
+                    class="ghost-btn"
+                    @click="sortDialogVisible = true"
+                    :disabled="nodeList.length < 2"
+                >
+                    排序
+                </el-button>
             </div>
         </div>
 
@@ -1324,6 +1342,13 @@ onUnmounted(function clearDebounceOnUnmount() {
             :parent-options="parentNodeOptions"
             :route-options="routeGroupOptions"
             @submit="handleNodeDialogSubmit"
+        />
+
+        <SortDialog
+            v-model:visible="sortDialogVisible"
+            :items="nodeList"
+            title="排序节点"
+            @save="handleSortSave"
         />
     </section>
 </template>
