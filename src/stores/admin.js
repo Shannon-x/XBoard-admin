@@ -3,17 +3,21 @@ import { defineStore } from "pinia";
 import {
   Bell,
   Coin,
+  Connection,
   CreditCard,
   DataAnalysis,
   Document,
   Files,
   Goods,
+  Grid,
+  Guide,
   Iphone,
   Lock,
   Message,
   Monitor,
   Notebook,
   Operation,
+  Picture,
   Promotion,
   Service,
   Setting,
@@ -150,36 +154,48 @@ export const useAdminStore = defineStore("admin", () => {
 
   const navigationGroups = [
     {
-      titleKey: "nav.overview",
+      title: "仪表盘",
       items: [
         {
           labelKey: "nav.dashboard",
           icon: DataAnalysis,
           routeName: "dashboard",
         },
-        { labelKey: "nav.notices", icon: Bell, routeName: "notices" },
       ],
     },
     {
-      titleKey: "nav.system",
+      title: "系统管理",
       items: [
         { labelKey: "nav.settings", icon: Setting, routeName: "settings" },
-        { labelKey: "nav.nodes", icon: Monitor, routeName: "nodes" },
         { labelKey: "nav.plugins", icon: Operation, routeName: "plugins" },
+        { label: "主题配置", icon: Picture, routeName: "themeConfig" },
+        { labelKey: "nav.notices", icon: Bell, routeName: "notices" },
         { labelKey: "nav.payment", icon: Wallet, routeName: "payment" },
-        { labelKey: "nav.logs", icon: Document, routeName: "logs" },
+        { labelKey: "nav.knowledge", icon: Notebook, routeName: "knowledge" },
       ],
     },
     {
-      titleKey: "nav.business",
+      title: "节点管理",
+      items: [
+        { labelKey: "nav.nodes", icon: Monitor, routeName: "nodes" },
+        { label: "权限组管理", icon: Grid, routeName: "nodeGroups" },
+        { label: "路由管理", icon: Guide, routeName: "nodeRoutes" },
+      ],
+    },
+    {
+      title: "订阅管理",
       items: [
         { labelKey: "nav.plans", icon: Files, routeName: "plans" },
         { labelKey: "nav.orders", icon: ShoppingCart, routeName: "orders" },
-        { labelKey: "nav.users", icon: User, routeName: "users" },
-        { labelKey: "nav.tickets", icon: Service, routeName: "tickets" },
         { labelKey: "nav.coupons", icon: Promotion, routeName: "coupons" },
         { labelKey: "nav.giftcards", icon: CreditCard, routeName: "giftcards" },
-        { labelKey: "nav.knowledge", icon: Notebook, routeName: "knowledge" },
+      ],
+    },
+    {
+      title: "用户管理",
+      items: [
+        { labelKey: "nav.users", icon: User, routeName: "users" },
+        { labelKey: "nav.tickets", icon: Service, routeName: "tickets" },
       ],
     },
   ];
