@@ -1352,6 +1352,16 @@ button {
     background: var(--panel-strong);
 }
 
+.system-log-item--clickable {
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.system-log-item--clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 .system-log-footer {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

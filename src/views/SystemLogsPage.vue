@@ -1,8 +1,11 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi } from '../services/api'
+
+const route = useRoute()
 
 const logs = ref([])
 const loading = ref(false)
@@ -134,7 +137,13 @@ watch(activeLevel, () => {
   loadLogs()
 })
 
-onMounted(loadLogs)
+onMounted(() => {
+  const levelParam = route.query.level
+  if (levelParam && ['error', 'warning', 'info', 'debug'].includes(levelParam)) {
+    activeLevel.value = levelParam
+  }
+  loadLogs()
+})
 </script>
 
 <template>

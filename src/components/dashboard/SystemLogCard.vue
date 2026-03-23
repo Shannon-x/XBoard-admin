@@ -39,6 +39,10 @@ function goToLogs() {
   router.push({ name: 'logs' })
 }
 
+function goToLogsWithLevel(level) {
+  router.push({ name: 'logs', query: { level } })
+}
+
 function openCleanDialog() {
   cleanForm.value = { days: 0, level: '', limit: 1000 }
   cleanPreview.value = null
@@ -117,17 +121,17 @@ const levelOptions = [
     </div>
 
     <div class="system-log-grid">
-      <article class="system-log-item system-log-item--info">
+      <article class="system-log-item system-log-item--info system-log-item--clickable" @click="goToLogsWithLevel('info')">
         <span>{{ t('system.info') }}</span>
         <strong>{{ systemLogs.info }}</strong>
       </article>
 
-      <article class="system-log-item system-log-item--warning">
+      <article class="system-log-item system-log-item--warning system-log-item--clickable" @click="goToLogsWithLevel('warning')">
         <span>{{ t('system.warning') }}</span>
         <strong>{{ systemLogs.warning }}</strong>
       </article>
 
-      <article class="system-log-item system-log-item--error">
+      <article class="system-log-item system-log-item--error system-log-item--clickable" @click="goToLogsWithLevel('error')">
         <span>{{ t('system.error') }}</span>
         <strong>{{ systemLogs.error }}</strong>
       </article>
