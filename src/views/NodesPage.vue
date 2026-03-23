@@ -503,9 +503,25 @@ function resolveNodeTypeTagClass(type) {
     return "node-type-tag--default";
 }
 
-const copyAddress = (node) => {
+const copyAddress = async (node) => {
     const address = `${node.host}:${node.port}`;
-    navigator.clipboard.writeText(address);
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(address);
+        } else {
+            const textArea = document.createElement('textarea');
+            textArea.value = address;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+        ElMessage.success(t('nodes.messages.addressCopied', { address }));
+    } catch (err) {
+        ElMessage.error(t('nodes.messages.addressCopyFailed'));
+    }
 };
 
 function resolveNodeGroups(node) {
@@ -1520,10 +1536,15 @@ onUnmounted(function clearDebounceOnUnmount() {
 }
 
 .node-type-tag {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 120px;
     border: 1px solid transparent;
     color: #1e3a8a;
     box-shadow: none;
     border-radius: 6px;
+    font-size: 12px;
+    padding: 2px 8px;
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease,

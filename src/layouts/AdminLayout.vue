@@ -60,11 +60,20 @@ const languageOptions = computed(function languageOptions() {
     ];
 });
 
-const pageTitle = computed(function pageTitle() {
-    if (typeof window !== "undefined" && window.settings?.title) {
-        return window.settings.title;
+const siteName = computed(function siteName() {
+    const store = adminStore;
+    const fromSettings = store.siteSettings?.appName;
+    if (fromSettings && typeof fromSettings === 'string' && fromSettings.trim()) {
+        return fromSettings.trim();
     }
+    return t('app.brand');
+});
 
+const siteInitial = computed(function siteInitial() {
+    return siteName.value.charAt(0).toUpperCase();
+});
+
+const pageTitle = computed(function pageTitle() {
     if (route.meta.titleKey) {
         return t(route.meta.titleKey);
     }
@@ -92,7 +101,7 @@ const headerUserInitial = computed(function headerUserInitial() {
     const email = adminStore.userInfo?.email || "";
 
     if (!email || email === "--") {
-        return "LT";
+        return siteInitial.value;
     }
 
     return email.charAt(0).toUpperCase();
@@ -177,9 +186,9 @@ onUnmounted(function detachResizeListener() {
                 </el-icon>
             </el-button>
             <div class="brand-panel">
-                <div class="brand-mark">L</div>
+                <div class="brand-mark">{{ siteInitial }}</div>
                 <div>
-                    <strong>{{ pageTitle }}</strong>
+                    <strong>{{ siteName }}</strong>
                     <p>{{ t("app.console") }}</p>
                 </div>
             </div>
@@ -242,10 +251,6 @@ onUnmounted(function detachResizeListener() {
                 </div>
 
                 <div class="topbar-actions">
-                    <div class="topbar-badge">
-                        <span class="status-dot"></span>
-                        <span>{{ t("app.console") }}</span>
-                    </div>
                     <el-select
                         v-model="locale"
                         class="topbar-language"

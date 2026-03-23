@@ -1,8 +1,8 @@
 export default {
   app: {
     brand: 'XBoard',
-    console: 'V2Board · Admin Console',
-    adminFallback: 'XBoard Admin',
+    console: '管理控制台',
+    adminFallback: '管理员',
     language: '语言',
     languages: {
       zhCN: '简体中文',
@@ -848,6 +848,8 @@ export default {
       deleteFailed: '删除节点失败',
       copySuccess: '节点已复制',
       copyFailed: '复制节点失败',
+      addressCopied: '已复制地址: {address}',
+      addressCopyFailed: '复制地址失败',
       saveFailed: '保存节点失败',
       showIdMissing: '节点ID缺失，无法更新显示状态',
       showUpdated: '显示状态已更新',
