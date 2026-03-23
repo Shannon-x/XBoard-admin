@@ -64,9 +64,12 @@ function normalizeTicket(ticket) {
   const replyStatusInfo = TICKET_REPLY_STATUS[replyStatus] || { text: '未知', type: 'info' }
   const level = Number(ticket?.level ?? 0)
 
+  const rawMessages = Array.isArray(ticket?.messages) ? ticket.messages : []
+  const ticketUserId = Number(ticket?.user_id || 0)
+
   return {
     id: Number(ticket?.id || 0),
-    userId: Number(ticket?.user_id || 0),
+    userId: ticketUserId,
     userEmail: ticket?.user?.email || '--',
     subject: String(ticket?.subject || '--'),
     level,
@@ -80,17 +83,17 @@ function normalizeTicket(ticket) {
     replyStatusType: replyStatusInfo.type,
     createdAt: formatTimestamp(ticket?.created_at),
     updatedAt: formatTimestamp(ticket?.updated_at),
-    messages: Array.isArray(ticket?.messages)
-      ? ticket.messages.map(function mapMessage(msg) {
-          return {
-            id: Number(msg?.id || 0),
-            userId: Number(msg?.user_id || 0),
-            message: String(msg?.message || ''),
-            createdAt: formatTimestamp(msg?.created_at),
-            isAdmin: Boolean(msg?.is_me === false),
-          }
-        })
-      : [],
+    messages: rawMessages.map(function mapMessage(msg) {
+      const msgUserId = Number(msg?.user_id || 0)
+      const isAdmin = Boolean(msg?.is_from_admin) || (ticketUserId > 0 && msgUserId !== ticketUserId)
+      return {
+        id: Number(msg?.id || 0),
+        userId: msgUserId,
+        message: String(msg?.message || ''),
+        createdAt: formatTimestamp(msg?.created_at),
+        isAdmin,
+      }
+    }),
   }
 }
 
