@@ -38,15 +38,24 @@ export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {
   }
   const apiUrl = buildDashboardApiUrl('coupon/fetch', queryEntries)
   const payload = await requestDashboardApi(apiUrl)
+  console.log('[Coupons] API response structure:', JSON.stringify({
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    dataTotal: payload?.data?.total,
+  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+
+  const total = Number(rawData?.total || payload?.total || listSource.length)
+  const currentPage = Number(rawData?.current_page || payload?.current_page || page)
+  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  console.log('[Coupons] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(normalizeCoupon),
     pagination: {
-      page: Number(rawData?.current_page || page),
-      pageSize: Number(rawData?.per_page || pageSize),
-      total: Number(rawData?.total || payload?.total || listSource.length),
+      page: currentPage,
+      pageSize: perPage,
+      total: total,
     },
   }
 }

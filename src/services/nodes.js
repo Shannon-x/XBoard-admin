@@ -392,6 +392,10 @@ export async function fetchManagedNodes(options = {}) {
     ["status", status],
   ]);
   const payload = await requestDashboardApi(apiUrl);
+  console.log('[Nodes] API response structure:', JSON.stringify({
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    dataTotal: payload?.data?.total,
+  }))
   const rawData = payload?.data ?? {};
   const listSource = Array.isArray(rawData?.data)
     ? rawData.data
@@ -401,14 +405,19 @@ export async function fetchManagedNodes(options = {}) {
         ? rawData
         : [];
 
+  const total = Number(rawData?.total || payload?.total || 0);
+  const currentPage = Number(rawData?.page || rawData?.current_page || page);
+  const perPage = Number(rawData?.per_page || rawData?.limit || limit);
+  console.log('[Nodes] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length });
+
   return {
     list: listSource.map(function mapNode(node, index) {
       return normalizeManagedNode(node, index);
     }),
     pagination: {
-      page: Number(rawData?.page || page),
-      limit: Number(rawData?.per_page || rawData?.limit || limit),
-      total: Number(rawData?.total || 0),
+      page: currentPage,
+      limit: perPage,
+      total: total,
     },
   };
 }

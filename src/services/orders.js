@@ -152,17 +152,27 @@ export async function fetchManagedOrders(options = {}) {
   }
 
   const payload = await response.json()
+  console.log('[Orders] API response structure:', JSON.stringify({
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    dataTotal: payload?.data?.total,
+    nestedTotal: payload?.data?.data ? 'has nested data' : 'no nested data',
+  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+
+  const total = Number(rawData?.total || payload?.total || 0)
+  const currentPage = Number(rawData?.current_page || payload?.current_page || current)
+  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  console.log('[Orders] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(function mapOrder(order) {
       return normalizeOrder(order)
     }),
     pagination: {
-      page: Number(rawData?.current_page || current),
-      pageSize: Number(rawData?.per_page || pageSize),
-      total: Number(rawData?.total || 0),
+      page: currentPage,
+      pageSize: perPage,
+      total: total,
     },
   }
 }
