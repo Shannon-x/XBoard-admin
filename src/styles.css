@@ -3147,6 +3147,72 @@ button {
     .notice-editor-dialog .el-dialog__body {
         padding: 10px 14px 0;
     }
+
+    /* Tables: ensure horizontal scroll on narrow screens */
+    .el-table {
+        font-size: 13px;
+    }
+
+    .el-table .el-table__cell {
+        padding: 8px 0;
+    }
+
+    /* Pagination: compact on mobile */
+    .el-pagination {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .el-pagination .el-pagination__sizes,
+    .el-pagination .el-pagination__jump {
+        display: none;
+    }
+
+    /* Dialogs: full width on mobile */
+    .el-dialog {
+        width: calc(100vw - 24px) !important;
+        max-width: 100%;
+        margin: 12px auto !important;
+    }
+
+    .el-dialog__body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    /* Toolbars: wrap */
+    .el-space {
+        flex-wrap: wrap !important;
+    }
+
+    /* Filter panel: stack vertically */
+    .user-filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .user-filter-row .el-select,
+    .user-filter-row .el-input,
+    .user-filter-row .el-date-editor {
+        width: 100% !important;
+    }
+
+    /* Plan price grid: 2 columns on mobile */
+    .plan-price-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Tablet tweaks */
+@media (min-width: 721px) and (max-width: 1024px) {
+    .el-dialog {
+        width: calc(100vw - 60px) !important;
+        max-width: 600px;
+    }
+
+    .plan-price-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
