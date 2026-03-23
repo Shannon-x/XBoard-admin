@@ -384,7 +384,7 @@ onMounted(function onMount() {
 
       <el-table v-loading="loading" :data="users" stripe style="width: 100%">
         <el-table-column label="ID" prop="id" width="70" />
-        <el-table-column label="邮箱" width="200" prop="email" show-overflow-tooltip />
+        <el-table-column label="邮箱" min-width="180" prop="email" show-overflow-tooltip />
         <el-table-column label="订阅计划" prop="planName" width="120" />
         <el-table-column label="余额" width="100">
           <template #default="{ row }">
