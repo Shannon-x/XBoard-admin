@@ -7,6 +7,7 @@ const logs = ref([])
 const loading = ref(false)
 const error = ref('')
 const activeLevel = ref('all')
+const rawDebug = ref('')
 
 async function loadLogs() {
   loading.value = true
@@ -15,6 +16,12 @@ async function loadLogs() {
     const apiUrl = buildDashboardApiUrl('system/getSystemLog')
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
+
+    // Debug: show raw structure of first entry
+    if (Array.isArray(raw) && raw.length > 0) {
+      rawDebug.value = JSON.stringify(raw[0], null, 2)
+    }
+
     if (Array.isArray(raw)) {
       logs.value = raw.map(normalizeLog)
     } else {
@@ -28,31 +35,64 @@ async function loadLogs() {
 }
 
 function normalizeLog(item) {
-  let level = ''
-  let message = ''
-  let datetime = ''
-  let context = null
-
   if (typeof item === 'string') {
-    const match = item.match(/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[^\]]*)\]\s*\w+\.(\w+):\s*(.*)$/s)
-    if (match) {
-      datetime = match[1]
-      level = match[2].toLowerCase()
-      message = match[3]
-    } else {
-      message = item
-      level = 'info'
-    }
-  } else if (item && typeof item === 'object') {
-    level = String(item.level || item.level_name || 'info').toLowerCase()
-    message = item.message || item.text || item.msg || ''
-    datetime = item.datetime || item.timestamp || item.created_at || item.date || ''
-    context = item.context || item.extra || null
+    return parseLogString(item)
+  }
+  if (item && typeof item === 'object') {
+    return parseLogObject(item)
+  }
+  return { level: 'info', message: String(item), datetime: '', context: null }
+}
 
-    if (!message && item.formatted) {
-      message = item.formatted
+function parseLogString(str) {
+  // Laravel format: [2026-03-23 11:00:57] production.INFO: some message {"context":"value"}
+  const match = str.match(/^\[([^\]]+)\]\s*\S+\.(\w+):\s*(.*?)(\s*\{.*\})?\s*$/s)
+  if (match) {
+    let context = null
+    if (match[4]) {
+      try { context = JSON.parse(match[4].trim()) } catch {}
+    }
+    return {
+      level: (match[2] || 'info').toLowerCase(),
+      message: match[3] || '',
+      datetime: match[1],
+      context,
     }
   }
+  return { level: 'info', message: str, datetime: '', context: null }
+}
+
+function parseLogObject(item) {
+  const level = String(item.level || item.level_name || 'info').toLowerCase()
+
+  // Try all possible message field names
+  const message = item.message
+    || item.msg
+    || item.text
+    || item.content
+    || item.log
+    || item.body
+    || item.description
+    || item.formatted
+    || item.channel_name
+    || ''
+
+  // Try all possible datetime field names
+  const datetime = item.datetime
+    || item.timestamp
+    || item.created_at
+    || item.date
+    || item.time
+    || item.logged_at
+    || ''
+
+  // Try all possible context fields
+  const context = item.context
+    || item.extra
+    || item.data
+    || item.details
+    || item.meta
+    || null
 
   return { level, message, datetime, context }
 }
@@ -69,6 +109,9 @@ function formatTime(dt) {
       return parsed.toLocaleString('zh-CN')
     }
     return dt
+  }
+  if (dt && typeof dt === 'object' && dt.date) {
+    return formatTime(dt.date)
   }
   return String(dt)
 }
@@ -95,6 +138,16 @@ function levelTagType(level) {
   return map[level] || 'info'
 }
 
+function getLogPreview(item) {
+  // Try to find any renderable text from the original raw data
+  if (item.message) return item.message
+  // If context is a non-empty object, show JSON preview
+  if (item.context && typeof item.context === 'object' && Object.keys(item.context).length) {
+    return JSON.stringify(item.context).slice(0, 200)
+  }
+  return '--'
+}
+
 onMounted(loadLogs)
 </script>
 
@@ -107,11 +160,18 @@ onMounted(loadLogs)
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
+      <!-- Debug: show raw data structure of first log entry -->
+      <el-collapse v-if="rawDebug" style="margin-bottom: 16px;">
+        <el-collapse-item title="🔍 调试: API 返回的原始日志条目格式 (第一条)">
+          <pre style="font-size: 11px; background: #1e1e2e; color: #a6adc8; padding: 12px; border-radius: 8px; overflow-x: auto;">{{ rawDebug }}</pre>
+        </el-collapse-item>
+      </el-collapse>
+
       <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
         <el-radio-group v-model="activeLevel" size="small">
           <el-radio-button value="all">全部 ({{ levelCounts.all }})</el-radio-button>
           <el-radio-button v-for="level in ['error', 'warning', 'info', 'debug', 'critical', 'emergency']" :key="level" :value="level">
-            {{ level }} ({{ levelCounts[level] || 0 }})
+            {{ level.toUpperCase() }} ({{ levelCounts[level] || 0 }})
           </el-radio-button>
         </el-radio-group>
       </div>
@@ -127,7 +187,7 @@ onMounted(loadLogs)
         </el-table-column>
         <el-table-column label="消息" min-width="400">
           <template #default="{ row }">
-            <div style="word-break: break-all; line-height: 1.5; font-size: 13px; white-space: pre-wrap;">{{ row.message || '--' }}</div>
+            <div style="word-break: break-all; line-height: 1.5; font-size: 13px; white-space: pre-wrap;">{{ getLogPreview(row) }}</div>
           </template>
         </el-table-column>
         <el-table-column label="上下文" width="100">

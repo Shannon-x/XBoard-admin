@@ -11,8 +11,10 @@ function normalizePayment(raw) {
     show: Boolean(raw.show),
     sort: raw.sort ?? 0,
     notifyDomain: raw.notify_domain || '',
+    notifyUrl: raw.notify_url || '',
     handlingFeePercent: raw.handling_fee_percent ?? null,
     handlingFeeFixed: raw.handling_fee_fixed ?? null,
+    uuid: raw.uuid || '',
     createdAt: raw.created_at ?? null,
     updatedAt: raw.updated_at ?? null,
   }
@@ -61,6 +63,7 @@ export async function savePayment(formData) {
     body: JSON.stringify({
       id: formData.id || null,
       name: formData.name,
+      icon: formData.icon || null,
       payment: formData.payment,
       config: formData.config || {},
       enable: formData.enable ? 1 : 0,
