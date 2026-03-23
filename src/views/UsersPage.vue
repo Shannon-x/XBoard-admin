@@ -15,6 +15,7 @@ import {
   sendMailToUsers,
   createEmptyManagedUsersPagination,
 } from '../services/users'
+import { fetchManagedPlans } from '../services/plans'
 
 const { t } = useI18n()
 
@@ -85,6 +86,7 @@ function buildFilterArray() {
 const editDialogVisible = ref(false)
 const editForm = ref({})
 const editSaving = ref(false)
+const plans = ref([])
 
 const generateDialogVisible = ref(false)
 const generateForm = ref({
@@ -139,13 +141,19 @@ function openEditDialog(user) {
     password: '',
     balance: user.balance,
     commission_balance: user.commissionBalance,
+    u: user.uploadRaw ? Number((user.uploadRaw / 1073741824).toFixed(2)) : 0,
+    d: user.downloadRaw ? Number((user.downloadRaw / 1073741824).toFixed(2)) : 0,
     transfer_enable: user.transferEnableRaw ? user.transferEnableRaw / 1073741824 : 0,
     speed_limit: user.speedLimit,
     device_limit: user.deviceLimit,
     expired_at: user.expiredAtRaw,
     plan_id: user.planId,
     banned: user.banned,
+    is_admin: user.isAdmin ? 1 : 0,
+    is_staff: user.isStaff ? 1 : 0,
+    commission_type: user.commissionType ?? 0,
     commission_rate: user.commissionRate,
+    discount: user.discount,
     remarks: user.remarks,
     invite_user_email: user.inviteUserEmail !== '--' ? user.inviteUserEmail : '',
   }
@@ -161,6 +169,12 @@ async function saveEditForm() {
     }
     if (payload.transfer_enable !== undefined) {
       payload.transfer_enable = Number(payload.transfer_enable) * 1073741824
+    }
+    if (payload.u !== undefined) {
+      payload.u = Number(payload.u) * 1073741824
+    }
+    if (payload.d !== undefined) {
+      payload.d = Number(payload.d) * 1073741824
     }
     await updateManagedUser(payload)
     ElMessage.success('用户信息已更新')
@@ -304,6 +318,7 @@ async function submitSendMail() {
 
 onMounted(function onMount() {
   loadUsers()
+  fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
 })
 </script>
 
@@ -383,30 +398,40 @@ onMounted(function onMount() {
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="users" stripe style="width: 100%">
-        <el-table-column label="ID" prop="id" width="70" />
-        <el-table-column label="邮箱" min-width="180" prop="email" show-overflow-tooltip />
-        <el-table-column label="订阅计划" prop="planName" width="120" />
-        <el-table-column label="余额" width="100">
+        <el-table-column label="ID" prop="id" width="60" />
+        <el-table-column label="邮箱" prop="email" width="180" show-overflow-tooltip />
+        <el-table-column label="状态" width="70">
           <template #default="{ row }">
-            ¥{{ row.balance }}
+            <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="已用流量" prop="totalUsed" width="120" />
-        <el-table-column label="总流量" prop="transferEnable" width="120" />
-        <el-table-column label="到期时间" prop="expiredAt" width="160" />
-        <el-table-column label="状态" width="90">
+        <el-table-column label="订阅" prop="planName" width="140" show-overflow-tooltip />
+        <el-table-column label="已用/总量" width="150">
           <template #default="{ row }">
-            <el-tag :type="row.statusType" effect="dark" size="small">
-              {{ row.statusText }}
-            </el-tag>
+            {{ row.totalUsed }} / {{ row.transferEnable }}
           </template>
         </el-table-column>
-        <el-table-column fixed="right" label="操作" width="200">
+        <el-table-column label="到期时间" prop="expiredAt" width="140" />
+        <el-table-column label="余额" width="80">
+          <template #default="{ row }">¥{{ row.balance }}</template>
+        </el-table-column>
+        <el-table-column label="佣金" width="80">
+          <template #default="{ row }">¥{{ row.commissionBalance }}</template>
+        </el-table-column>
+        <el-table-column label="注册时间" prop="createdAt" width="140" />
+        <el-table-column fixed="right" label="操作" width="120">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
-            <el-button link size="small" type="warning" @click="handleBan(row)">封禁</el-button>
-            <el-button link size="small" type="info" @click="handleResetSecret(row)">重置密钥</el-button>
-            <el-button link size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-dropdown trigger="click">
+              <el-button link size="small" type="primary">操作</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openEditDialog(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item @click="handleBan(row)">封禁</el-dropdown-item>
+                  <el-dropdown-item @click="handleResetSecret(row)">重置密钥</el-dropdown-item>
+                  <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -424,46 +449,123 @@ onMounted(function onMount() {
       />
     </SectionCard>
 
-    <!-- 编辑用户对话框 -->
-    <el-dialog v-model="editDialogVisible" title="编辑用户" width="600px" destroy-on-close>
-      <el-form :model="editForm" label-width="120px">
+    <!-- 用户管理对话框 -->
+    <el-dialog v-model="editDialogVisible" title="用户管理" width="480px" destroy-on-close>
+      <el-form :model="editForm" label-position="top" style="padding: 0 4px">
         <el-form-item label="邮箱">
           <el-input v-model="editForm.email" />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="editForm.password" placeholder="留空则不修改" show-password />
-        </el-form-item>
-        <el-form-item label="余额（元）">
-          <el-input-number v-model="editForm.balance" :min="0" :precision="2" :step="1" />
-        </el-form-item>
-        <el-form-item label="佣金余额（元）">
-          <el-input-number v-model="editForm.commission_balance" :min="0" :precision="2" :step="1" />
-        </el-form-item>
-        <el-form-item label="流量（GB）">
-          <el-input-number v-model="editForm.transfer_enable" :min="0" :step="10" />
-        </el-form-item>
-        <el-form-item label="速率限制（Mbps）">
-          <el-input-number v-model="editForm.speed_limit" :min="0" />
-        </el-form-item>
-        <el-form-item label="设备限制">
-          <el-input-number v-model="editForm.device_limit" :min="0" />
-        </el-form-item>
-        <el-form-item label="佣金比例（%）">
-          <el-input-number v-model="editForm.commission_rate" :min="0" :max="100" />
-        </el-form-item>
-        <el-form-item label="封禁">
-          <el-switch v-model="editForm.banned" :active-value="1" :inactive-value="0" />
         </el-form-item>
         <el-form-item label="邀请人邮箱">
           <el-input v-model="editForm.invite_user_email" placeholder="留空则清除邀请人" />
         </el-form-item>
+        <el-form-item label="密码">
+          <el-input v-model="editForm.password" placeholder="如需修改密码请输入" show-password />
+        </el-form-item>
+
+        <div style="display:flex;gap:12px">
+          <el-form-item label="余额" style="flex:1">
+            <el-input v-model.number="editForm.balance" placeholder="请输入余额" type="number">
+              <template #suffix>¥</template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="佣金余额" style="flex:1">
+            <el-input v-model.number="editForm.commission_balance" placeholder="请输入佣金余额" type="number">
+              <template #suffix>¥</template>
+            </el-input>
+          </el-form-item>
+        </div>
+
+        <div style="display:flex;gap:12px">
+          <el-form-item label="已用上行" style="flex:1">
+            <el-input v-model.number="editForm.u" placeholder="已用上行" type="number">
+              <template #suffix>GB</template>
+            </el-input>
+          </el-form-item>
+          <el-form-item label="已用下行" style="flex:1">
+            <el-input v-model.number="editForm.d" placeholder="已用下行" type="number">
+              <template #suffix>GB</template>
+            </el-input>
+          </el-form-item>
+        </div>
+
+        <el-form-item label="流量">
+          <el-input v-model.number="editForm.transfer_enable" placeholder="请输入流量" type="number">
+            <template #suffix>GB</template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="到期时间">
+          <el-date-picker
+            v-model="editForm.expired_at"
+            type="datetime"
+            placeholder="请选择用户到期日期，留空为长期有效"
+            value-format="X"
+            style="width:100%"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="订阅计划">
+          <el-select v-model="editForm.plan_id" placeholder="无" clearable style="width:100%">
+            <el-option :label="'无'" :value="null" />
+            <el-option v-for="p in plans" :key="p.id" :label="p.name" :value="p.id" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="账户状态">
+          <el-select v-model="editForm.banned" style="width:100%">
+            <el-option label="正常" :value="0" />
+            <el-option label="封禁" :value="1" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="佣金类型">
+          <el-select v-model="editForm.commission_type" style="width:100%">
+            <el-option label="跟随系统设置" :value="0" />
+            <el-option label="按周期发放" :value="1" />
+            <el-option label="一次性发放" :value="2" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="推荐返利比例">
+          <el-input v-model.number="editForm.commission_rate" placeholder="为空则跟随站点设置返利比例" type="number">
+            <template #suffix>%</template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="专享折扣比例">
+          <el-input v-model.number="editForm.discount" placeholder="为空则不享受专享折扣" type="number">
+            <template #suffix>%</template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="限速">
+          <el-input v-model.number="editForm.speed_limit" placeholder="留空则不限速" type="number">
+            <template #suffix>Mbps</template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="设备限制">
+          <el-input v-model.number="editForm.device_limit" placeholder="留空则不限制" type="number">
+            <template #suffix>台</template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="是否管理员">
+          <el-switch v-model="editForm.is_admin" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+
+        <el-form-item label="是否员工">
+          <el-switch v-model="editForm.is_staff" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+
         <el-form-item label="备注">
-          <el-input v-model="editForm.remarks" type="textarea" :rows="2" />
+          <el-input v-model="editForm.remarks" type="textarea" :rows="3" placeholder="请在这里记录" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button :loading="editSaving" type="primary" @click="saveEditForm">保存</el-button>
+        <el-button :loading="editSaving" type="primary" @click="saveEditForm">提交</el-button>
       </template>
     </el-dialog>
 
