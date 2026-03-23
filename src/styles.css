@@ -2509,6 +2509,7 @@ button {
 
 .settings-field__control {
     width: 100%;
+    max-width: 480px;
 }
 
 .settings-field__control .el-input,
