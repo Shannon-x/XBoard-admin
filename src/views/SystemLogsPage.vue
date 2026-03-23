@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi } from '../services/api'
 
@@ -14,7 +14,12 @@ async function loadLogs() {
   try {
     const apiUrl = buildDashboardApiUrl('system/getSystemLog')
     const payload = await requestDashboardApi(apiUrl)
-    logs.value = Array.isArray(payload?.data) ? payload.data : []
+    const raw = payload?.data
+    if (Array.isArray(raw)) {
+      logs.value = raw.map(normalizeLog)
+    } else {
+      logs.value = []
+    }
   } catch (err) {
     error.value = err.message
   } finally {
@@ -22,8 +27,51 @@ async function loadLogs() {
   }
 }
 
-const filteredLogs = ref([])
-import { computed } from 'vue'
+function normalizeLog(item) {
+  let level = ''
+  let message = ''
+  let datetime = ''
+  let context = null
+
+  if (typeof item === 'string') {
+    const match = item.match(/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[^\]]*)\]\s*\w+\.(\w+):\s*(.*)$/s)
+    if (match) {
+      datetime = match[1]
+      level = match[2].toLowerCase()
+      message = match[3]
+    } else {
+      message = item
+      level = 'info'
+    }
+  } else if (item && typeof item === 'object') {
+    level = String(item.level || item.level_name || 'info').toLowerCase()
+    message = item.message || item.text || item.msg || ''
+    datetime = item.datetime || item.timestamp || item.created_at || item.date || ''
+    context = item.context || item.extra || null
+
+    if (!message && item.formatted) {
+      message = item.formatted
+    }
+  }
+
+  return { level, message, datetime, context }
+}
+
+function formatTime(dt) {
+  if (!dt) return '--'
+  if (typeof dt === 'number') {
+    const d = dt > 1e12 ? new Date(dt) : new Date(dt * 1000)
+    return d.toLocaleString('zh-CN')
+  }
+  if (typeof dt === 'string') {
+    const parsed = new Date(dt)
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toLocaleString('zh-CN')
+    }
+    return dt
+  }
+  return String(dt)
+}
 
 const displayLogs = computed(() => {
   if (activeLevel.value === 'all') return logs.value
@@ -47,21 +95,16 @@ function levelTagType(level) {
   return map[level] || 'info'
 }
 
-function formatTime(ts) {
-  if (!ts) return '--'
-  try {
-    return new Date(ts).toLocaleString('zh-CN')
-  } catch {
-    return ts
-  }
-}
-
 onMounted(loadLogs)
 </script>
 
 <template>
   <section class="page-stack">
     <SectionCard title="系统日志" description="查看分类系统日志，按级别筛选。">
+      <template #actions>
+        <el-button type="info" plain size="small" @click="loadLogs">刷新</el-button>
+      </template>
+
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
       <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
@@ -76,20 +119,20 @@ onMounted(loadLogs)
       <el-table :data="displayLogs" v-loading="loading" class="dashboard-table" max-height="600">
         <el-table-column label="级别" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="levelTagType(row.level)">{{ row.level }}</el-tag>
+            <el-tag size="small" :type="levelTagType(row.level)">{{ row.level.toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="时间" width="180">
-          <template #default="{ row }">{{ formatTime(row.datetime || row.timestamp || row.created_at) }}</template>
+          <template #default="{ row }">{{ formatTime(row.datetime) }}</template>
         </el-table-column>
-        <el-table-column label="消息" min-width="300">
+        <el-table-column label="消息" min-width="400">
           <template #default="{ row }">
-            <div style="word-break: break-all; line-height: 1.5; font-size: 13px;">{{ row.message || row.text || '--' }}</div>
+            <div style="word-break: break-all; line-height: 1.5; font-size: 13px; white-space: pre-wrap;">{{ row.message || '--' }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="上下文" width="120">
+        <el-table-column label="上下文" width="100">
           <template #default="{ row }">
-            <el-popover v-if="row.context && Object.keys(row.context).length" placement="left" :width="400" trigger="click">
+            <el-popover v-if="row.context && typeof row.context === 'object' && Object.keys(row.context).length" placement="left" :width="400" trigger="click">
               <template #reference>
                 <el-button link size="small" type="primary">详情</el-button>
               </template>

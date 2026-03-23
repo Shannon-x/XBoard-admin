@@ -437,7 +437,7 @@ onMounted(function initializePluginsPage() {
   filters.status = normalizeStatusFromQuery(route.query.status)
 
   const initialType = normalizeTypeFromQuery(route.query.type)
-  filters.type = initialType === STATUS_ALL ? TYPE_FEATURE : initialType
+  filters.type = initialType
   filters.keyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
 
   fetchPlugins()
