@@ -146,17 +146,27 @@ export async function fetchManagedTickets(options = {}) {
   }
 
   const payload = await response.json()
+  console.log('[Tickets] API response structure:', JSON.stringify({
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    dataTotal: payload?.data?.total,
+    nestedTotal: payload?.data?.data ? 'has nested data' : 'no nested data',
+  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+
+  const total = Number(rawData?.total || payload?.total || 0)
+  const currentPage = Number(rawData?.current_page || payload?.current_page || current)
+  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  console.log('[Tickets] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(function mapTicket(ticket) {
       return normalizeTicket(ticket)
     }),
     pagination: {
-      page: Number(rawData?.current_page || current),
-      pageSize: Number(rawData?.per_page || pageSize),
-      total: Number(rawData?.total || payload?.total || listSource.length),
+      page: currentPage,
+      pageSize: perPage,
+      total: total,
     },
   }
 }

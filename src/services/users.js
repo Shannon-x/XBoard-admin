@@ -146,17 +146,47 @@ export async function fetchManagedUsers(options = {}) {
   }
 
   const payload = await response.json()
+  console.log('[Users] API response structure:', JSON.stringify({
+    hasData: !!payload?.data,
+    dataType: typeof payload?.data,
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    topTotal: payload?.total,
+    dataTotal: payload?.data?.total,
+    nestedTotal: payload?.data?.data ? 'has nested data' : 'no nested data',
+  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+
+  // Xboard API can return pagination at different nesting levels
+  const total = Number(
+    rawData?.total
+    || payload?.data?.total
+    || payload?.total
+    || 0
+  )
+  const currentPage = Number(
+    rawData?.current_page
+    || payload?.data?.current_page
+    || payload?.current_page
+    || current
+  )
+  const perPage = Number(
+    rawData?.per_page
+    || payload?.data?.per_page
+    || payload?.per_page
+    || pageSize
+  )
+
+  console.log('[Users] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(function mapUser(user) {
       return normalizeUser(user)
     }),
     pagination: {
-      page: Number(rawData?.current_page || current),
-      pageSize: Number(rawData?.per_page || pageSize),
-      total: Number(rawData?.total || 0),
+      page: currentPage,
+      pageSize: perPage,
+      total: total,
     },
   }
 }

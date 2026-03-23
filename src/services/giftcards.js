@@ -85,15 +85,24 @@ export async function fetchGiftCardCodes(templateId, { page = 1, pageSize = 15 }
   ]
   const apiUrl = buildDashboardApiUrl('gift-card/codes', queryEntries)
   const payload = await requestDashboardApi(apiUrl)
+  console.log('[GiftCards] API response structure:', JSON.stringify({
+    dataKeys: payload?.data ? Object.keys(payload.data) : [],
+    dataTotal: payload?.data?.total,
+  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+
+  const total = Number(rawData?.total || payload?.total || listSource.length)
+  const currentPage = Number(rawData?.current_page || payload?.current_page || page)
+  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  console.log('[GiftCards] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(normalizeCode),
     pagination: {
-      page: Number(rawData?.current_page || page),
-      pageSize: Number(rawData?.per_page || pageSize),
-      total: Number(rawData?.total || listSource.length),
+      page: currentPage,
+      pageSize: perPage,
+      total: total,
     },
   }
 }
