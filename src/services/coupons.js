@@ -52,29 +52,39 @@ export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {
 }
 
 export async function generateCoupons(formData) {
-  const apiUrl = buildDashboardApiUrl('coupon/generate')
+  const endpoint = formData.id ? 'coupon/save' : 'coupon/generate'
+  const apiUrl = buildDashboardApiUrl(endpoint)
+  const body = {
+    name: formData.name,
+    type: formData.type,
+    value: formData.value,
+    limit_use: formData.limitUse || null,
+    limit_use_with_user: formData.limitUseWithUser || null,
+    limit_plan_ids: formData.limitPlanIds || [],
+    limit_period: formData.limitPeriod || [],
+    started_at: formData.startedAt || null,
+    ended_at: formData.endedAt || null,
+  }
+  if (formData.id) {
+    body.id = formData.id
+  }
+  if (formData.code) {
+    body.code = formData.code
+  }
+  if (!formData.id && formData.generateCount) {
+    body.generate_count = formData.generateCount
+  }
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       ...getDashboardApiHeaders(),
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      name: formData.name,
-      type: formData.type,
-      value: formData.value,
-      generate_count: formData.generateCount || 1,
-      limit_use: formData.limitUse || null,
-      limit_use_with_user: formData.limitUseWithUser || null,
-      limit_plan_ids: formData.limitPlanIds || [],
-      limit_period: formData.limitPeriod || [],
-      started_at: formData.startedAt || null,
-      ended_at: formData.endedAt || null,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
-    throw new Error(`生成优惠券失败 (${response.status})`)
+    throw new Error(`${formData.id ? '保存' : '生成'}优惠券失败 (${response.status})`)
   }
 
   return response.json()
