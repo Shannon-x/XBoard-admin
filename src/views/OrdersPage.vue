@@ -162,7 +162,10 @@ function openAssignDialog() {
 async function submitAssign() {
   assignSaving.value = true
   try {
-    await assignOrder(assignForm.value)
+    await assignOrder({
+      ...assignForm.value,
+      totalAmount: Math.round(Number(assignForm.value.totalAmount) * 100),
+    })
     ElMessage.success('订单分配成功')
     assignDialogVisible.value = false
     loadOrders()
@@ -320,14 +323,14 @@ onMounted(function onMount() {
       </div>
     </el-dialog>
 
-    <!-- 分配订单对话框 -->
-    <el-dialog v-model="assignDialogVisible" title="分配订单" width="500px" destroy-on-close>
-      <el-form :model="assignForm" label-width="100px">
-        <el-form-item label="用户邮箱" required>
-          <el-input v-model="assignForm.email" placeholder="输入用户邮箱" />
+    <!-- 订单分配对话框 -->
+    <el-dialog v-model="assignDialogVisible" title="订单分配" width="440px" destroy-on-close>
+      <el-form :model="assignForm" label-position="top">
+        <el-form-item label="用户邮箱">
+          <el-input v-model="assignForm.email" placeholder="请输入用户邮箱" />
         </el-form-item>
-        <el-form-item label="套餐" required>
-          <el-select v-model="assignForm.planId" placeholder="选择套餐" style="width: 100%">
+        <el-form-item label="订阅计划">
+          <el-select v-model="assignForm.planId" placeholder="请选择订阅计划" style="width: 100%">
             <el-option
               v-for="plan in plans"
               :key="plan.id"
@@ -336,8 +339,8 @@ onMounted(function onMount() {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="周期" required>
-          <el-select v-model="assignForm.period" style="width: 100%">
+        <el-form-item label="订单周期">
+          <el-select v-model="assignForm.period" placeholder="请选择购买时长" style="width: 100%">
             <el-option
               v-for="opt in periodOptions"
               :key="opt.value"
@@ -346,13 +349,13 @@ onMounted(function onMount() {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="金额（分）" required>
-          <el-input-number v-model="assignForm.totalAmount" :min="0" />
+        <el-form-item label="支付金额">
+          <el-input v-model.number="assignForm.totalAmount" placeholder="0" type="number" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="assignDialogVisible = false">取消</el-button>
-        <el-button :loading="assignSaving" type="primary" @click="submitAssign">分配</el-button>
+        <el-button :loading="assignSaving" type="primary" @click="submitAssign">确定</el-button>
       </template>
     </el-dialog>
   </section>
