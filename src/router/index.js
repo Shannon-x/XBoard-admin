@@ -7,6 +7,8 @@ import DashboardPage from '../views/DashboardPage.vue'
 import GiftCardsPage from '../views/GiftCardsPage.vue'
 import KnowledgePage from '../views/KnowledgePage.vue'
 import LoginPage from '../views/LoginPage.vue'
+import NodeGroupsPage from '../views/NodeGroupsPage.vue'
+import NodeRoutesPage from '../views/NodeRoutesPage.vue'
 import NodesPage from '../views/NodesPage.vue'
 import NoticesPage from '../views/NoticesPage.vue'
 import OrdersPage from '../views/OrdersPage.vue'
@@ -15,6 +17,7 @@ import PlansPage from '../views/PlansPage.vue'
 import PluginsPage from '../views/PluginsPage.vue'
 import SettingsPage from '../views/SettingsPage.vue'
 import SystemLogsPage from '../views/SystemLogsPage.vue'
+import ThemeConfigPage from '../views/ThemeConfigPage.vue'
 import TicketsPage from '../views/TicketsPage.vue'
 import UsersPage from '../views/UsersPage.vue'
 
@@ -42,6 +45,14 @@ const ROUTE_META_KEYS = {
   nodes: {
     title: 'routes.nodes.title',
     eyebrow: 'routes.nodes.eyebrow',
+  },
+  nodeGroups: {
+    title: '权限组管理',
+    eyebrow: '节点管理',
+  },
+  nodeRoutes: {
+    title: '路由管理',
+    eyebrow: '节点管理',
   },
   plugins: {
     title: 'routes.plugins.title',
@@ -78,6 +89,10 @@ const ROUTE_META_KEYS = {
   logs: {
     title: 'routes.logs.title',
     eyebrow: 'routes.logs.eyebrow',
+  },
+  themeConfig: {
+    title: '主题配置',
+    eyebrow: '系统管理',
   },
 }
 
@@ -142,6 +157,24 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.nodes.title,
           eyebrowKey: ROUTE_META_KEYS.nodes.eyebrow,
+        },
+      },
+      {
+        path: 'node-groups',
+        name: 'nodeGroups',
+        component: NodeGroupsPage,
+        meta: {
+          title: ROUTE_META_KEYS.nodeGroups.title,
+          eyebrow: ROUTE_META_KEYS.nodeGroups.eyebrow,
+        },
+      },
+      {
+        path: 'node-routes',
+        name: 'nodeRoutes',
+        component: NodeRoutesPage,
+        meta: {
+          title: ROUTE_META_KEYS.nodeRoutes.title,
+          eyebrow: ROUTE_META_KEYS.nodeRoutes.eyebrow,
         },
       },
       {
@@ -223,6 +256,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.logs.title,
           eyebrowKey: ROUTE_META_KEYS.logs.eyebrow,
+        },
+      },
+      {
+        path: 'theme',
+        name: 'themeConfig',
+        component: ThemeConfigPage,
+        meta: {
+          title: ROUTE_META_KEYS.themeConfig.title,
+          eyebrow: ROUTE_META_KEYS.themeConfig.eyebrow,
         },
       },
     ],
