@@ -56,10 +56,12 @@ function changeClass(change) {
             <div>
                 <h3>{{ title }}</h3>
             </div>
-            <span class="traffic-rank-badge">{{
-                t("traffic.topLabel", { count: rankData.list.length })
-            }}</span>
-            <el-button :icon="Refresh" size="small" plain @click.stop="emit('refresh')">刷新</el-button>
+            <div style="display:flex; align-items:center; gap:8px">
+                <span class="traffic-rank-badge">{{
+                    t("traffic.topLabel", { count: rankData.list.length })
+                }}</span>
+                <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
+            </div>
         </div>
 
         <div v-if="rankData.list.length" class="traffic-rank-list">

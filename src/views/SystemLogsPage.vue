@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi } from '../services/api'
 
@@ -7,6 +8,7 @@ const logs = ref([])
 const loading = ref(false)
 const error = ref('')
 const activeLevel = ref('all')
+const expandedRows = ref(new Set())
 
 // Pagination
 const currentPage = ref(1)
@@ -30,16 +32,15 @@ async function loadLogs() {
 
     if (Array.isArray(raw)) {
       logs.value = raw.map(normalizeLog)
-      // If the API returns total count
       total.value = payload?.total || raw.length
     } else if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
-      // Paginated response: { data: [...], total: N }
       logs.value = raw.data.map(normalizeLog)
       total.value = raw.total || raw.data.length
     } else {
       logs.value = []
       total.value = 0
     }
+    expandedRows.value = new Set()
   } catch (err) {
     error.value = err.message
   } finally {
@@ -74,7 +75,11 @@ function normalizeLog(item) {
     }
   }
 
-  return { id: item.id, level, title, uri, method, ip, host, requestData, context, createdAt }
+  // For truncation: extract first line and check if multi-line
+  const firstLine = title.split('\n')[0].substring(0, 120)
+  const isLong = title.length > 120 || title.includes('\n')
+
+  return { id: item.id, level, title, firstLine, isLong, uri, method, ip, host, requestData, context, createdAt }
 }
 
 function formatTime(ts) {
@@ -101,6 +106,18 @@ function methodTagType(method) {
   return 'info'
 }
 
+function toggleExpand(id) {
+  if (expandedRows.value.has(id)) {
+    expandedRows.value.delete(id)
+  } else {
+    expandedRows.value.add(id)
+  }
+}
+
+function isExpanded(id) {
+  return expandedRows.value.has(id)
+}
+
 function handlePageChange(page) {
   currentPage.value = page
   loadLogs()
@@ -122,9 +139,9 @@ onMounted(loadLogs)
 
 <template>
   <section class="page-stack">
-    <SectionCard title="系统日志" description="查看管理员操作日志，按级别筛选，支持翻页。">
+    <SectionCard title="系统日志" description="查看系统日志，按级别筛选，支持翻页。">
       <template #actions>
-        <el-button type="info" plain size="small" @click="loadLogs">刷新</el-button>
+        <el-button :icon="Refresh" type="info" plain size="small" @click="loadLogs">刷新</el-button>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
@@ -150,13 +167,20 @@ onMounted(loadLogs)
         </el-table-column>
         <el-table-column label="请求" min-width="300">
           <template #default="{ row }">
-            <div style="line-height:1.6;">
-              <div style="font-size:13px;font-weight:500;color:var(--el-text-color-primary);">
+            <div class="log-request-cell">
+              <div class="log-request-header">
                 <el-tag size="small" :type="methodTagType(row.method)" style="margin-right:6px;">{{ row.method }}</el-tag>
-                <span>{{ row.title }}</span>
+                <span class="log-title-text" v-if="!row.isLong || isExpanded(row.id)">{{ row.title }}</span>
+                <span class="log-title-text" v-else>{{ row.firstLine }}...</span>
               </div>
-              <div style="font-size:11px;color:var(--el-text-color-secondary);margin-top:2px;">
-                {{ row.uri }}
+              <div v-if="row.uri" class="log-uri-text">{{ row.uri }}</div>
+              <div v-if="row.isLong" class="log-expand-toggle">
+                <el-button link size="small" type="primary" @click="toggleExpand(row.id)">
+                  {{ isExpanded(row.id) ? '收起' : '展开详情' }}
+                </el-button>
+              </div>
+              <div v-if="isExpanded(row.id) && row.title.length > 120" class="log-detail-block">
+                <pre class="log-stack-trace">{{ row.title }}</pre>
               </div>
             </div>
           </template>
@@ -182,11 +206,11 @@ onMounted(loadLogs)
                 </table>
                 <template v-if="row.requestData">
                   <h4 style="margin:12px 0 8px;">请求数据</h4>
-                  <pre style="font-size:11px;background:#1e1e2e;color:#a6adc8;padding:10px;border-radius:8px;overflow-x:auto;margin:0;">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
+                  <pre class="log-stack-trace">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
                 </template>
                 <template v-if="row.context && ((typeof row.context === 'object' && Object.keys(row.context).length) || typeof row.context === 'string')">
                   <h4 style="margin:12px 0 8px;">上下文</h4>
-                  <pre style="font-size:11px;background:#1e1e2e;color:#a6adc8;padding:10px;border-radius:8px;overflow-x:auto;margin:0;">{{ typeof row.context === 'string' ? row.context : JSON.stringify(row.context, null, 2) }}</pre>
+                  <pre class="log-stack-trace">{{ typeof row.context === 'string' ? row.context : JSON.stringify(row.context, null, 2) }}</pre>
                 </template>
               </div>
             </el-popover>
@@ -208,3 +232,48 @@ onMounted(loadLogs)
     </SectionCard>
   </section>
 </template>
+
+<style scoped>
+.log-request-cell {
+  line-height: 1.6;
+}
+
+.log-request-header {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.log-title-text {
+  word-break: break-word;
+}
+
+.log-uri-text {
+  font-size: 11px;
+  color: var(--el-text-color-secondary);
+  margin-top: 2px;
+}
+
+.log-expand-toggle {
+  margin-top: 4px;
+}
+
+.log-detail-block {
+  margin-top: 8px;
+}
+
+.log-stack-trace {
+  font-size: 11px;
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+  background: #1e1e2e;
+  color: #a6adc8;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+}
+</style>
