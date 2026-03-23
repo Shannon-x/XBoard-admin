@@ -1,7 +1,6 @@
 import {
   buildCommonApiUrl,
   buildDashboardApiUrl,
-  buildSecureV2ApiUrl,
   requestDashboardApi,
   requestDashboardMutation,
 } from "./api";
@@ -608,7 +607,7 @@ export async function fetchSystemStatus() {
 }
 
 export async function cleanSystemLogs(options = {}) {
-  const apiUrl = buildSecureV2ApiUrl('system/cleanLog')
+  const apiUrl = buildDashboardApiUrl('system/cleanSystemLog')
   return requestDashboardMutation(apiUrl, {
     days: Number(options.days ?? 0),
     level: options.level || '',
@@ -617,9 +616,20 @@ export async function cleanSystemLogs(options = {}) {
 }
 
 export async function getLogCleanupStats(options = {}) {
-  const apiUrl = buildSecureV2ApiUrl('system/getLogStats')
-  return requestDashboardMutation(apiUrl, {
-    days: Number(options.days ?? 0),
-    level: options.level || '',
-  })
+  const queryEntries = []
+  if (options.days !== undefined && options.days !== '') {
+    queryEntries.push(['days', options.days])
+  }
+  if (options.level) {
+    queryEntries.push(['level', options.level.toUpperCase()])
+  }
+  const apiUrl = buildDashboardApiUrl('system/getSystemLog', [
+    ...queryEntries,
+    ['current', 1],
+    ['pageSize', 1],
+  ])
+  const payload = await requestDashboardApi(apiUrl)
+  const rawData = payload?.data ?? {}
+  const total = Number(rawData?.total || payload?.total || 0)
+  return { data: { count: total } }
 }

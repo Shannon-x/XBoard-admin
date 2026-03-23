@@ -110,9 +110,9 @@ const levelOptions = [
         <el-tag :type="statusTagType(runtimeStatus.horizonStatusTone)" effect="dark" size="small">
           {{ t('system.horizon', { status: runtimeStatus.horizonStatusText }) }}
         </el-tag>
-        <el-button :icon="Refresh" text size="small" @click="emit('refresh')" title="刷新" />
-        <el-button :icon="View" text size="small" @click="goToLogs" title="查看日志" />
-        <el-button :icon="Delete" text size="small" type="danger" @click="openCleanDialog" title="清理日志" />
+        <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
+        <el-button :icon="View" size="small" plain type="primary" @click="goToLogs">查看日志</el-button>
+        <el-button :icon="Delete" size="small" plain type="danger" @click="openCleanDialog">清理日志</el-button>
       </div>
     </div>
 

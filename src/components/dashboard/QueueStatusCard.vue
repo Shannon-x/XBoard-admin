@@ -33,10 +33,12 @@ function statusTagType(tone) {
         <p>{{ t('queue.statusDescription') }}</p>
       </div>
 
-      <el-tag :type="statusTagType(queueStatus.statusTone)" effect="dark">
-        {{ queueStatus.statusText }}
-      </el-tag>
-      <el-button :icon="Refresh" text size="small" @click="emit('refresh')" title="刷新" />
+      <div style="display:flex; align-items:center; gap:8px">
+        <el-tag :type="statusTagType(queueStatus.statusTone)" effect="dark">
+          {{ queueStatus.statusText }}
+        </el-tag>
+        <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
+      </div>
     </div>
 
     <div class="queue-card__metrics">

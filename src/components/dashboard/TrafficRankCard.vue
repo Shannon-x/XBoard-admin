@@ -59,7 +59,7 @@ function changeClass(change) {
             <span class="traffic-rank-badge">{{
                 t("traffic.topLabel", { count: rankData.list.length })
             }}</span>
-            <el-button :icon="Refresh" text size="small" @click="emit('refresh')" title="刷新" />
+            <el-button :icon="Refresh" size="small" plain @click.stop="emit('refresh')">刷新</el-button>
         </div>
 
         <div v-if="rankData.list.length" class="traffic-rank-list">
