@@ -300,7 +300,7 @@ onMounted(function onMount() {
     <el-dialog
       v-model="editDialogVisible"
       :title="isEditing ? '编辑套餐' : '创建套餐'"
-      width="520px"
+      width="640px"
       destroy-on-close
     >
       <el-form :model="editForm" label-position="top" style="padding: 0 8px">
