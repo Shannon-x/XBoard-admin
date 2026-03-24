@@ -44,6 +44,9 @@ const matchTextPlaceholder = computed(() => {
   if (['block_ip', 'route_ip'].includes(form.value.action)) {
     return '127.0.0.1(单一匹配)\n10.0.0.0/8(范围匹配)\ngeoip:cn(预定义列表匹配)'
   }
+  if (form.value.action === 'block_port') {
+    return '53\n443\n1000-2000'
+  }
   if (form.value.action === 'protocol') {
     return 'http\ntls\nquic\nbittorrent'
   }
