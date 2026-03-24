@@ -998,6 +998,7 @@ async function handleShowToggle(node, value) {
 }
 
 function handlePageSizeChange(limit) {
+    if (limit === pagination.value.limit) return;
     adminStore.loadManagedNodes({
         page: 1,
         limit,
@@ -1010,6 +1011,7 @@ function handlePageSizeChange(limit) {
 }
 
 function handlePageChange(page) {
+    if (page === pagination.value.page) return;
     adminStore.loadManagedNodes({
         page,
         limit: pagination.value.limit,
@@ -1153,6 +1155,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 
             <el-table
                 :data="filteredNodes"
+                row-key="id"
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"
             >
