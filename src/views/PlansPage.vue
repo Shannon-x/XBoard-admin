@@ -395,15 +395,17 @@ onMounted(function onMount() {
 
         <el-divider content-position="left">显示设置</el-divider>
 
-        <el-form-item label="显示">
-          <el-switch v-model="editForm.show" />
-        </el-form-item>
-        <el-form-item label="销售">
-          <el-switch v-model="editForm.sell" />
-        </el-form-item>
-        <el-form-item label="续费">
-          <el-switch v-model="editForm.renew" />
-        </el-form-item>
+        <div style="display: flex; gap: 32px; align-items: center;">
+          <el-form-item label="显示" style="margin-bottom: 0;">
+            <el-switch v-model="editForm.show" />
+          </el-form-item>
+          <el-form-item label="销售" style="margin-bottom: 0;">
+            <el-switch v-model="editForm.sell" />
+          </el-form-item>
+          <el-form-item label="续费" style="margin-bottom: 0;">
+            <el-switch v-model="editForm.renew" />
+          </el-form-item>
+        </div>
 
         <el-form-item v-if="isEditing" label="强制更新用户">
           <el-switch v-model="editForm.forceUpdate" />

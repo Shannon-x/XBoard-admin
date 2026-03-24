@@ -274,12 +274,6 @@ export function createEmptySystemStatus() {
       horizonStatusTone: "danger",
       scheduleLastRuntime: "--",
     },
-    systemLogs: {
-      info: "0",
-      warning: "0",
-      error: "0",
-      total: "0",
-    },
   };
 }
 
@@ -359,7 +353,6 @@ function normalizeQueueStats(payload) {
 
 function normalizeSystemStatus(payload) {
   const data = payload?.data ?? {};
-  const logs = data.logs ?? {};
   const scheduleOnline = Boolean(data.schedule);
   const horizonOnline = Boolean(data.horizon);
 
@@ -370,12 +363,6 @@ function normalizeSystemStatus(payload) {
       horizonStatusText: horizonOnline ? "运行中" : "异常",
       horizonStatusTone: horizonOnline ? "success" : "danger",
       scheduleLastRuntime: formatTimestamp(data.schedule_last_runtime),
-    },
-    systemLogs: {
-      info: String(Number(logs.info || 0)),
-      warning: String(Number(logs.warning || 0)),
-      error: String(Number(logs.error || 0)),
-      total: String(Number(logs.total || 0)),
     },
   };
 }
@@ -605,30 +592,4 @@ export async function fetchSystemStatus() {
   return normalizeSystemStatus(payload);
 }
 
-export async function cleanSystemLogs(options = {}) {
-  const apiUrl = buildDashboardApiUrl('system/cleanSystemLog')
-  return requestDashboardMutation(apiUrl, {
-    days: Number(options.days ?? 0),
-    level: options.level || '',
-    limit: Number(options.limit ?? 1000),
-  })
-}
 
-export async function getLogCleanupStats(options = {}) {
-  const queryEntries = []
-  if (options.days !== undefined && options.days !== '') {
-    queryEntries.push(['days', options.days])
-  }
-  if (options.level) {
-    queryEntries.push(['level', options.level.toUpperCase()])
-  }
-  const apiUrl = buildDashboardApiUrl('system/getSystemLog', [
-    ...queryEntries,
-    ['current', 1],
-    ['pageSize', 1],
-  ])
-  const payload = await requestDashboardApi(apiUrl)
-  const rawData = payload?.data ?? {}
-  const total = Number(rawData?.total || payload?.total || 0)
-  return { data: { count: total } }
-}

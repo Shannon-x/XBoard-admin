@@ -10,13 +10,22 @@ const route = useRoute()
 const logs = ref([])
 const loading = ref(false)
 const error = ref('')
-const activeLevel = ref('all')
+const activeAction = ref('all')
 const expandedRows = ref(new Set())
+const searchKeyword = ref('')
 
 // Pagination
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+
+const actionOptions = [
+  { label: '全部', value: 'all' },
+  { label: '登录', value: 'login' },
+  { label: '更新', value: 'update' },
+  { label: '创建', value: 'create' },
+  { label: '删除', value: 'delete' },
+]
 
 async function loadLogs() {
   loading.value = true
@@ -24,21 +33,24 @@ async function loadLogs() {
   try {
     const queryEntries = [
       ['current', currentPage.value],
-      ['pageSize', pageSize.value],
+      ['page_size', pageSize.value],
     ]
-    if (activeLevel.value !== 'all') {
-      queryEntries.push(['level', activeLevel.value.toUpperCase()])
+    if (activeAction.value !== 'all') {
+      queryEntries.push(['action', activeAction.value])
     }
-    const apiUrl = buildDashboardApiUrl('system/getSystemLog', queryEntries)
+    if (searchKeyword.value.trim()) {
+      queryEntries.push(['keyword', searchKeyword.value.trim()])
+    }
+    const apiUrl = buildDashboardApiUrl('system/getAuditLog', queryEntries)
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
 
     if (Array.isArray(raw)) {
       logs.value = raw.map(normalizeLog)
-      total.value = payload?.total || raw.length
+      total.value = Number(payload?.total || raw.length)
     } else if (raw && typeof raw === 'object' && Array.isArray(raw.data)) {
       logs.value = raw.data.map(normalizeLog)
-      total.value = raw.total || raw.data.length
+      total.value = Number(raw.total || raw.data.length)
     } else {
       logs.value = []
       total.value = 0
@@ -52,61 +64,56 @@ async function loadLogs() {
 }
 
 function normalizeLog(item) {
-  const level = String(item.level || 'INFO').toLowerCase()
-  const title = item.title || ''
+  const action = String(item.action || '--')
   const uri = item.uri || ''
-  const method = item.method || ''
-  const ip = item.ip || ''
-  const host = item.host || ''
+  const adminEmail = item.admin?.email || '--'
+  const adminId = item.admin_id || item.admin?.id || '--'
   const createdAt = item.created_at || 0
+  const id = item.id || 0
 
   let requestData = null
-  if (item.data) {
-    if (typeof item.data === 'string') {
-      try { requestData = JSON.parse(item.data) } catch { requestData = item.data }
+  if (item.request_data) {
+    if (typeof item.request_data === 'string') {
+      try { requestData = JSON.parse(item.request_data) } catch { requestData = item.request_data }
     } else {
-      requestData = item.data
+      requestData = item.request_data
     }
   }
 
-  let context = null
-  if (item.context && item.context !== '[]' && item.context !== '{}') {
-    if (typeof item.context === 'string') {
-      try { context = JSON.parse(item.context) } catch { context = item.context }
-    } else {
-      context = item.context
-    }
+  // For truncation
+  const displayText = uri || action
+  const firstLine = displayText.substring(0, 120)
+  const isLong = displayText.length > 120
+
+  return {
+    id,
+    action,
+    uri,
+    adminEmail,
+    adminId,
+    requestData,
+    createdAt,
+    firstLine,
+    isLong,
+    displayText,
   }
-
-  // For truncation: extract first line and check if multi-line
-  const firstLine = title.split('\n')[0].substring(0, 120)
-  const isLong = title.length > 120 || title.includes('\n')
-
-  return { id: item.id, level, title, firstLine, isLong, uri, method, ip, host, requestData, context, createdAt }
 }
 
 function formatTime(ts) {
   if (!ts) return '--'
-  const d = new Date(ts * 1000)
+  const d = new Date(typeof ts === 'number' ? ts * 1000 : ts)
+  if (Number.isNaN(d.getTime())) return '--'
   return d.toLocaleString('zh-CN')
 }
 
-function levelTagType(level) {
+function actionTagType(action) {
   const map = {
-    emergency: 'danger', alert: 'danger', critical: 'danger',
-    error: 'danger', warning: 'warning', notice: 'info',
-    info: '', debug: '',
+    login: 'success',
+    create: '',
+    update: 'warning',
+    delete: 'danger',
   }
-  return map[level] || 'info'
-}
-
-function methodTagType(method) {
-  const m = (method || '').toUpperCase()
-  if (m === 'GET') return 'success'
-  if (m === 'POST') return 'warning'
-  if (m === 'DELETE') return 'danger'
-  if (m === 'PUT' || m === 'PATCH') return ''
-  return 'info'
+  return map[action] || 'info'
 }
 
 function toggleExpand(id) {
@@ -132,15 +139,15 @@ function handleSizeChange(size) {
   loadLogs()
 }
 
-watch(activeLevel, () => {
+watch(activeAction, () => {
   currentPage.value = 1
   loadLogs()
 })
 
 onMounted(() => {
-  const levelParam = route.query.level
-  if (levelParam && ['error', 'warning', 'info', 'debug'].includes(levelParam)) {
-    activeLevel.value = levelParam
+  const actionParam = route.query.action
+  if (actionParam) {
+    activeAction.value = actionParam
   }
   loadLogs()
 })
@@ -148,55 +155,59 @@ onMounted(() => {
 
 <template>
   <section class="page-stack">
-    <SectionCard title="系统日志" description="查看系统日志，按级别筛选，支持翻页。">
+    <SectionCard title="审计日志" description="查看管理员操作审计日志，按操作类型筛选，支持关键词搜索和翻页。">
       <template #actions>
         <el-button :icon="Refresh" type="info" plain size="small" @click="loadLogs">刷新</el-button>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
-      <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <el-radio-group v-model="activeLevel" size="small">
-          <el-radio-button value="all">全部</el-radio-button>
-          <el-radio-button v-for="level in ['error', 'warning', 'info', 'debug']" :key="level" :value="level">
-            {{ level.toUpperCase() }}
+      <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <el-radio-group v-model="activeAction" size="small">
+          <el-radio-button v-for="opt in actionOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
           </el-radio-button>
         </el-radio-group>
+
+        <el-input
+          v-model="searchKeyword"
+          clearable
+          placeholder="搜索 URI / 请求数据"
+          size="small"
+          style="max-width: 240px;"
+          @keyup.enter="loadLogs"
+          @clear="loadLogs"
+        />
       </div>
 
       <el-table :data="logs" v-loading="loading" class="dashboard-table" max-height="640">
         <el-table-column label="ID" prop="id" width="70" sortable />
-        <el-table-column label="级别" width="80">
+        <el-table-column label="操作" width="90">
           <template #default="{ row }">
-            <el-tag size="small" :type="levelTagType(row.level)">{{ row.level.toUpperCase() }}</el-tag>
+            <el-tag size="small" :type="actionTagType(row.action)">{{ row.action }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="管理员" width="160">
+          <template #default="{ row }">
+            <span style="font-size:12px;">{{ row.adminEmail }}</span>
           </template>
         </el-table-column>
         <el-table-column label="时间" width="170">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="请求" min-width="300">
+        <el-table-column label="URI" min-width="300">
           <template #default="{ row }">
             <div class="log-request-cell">
               <div class="log-request-header">
-                <el-tag size="small" :type="methodTagType(row.method)" style="margin-right:6px;">{{ row.method }}</el-tag>
-                <span class="log-title-text" v-if="!row.isLong || isExpanded(row.id)">{{ row.title }}</span>
+                <span class="log-title-text" v-if="!row.isLong || isExpanded(row.id)">{{ row.uri }}</span>
                 <span class="log-title-text" v-else>{{ row.firstLine }}...</span>
               </div>
-              <div v-if="row.uri" class="log-uri-text">{{ row.uri }}</div>
               <div v-if="row.isLong" class="log-expand-toggle">
                 <el-button link size="small" type="primary" @click="toggleExpand(row.id)">
                   {{ isExpanded(row.id) ? '收起' : '展开详情' }}
                 </el-button>
               </div>
-              <div v-if="isExpanded(row.id) && row.title.length > 120" class="log-detail-block">
-                <pre class="log-stack-trace">{{ row.title }}</pre>
-              </div>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="IP" width="130">
-          <template #default="{ row }">
-            <span style="font-size:12px;font-family:monospace;">{{ row.ip || '--' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="详情" width="80">
@@ -206,20 +217,15 @@ onMounted(() => {
                 <el-button link size="small" type="primary">详情</el-button>
               </template>
               <div style="max-height:400px;overflow:auto;">
-                <h4 style="margin:0 0 8px;">请求信息</h4>
+                <h4 style="margin:0 0 8px;">操作信息</h4>
                 <table style="font-size:12px;width:100%;border-collapse:collapse;">
-                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">方法</td><td style="padding:4px 8px;">{{ row.method }}</td></tr>
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">操作</td><td style="padding:4px 8px;">{{ row.action }}</td></tr>
                   <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">URI</td><td style="padding:4px 8px;word-break:break-all;">{{ row.uri }}</td></tr>
-                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">Host</td><td style="padding:4px 8px;">{{ row.host }}</td></tr>
-                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">IP</td><td style="padding:4px 8px;">{{ row.ip }}</td></tr>
+                  <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap;">管理员</td><td style="padding:4px 8px;">{{ row.adminEmail }} (ID: {{ row.adminId }})</td></tr>
                 </table>
                 <template v-if="row.requestData">
                   <h4 style="margin:12px 0 8px;">请求数据</h4>
                   <pre class="log-stack-trace">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
-                </template>
-                <template v-if="row.context && ((typeof row.context === 'object' && Object.keys(row.context).length) || typeof row.context === 'string')">
-                  <h4 style="margin:12px 0 8px;">上下文</h4>
-                  <pre class="log-stack-trace">{{ typeof row.context === 'string' ? row.context : JSON.stringify(row.context, null, 2) }}</pre>
                 </template>
               </div>
             </el-popover>
@@ -257,18 +263,8 @@ onMounted(() => {
   word-break: break-word;
 }
 
-.log-uri-text {
-  font-size: 11px;
-  color: var(--el-text-color-secondary);
-  margin-top: 2px;
-}
-
 .log-expand-toggle {
   margin-top: 4px;
-}
-
-.log-detail-block {
-  margin-top: 8px;
 }
 
 .log-stack-trace {
