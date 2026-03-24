@@ -105,8 +105,7 @@ const vlessEncryptionOptions = [
 ];
 const vlessEncryptionModeOptions = [
     { label: "native", value: "native" },
-    { label: "xorpub", value: "xorpub" },
-    { label: "random", value: "random" },
+    { label: "pq", value: "pq" },
 ];
 const vlessEncryptionRttOptions = [
     { label: "0rtt", value: "0rtt" },
@@ -352,7 +351,7 @@ function createDefaultForm() {
         vlessEncryption: null,
         vlessEncMode: "native",
         vlessEncRtt: "0rtt",
-        vlessEncTicket: "0rtt",
+        vlessEncTicket: "600s",
         vlessEncServerPadding: "",
         vlessEncClientPadding: "",
         vlessEncPrivateKey: "",
@@ -468,7 +467,7 @@ function createFormFromNode(node) {
             node.vlessEncryption === undefined ? null : node.vlessEncryption,
         vlessEncMode: node.vlessEncMode || "native",
         vlessEncRtt: node.vlessEncRtt || "0rtt",
-        vlessEncTicket: node.vlessEncTicket || "0rtt",
+        vlessEncTicket: node.vlessEncTicket || "600s",
         vlessEncServerPadding: node.vlessEncServerPadding || "",
         vlessEncClientPadding: node.vlessEncClientPadding || "",
         vlessEncPrivateKey: node.vlessEncPrivateKey || "",
@@ -1226,7 +1225,7 @@ function handleSubmit() {
                 v-if="isVlessProtocol && form.vlessEncryption"
                 class="node-config-form__row node-config-form__row--half"
             >
-                <el-form-item label="mode" class="node-config-form__item">
+                <el-form-item label="Mode" class="node-config-form__item">
                     <el-select v-model="form.vlessEncMode" placeholder="选择 mode">
                         <el-option
                             v-for="option in vlessEncryptionModeOptions"
@@ -1236,7 +1235,7 @@ function handleSubmit() {
                         />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="rtt" class="node-config-form__item">
+                <el-form-item label="RTT" class="node-config-form__item">
                     <el-select v-model="form.vlessEncRtt" placeholder="选择 rtt">
                         <el-option
                             v-for="option in vlessEncryptionRttOptions"
@@ -1250,12 +1249,12 @@ function handleSubmit() {
 
             <el-form-item
                 v-if="isVlessProtocol && form.vlessEncryption"
-                label="ticket"
+                label="Ticket Time"
                 class="node-config-form__item"
             >
                 <el-input
                     v-model="form.vlessEncTicket"
-                    placeholder="请输入 ticket"
+                    placeholder="Ticket 有效期，默认为 600s"
                 />
             </el-form-item>
 
@@ -1263,39 +1262,39 @@ function handleSubmit() {
                 v-if="isVlessProtocol && form.vlessEncryption"
                 class="node-config-form__row node-config-form__row--half"
             >
-                <el-form-item label="server padding" class="node-config-form__item">
+                <el-form-item label="Server Padding" class="node-config-form__item">
                     <el-input
                         v-model="form.vlessEncServerPadding"
-                        placeholder="请输入 server_padding"
+                        placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
                     />
                 </el-form-item>
-                <el-form-item label="client padding" class="node-config-form__item">
+                <el-form-item label="Client Padding" class="node-config-form__item">
                     <el-input
                         v-model="form.vlessEncClientPadding"
-                        placeholder="请输入 client_padding"
+                        placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
                     />
                 </el-form-item>
             </div>
 
             <el-form-item
                 v-if="isVlessProtocol && form.vlessEncryption"
-                label="private key"
+                label="Private Key"
                 class="node-config-form__item"
             >
                 <el-input
                     v-model="form.vlessEncPrivateKey"
-                    placeholder="请输入 private_key"
+                    placeholder="留空自动生成，需抗量子加密请自行替换"
                 />
             </el-form-item>
 
             <el-form-item
                 v-if="isVlessProtocol && form.vlessEncryption"
-                label="password"
+                label="Password"
                 class="node-config-form__item"
             >
                 <el-input
                     v-model="form.vlessEncPassword"
-                    placeholder="请输入 password"
+                    placeholder="留空自动生成，需抗量子加密请自行替换"
                 />
             </el-form-item>
 
