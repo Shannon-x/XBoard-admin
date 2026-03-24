@@ -100,7 +100,7 @@ Cloudflare Pages 提供全球 CDN、自动 HTTPS、DDoS 防护，且免费额度
 | `NODE_VERSION` | `20` | ✅ |
 | `VITE_API_BASE_URL` | `https://board.yoursite.com` | ✅ |
 | `VITE_DASHBOARD_SECURE_PATH` | `admin`（与后端一致） | ✅ |
-| `VITE_FRONTEND_SECURE_PATH` | `自定义的后台路径`（如 `/2f809b7b`） | ❌ |
+| `VITE_FRONTEND_SECURE_PATH` | `自定义的后台路径`（如 `/7sadfsd`） | ❌ |
 | `VITE_DASHBOARD_API_TOKEN` | **留空或不设置**（生产环境禁止填写） | ❌ |
 | `VITE_DASHBOARD_STATS_URL` | 留空（自动拼接） | ❌ |
 | `VITE_AUTH_LOGIN_URL` | 留空（自动拼接） | ❌ |
