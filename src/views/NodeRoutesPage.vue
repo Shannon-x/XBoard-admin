@@ -40,6 +40,31 @@ const actionOptions = [
   { label: '自定义默认出站', value: 'default_out' },
 ]
 
+const matchTextPlaceholder = computed(() => {
+  if (['block_ip', 'route_ip'].includes(form.value.action)) {
+    return '127.0.0.1(单一匹配)\n10.0.0.0/8(范围匹配)\ngeoip:cn(预定义列表匹配)'
+  }
+  if (form.value.action === 'protocol') {
+    return 'http\ntls\nquic\nbittorrent'
+  }
+  return 'example.com(关键字匹配)\ndomain:example.com(子域名匹配)\ngeosite:netflix(预定义域名列表)'
+})
+
+function fillDefaultOutboundConfig() {
+  form.value.action_value = `{
+  "tag": "ss_out",
+  "sendThrough": "0.0.0.0",
+  "protocol": "shadowsocks",
+  "settings": {
+    "email": "love@xray.com",
+    "address": "8.8.8.8",
+    "port": 5555,
+    "method": "2022-blake3-aes-128-gcm",
+    "password": "your_password"
+  }
+}`
+}
+
 async function loadRoutes() {
   loading.value = true
   error.value = ''
@@ -85,7 +110,7 @@ async function handleSave() {
     .split('\n')
     .map(s => s.trim())
     .filter(s => s.length > 0)
-  if (matchArr.length === 0) {
+  if (form.value.action !== 'default_out' && matchArr.length === 0) {
     ElMessage.warning('请输入至少一条匹配规则')
     return
   }
@@ -184,7 +209,7 @@ onMounted(loadRoutes)
           <el-input v-model="form.remarks" placeholder="请输入备注" />
         </div>
 
-        <div class="route-form__field">
+        <div v-if="form.action !== 'default_out'" class="route-form__field">
           <label style="display: flex; align-items: center; gap: 12px;">
             匹配值
             <el-link type="primary" :underline="false" href="https://v2ray.com/chapter_02/03_routing.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
@@ -193,7 +218,7 @@ onMounted(loadRoutes)
             v-model="form.matchText"
             type="textarea"
             :autosize="{ minRows: 4, maxRows: 10 }"
-            placeholder="example.com(关键字匹配)&#10;domain:example.com(子域名匹配)&#10;geosite:netflix(预定义域名列表)"
+            :placeholder="matchTextPlaceholder"
           />
         </div>
 
@@ -215,8 +240,19 @@ onMounted(loadRoutes)
         </div>
 
         <div v-if="['route', 'route_ip', 'default_out'].includes(form.action)" class="route-form__field">
-          <label>出站服务器标签(Outbound Tag)</label>
-          <el-input v-model="form.action_value" placeholder="例: proxy" />
+          <label style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              Xray出站配置
+              <el-link type="primary" :underline="false" href="https://v2ray.com/chapter_02/04_outbound.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
+            </div>
+            <el-button link type="primary" size="small" @click="fillDefaultOutboundConfig">使用默认配置</el-button>
+          </label>
+          <el-input
+            v-model="form.action_value"
+            type="textarea"
+            :autosize="{ minRows: 8, maxRows: 15 }"
+            placeholder="{&#10;  &#x22;tag&#x22;: &#x22;ss_out&#x22;,&#10;  ..."
+          />
         </div>
       </div>
       <template #footer>
