@@ -189,7 +189,6 @@ onMounted(function loadStatsOnMount() {
             <SystemLogCard
                 :loading="adminStore.systemStatusLoading"
                 :runtime-status="adminStore.systemStatus.runtimeStatus"
-                :system-logs="adminStore.systemStatus.systemLogs"
                 @refresh="refreshSystemStatus"
             />
         </section>
