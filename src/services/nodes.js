@@ -372,10 +372,16 @@ function normalizeManagedNodeRoute(route, index) {
   const actionValue = route?.action_value || "";
 
   const ACTION_LABELS = {
-    block: '禁止访问',
+    block: '禁止访问(域名目标)',
+    block_ip: '禁止访问(IP目标)',
+    block_port: '禁止访问(端口目标)',
+    protocol: '禁止访问(协议)',
     direct: '直接连接',
     dns: '指定DNS服务器进行解析',
     proxy: '代理访问',
+    route: '指定出站服务器(域名目标)',
+    route_ip: '指定出站服务器(IP目标)',
+    default_out: '自定义默认出站',
   };
 
   let actionDisplayValue = '';

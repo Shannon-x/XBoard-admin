@@ -30,10 +30,14 @@ function createEmptyForm() {
 }
 
 const actionOptions = [
-  { label: '禁止访问', value: 'block' },
-  { label: '直接连接', value: 'direct' },
+  { label: '禁止访问(域名目标)', value: 'block' },
+  { label: '禁止访问(IP目标)', value: 'block_ip' },
+  { label: '禁止访问(端口目标)', value: 'block_port' },
+  { label: '禁止访问(协议)', value: 'protocol' },
   { label: '指定DNS服务器进行解析', value: 'dns' },
-  { label: '代理访问', value: 'proxy' },
+  { label: '指定出站服务器(域名目标)', value: 'route' },
+  { label: '指定出站服务器(IP目标)', value: 'route_ip' },
+  { label: '自定义默认出站', value: 'default_out' },
 ]
 
 async function loadRoutes() {
@@ -116,10 +120,10 @@ async function handleDelete(route) {
 }
 
 function actionTagType(action) {
-  if (action === 'block') return 'danger'
+  if (['block', 'block_ip', 'block_port', 'protocol'].includes(action)) return 'danger'
   if (action === 'dns') return 'primary'
-  if (action === 'direct') return 'success'
-  if (action === 'proxy') return 'warning'
+  if (['route', 'route_ip'].includes(action)) return 'warning'
+  if (action === 'default_out') return 'success'
   return 'info'
 }
 
@@ -181,14 +185,16 @@ onMounted(loadRoutes)
         </div>
 
         <div class="route-form__field">
-          <label>匹配规则</label>
+          <label style="display: flex; align-items: center; gap: 12px;">
+            匹配值
+            <el-link type="primary" :underline="false" href="https://v2ray.com/chapter_02/03_routing.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
+          </label>
           <el-input
             v-model="form.matchText"
             type="textarea"
             :autosize="{ minRows: 4, maxRows: 10 }"
-            placeholder="example.com&#10;*.example.com"
+            placeholder="example.com(关键字匹配)&#10;domain:example.com(子域名匹配)&#10;geosite:netflix(预定义域名列表)"
           />
-          <div class="route-form__hint">每行一条规则，支持通配符 *</div>
         </div>
 
         <div class="route-form__field">
@@ -208,9 +214,9 @@ onMounted(loadRoutes)
           <el-input v-model="form.action_value" placeholder="例: 1.1.1.1" />
         </div>
 
-        <div v-if="form.action === 'proxy'" class="route-form__field">
-          <label>代理地址</label>
-          <el-input v-model="form.action_value" placeholder="代理服务器地址" />
+        <div v-if="['route', 'route_ip', 'default_out'].includes(form.action)" class="route-form__field">
+          <label>出站服务器标签(Outbound Tag)</label>
+          <el-input v-model="form.action_value" placeholder="例: proxy" />
         </div>
       </div>
       <template #footer>
