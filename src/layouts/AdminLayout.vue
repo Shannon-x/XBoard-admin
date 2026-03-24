@@ -69,7 +69,10 @@ const siteName = computed(function siteName() {
     return t('app.brand');
 });
 
+const isLogoError = ref(false);
+
 const siteLogo = computed(function siteLogo() {
+    isLogoError.value = false;
     return adminStore.siteSettings?.logo || "";
 });
 
@@ -195,7 +198,7 @@ onUnmounted(function detachResizeListener() {
                 </el-icon>
             </el-button>
             <div class="brand-panel">
-                <img v-if="siteLogo" :src="siteLogo" alt="Logo" class="brand-logo" />
+                <img v-if="siteLogo && !isLogoError" :src="siteLogo" alt="Logo" class="brand-logo" @error="isLogoError = true" />
                 <div v-else class="brand-mark">{{ siteInitial }}</div>
                 <div>
                     <strong>{{ siteName }}</strong>
