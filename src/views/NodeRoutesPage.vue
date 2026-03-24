@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -67,6 +67,24 @@ function fillDefaultOutboundConfig() {
   }
 }`
 }
+
+// Actions that need no action_value at all
+const NO_VALUE_ACTIONS = ['block', 'block_ip', 'block_port', 'protocol']
+
+// Clear action_value when switching action type to prevent cross-contamination
+watch(() => form.value.action, (newAction, oldAction) => {
+  if (newAction === oldAction) return
+  // Determine category of old and new to decide if we should reset
+  const getCategory = (a) => {
+    if (NO_VALUE_ACTIONS.includes(a)) return 'none'
+    if (a === 'dns') return 'dns'
+    if (['route', 'route_ip', 'default_out'].includes(a)) return 'outbound'
+    return 'other'
+  }
+  if (getCategory(newAction) !== getCategory(oldAction)) {
+    form.value.action_value = ''
+  }
+})
 
 async function loadRoutes() {
   loading.value = true
@@ -215,7 +233,7 @@ onMounted(loadRoutes)
         <div v-if="form.action !== 'default_out'" class="route-form__field">
           <label style="display: flex; align-items: center; gap: 12px;">
             匹配值
-            <el-link type="primary" :underline="false" href="https://v2ray.com/chapter_02/03_routing.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
+            <el-link type="primary" :underline="false" href="https://xtls.github.io/config/routing.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
           </label>
           <el-input
             v-model="form.matchText"
@@ -238,15 +256,15 @@ onMounted(loadRoutes)
         </div>
 
         <div v-if="form.action === 'dns'" class="route-form__field">
-          <label>DNS 服务器地址</label>
-          <el-input v-model="form.action_value" placeholder="例: 1.1.1.1" />
+          <label>DNS服务器</label>
+          <el-input v-model="form.action_value" placeholder="请输入用于解析的DNS服务器地址" />
         </div>
 
         <div v-if="['route', 'route_ip', 'default_out'].includes(form.action)" class="route-form__field">
           <label style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
               Xray出站配置
-              <el-link type="primary" :underline="false" href="https://v2ray.com/chapter_02/04_outbound.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
+              <el-link type="primary" :underline="false" href="https://xtls.github.io/config/outbound.html" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link>
             </div>
             <el-button link type="primary" size="small" @click="fillDefaultOutboundConfig">使用默认配置</el-button>
           </label>
@@ -254,7 +272,7 @@ onMounted(loadRoutes)
             v-model="form.action_value"
             type="textarea"
             :autosize="{ minRows: 8, maxRows: 15 }"
-            placeholder="{&#10;  &#x22;tag&#x22;: &#x22;ss_out&#x22;,&#10;  ..."
+            placeholder="{&#10;  &#x22;tag&#x22;: &#x22;ss_out&#x22;,&#10;  &#x22;sendThrough&#x22;: &#x22;0.0.0.0&#x22;,&#10;  ..."
           />
         </div>
       </div>
