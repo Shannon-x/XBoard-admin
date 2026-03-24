@@ -177,6 +177,15 @@ button {
     font-weight: 700;
 }
 
+.brand-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: transparent;
+}
+
+
 .brand-panel strong,
 .header-account__meta strong,
 .section-head h3,

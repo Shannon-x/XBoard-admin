@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
@@ -69,6 +69,10 @@ const siteName = computed(function siteName() {
     return t('app.brand');
 });
 
+const siteLogo = computed(function siteLogo() {
+    return adminStore.siteSettings?.logo || "";
+});
+
 const siteInitial = computed(function siteInitial() {
     return siteName.value.charAt(0).toUpperCase();
 });
@@ -79,6 +83,10 @@ const pageTitle = computed(function pageTitle() {
     }
 
     return route.meta.title ?? t("routes.dashboard.title");
+});
+
+watchEffect(function updateDocumentTitle() {
+    document.title = `${pageTitle.value} - ${siteName.value}`;
 });
 
 const pageEyebrow = computed(function pageEyebrow() {
@@ -156,6 +164,7 @@ function handleAccountCommand(command) {
 onMounted(function attachResizeListener() {
     updateViewportMode();
     adminStore.loadUserInfo();
+    adminStore.loadSiteSettings("site");
     window.addEventListener("resize", updateViewportMode);
 });
 
@@ -186,7 +195,8 @@ onUnmounted(function detachResizeListener() {
                 </el-icon>
             </el-button>
             <div class="brand-panel">
-                <div class="brand-mark">{{ siteInitial }}</div>
+                <img v-if="siteLogo" :src="siteLogo" alt="Logo" class="brand-logo" />
+                <div v-else class="brand-mark">{{ siteInitial }}</div>
                 <div>
                     <strong>{{ siteName }}</strong>
                     <p>{{ t("app.console") }}</p>
