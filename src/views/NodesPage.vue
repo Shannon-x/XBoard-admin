@@ -200,6 +200,8 @@ async function handleSortSave(ids) {
     }
 }
 
+let autoRefreshTimer = null;
+
 onMounted(function loadManagedNodesOnMount() {
     const initialStatus = normalizeStatusFromQuery(route.query.status);
     filters.status = initialStatus;
@@ -215,6 +217,19 @@ onMounted(function loadManagedNodesOnMount() {
     });
     adminStore.loadManagedNodeGroups();
     adminStore.loadManagedNodeRoutes();
+
+    autoRefreshTimer = setInterval(() => {
+        adminStore.loadManagedNodes({
+            page: pagination.value.page,
+            limit: pagination.value.limit,
+            filters: {
+                type: filters.protocol,
+                word: filters.keyword,
+                status: filters.status,
+            },
+            silent: true
+        });
+    }, 30000);
 });
 
 watch(
@@ -1010,6 +1025,10 @@ onUnmounted(function clearDebounceOnUnmount() {
     if (keywordDebounceTimer) {
         clearTimeout(keywordDebounceTimer);
         keywordDebounceTimer = null;
+    }
+    if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
     }
 });
 </script>
