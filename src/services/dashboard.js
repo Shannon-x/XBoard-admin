@@ -21,15 +21,14 @@ function createDateRange(days) {
 }
 
 function createUnixTimeRange(days) {
-  const endDate = new Date();
-  endDate.setHours(0, 0, 0, 0);
-
-  const startDate = new Date(endDate);
-  startDate.setDate(endDate.getDate() - days);
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(now.getDate() - days);
+  startDate.setHours(0, 0, 0, 0);
 
   return {
     startTime: Math.floor(startDate.getTime() / 1000),
-    endTime: Math.floor(endDate.getTime() / 1000),
+    endTime: Math.floor(now.getTime() / 1000),
   };
 }
 

@@ -108,6 +108,7 @@ const filters = reactive({
     protocol: adminStore.managedNodesFilters?.type || "all",
     status: "all",
     group: "all",
+    nodeId: "",
     abnormalOnly: false,
 });
 
@@ -418,8 +419,13 @@ const filteredNodes = computed(function filteredNodes() {
             !filters.abnormalOnly ||
             node.status === "高负载" ||
             node.status === "维护中";
+        const nodeIdFilter = String(filters.nodeId || "").trim();
+        const matchesNodeId =
+            !nodeIdFilter ||
+            String(node.id) === nodeIdFilter ||
+            String(node.rawId) === nodeIdFilter;
 
-        return matchesStatus && matchesGroup && matchesAbnormal;
+        return matchesStatus && matchesGroup && matchesAbnormal && matchesNodeId;
     });
 });
 
@@ -1099,6 +1105,18 @@ onUnmounted(function clearDebounceOnUnmount() {
         <el-card class="section-card nodes-workspace" shadow="never">
             <div class="node-toolbar">
                 <el-input
+                    v-model="filters.nodeId"
+                    clearable
+                    placeholder="节点 ID"
+                    class="node-id-search"
+                    @clear="filters.nodeId = ''"
+                >
+                    <template #prefix>
+                        <el-icon><DataLine /></el-icon>
+                    </template>
+                </el-input>
+
+                <el-input
                     v-model="filters.keyword"
                     clearable
                     :placeholder="t('nodes.searchPlaceholder')"
@@ -1450,9 +1468,14 @@ onUnmounted(function clearDebounceOnUnmount() {
     font-family: "Fira Code", monospace;
 }
 
+.node-id-search,
 .node-search,
 .node-select {
     width: 100%;
+}
+
+.node-id-search {
+    max-width: 120px;
 }
 
 .node-table :deep(.el-progress) {

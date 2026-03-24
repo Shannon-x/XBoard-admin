@@ -22,14 +22,14 @@ async function loadLogs() {
   loading.value = true
   error.value = ''
   try {
-    const params = new URLSearchParams({
-      current: currentPage.value,
-      pageSize: pageSize.value,
-    })
+    const queryEntries = [
+      ['current', currentPage.value],
+      ['pageSize', pageSize.value],
+    ]
     if (activeLevel.value !== 'all') {
-      params.set('level', activeLevel.value.toUpperCase())
+      queryEntries.push(['level', activeLevel.value.toUpperCase()])
     }
-    const apiUrl = buildDashboardApiUrl('system/getSystemLog') + '&' + params.toString()
+    const apiUrl = buildDashboardApiUrl('system/getSystemLog', queryEntries)
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
 
