@@ -1,7 +1,13 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { Delete } from "@element-plus/icons-vue";
+import { Delete, Refresh, Key } from "@element-plus/icons-vue";
+import nacl from "tweetnacl";
+
+function toBase64Url(uint8Array) {
+    let base64 = btoa(String.fromCharCode.apply(null, uint8Array));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 const props = defineProps({
     modelValue: {
@@ -515,6 +521,33 @@ const dialogVisible = computed({
 });
 
 const form = reactive(createDefaultForm());
+
+function generateRealityKeys() {
+    try {
+        const keyPair = nacl.box.keyPair();
+        form.vlessRealityPrivateKey = toBase64Url(keyPair.secretKey);
+        form.vlessRealityPublicKey = toBase64Url(keyPair.publicKey);
+        ElMessage.success("Reality 密钥对已生成");
+    } catch (error) {
+        ElMessage.error("密钥生成失败");
+        console.error(error);
+    }
+}
+
+function generateShortId() {
+    try {
+        const randomBytes = new Uint8Array(8);
+        window.crypto.getRandomValues(randomBytes);
+        form.vlessRealityShortId = Array.from(randomBytes)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        ElMessage.success("Short ID 已生成");
+    } catch (error) {
+        ElMessage.error("Short ID 生成失败");
+        console.error(error);
+    }
+}
+
 const transportConfigDialogVisible = ref(false);
 
 function resetForm() {
@@ -1131,7 +1164,11 @@ function handleSubmit() {
                 <el-input
                     v-model="form.vlessRealityPrivateKey"
                     placeholder="请输入私钥"
-                />
+                >
+                    <template #append>
+                        <el-button :icon="Key" @click="generateRealityKeys" title="自动生成密钥对" />
+                    </template>
+                </el-input>
             </el-form-item>
 
             <el-form-item
@@ -1153,7 +1190,11 @@ function handleSubmit() {
                 <el-input
                     v-model="form.vlessRealityShortId"
                     placeholder="可留空，长度为 2 的倍数，最长 16 位"
-                />
+                >
+                    <template #append>
+                        <el-button :icon="Refresh" @click="generateShortId" title="自动生成 Short ID" />
+                    </template>
+                </el-input>
                 <p class="node-config-form__hint">
                     客户端可用 shortId 列表，可用于区分不同的客户端，使用 0-f 作为十六进制字符
                 </p>
