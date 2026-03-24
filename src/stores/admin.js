@@ -1391,7 +1391,8 @@ export const useAdminStore = defineStore("admin", () => {
   }
 
   async function loadManagedNodes(options = {}) {
-    managedNodesLoading.value = true;
+    const isSilent = Boolean(options.silent);
+    if (!isSilent) managedNodesLoading.value = true;
     managedNodesError.value = "";
     const nextFilters = {
       ...managedNodesFilters.value,
@@ -1427,7 +1428,7 @@ export const useAdminStore = defineStore("admin", () => {
       managedNodesError.value =
         error instanceof Error ? error.message : "节点列表加载失败";
     } finally {
-      managedNodesLoading.value = false;
+      if (!isSilent) managedNodesLoading.value = false;
     }
   }
 
