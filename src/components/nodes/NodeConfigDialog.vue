@@ -1258,23 +1258,16 @@ function handleSubmit() {
                 />
             </el-form-item>
 
-            <div
+            <el-form-item
                 v-if="isVlessProtocol && form.vlessEncryption"
-                class="node-config-form__row node-config-form__row--half"
+                label="Server Padding"
+                class="node-config-form__item"
             >
-                <el-form-item label="Server Padding" class="node-config-form__item">
-                    <el-input
-                        v-model="form.vlessEncServerPadding"
-                        placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
-                    />
-                </el-form-item>
-                <el-form-item label="Client Padding" class="node-config-form__item">
-                    <el-input
-                        v-model="form.vlessEncClientPadding"
-                        placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
-                    />
-                </el-form-item>
-            </div>
+                <el-input
+                    v-model="form.vlessEncServerPadding"
+                    placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
+                />
+            </el-form-item>
 
             <el-form-item
                 v-if="isVlessProtocol && form.vlessEncryption"
@@ -1284,6 +1277,17 @@ function handleSubmit() {
                 <el-input
                     v-model="form.vlessEncPrivateKey"
                     placeholder="留空自动生成，需抗量子加密请自行替换"
+                />
+            </el-form-item>
+
+            <el-form-item
+                v-if="isVlessProtocol && form.vlessEncryption"
+                label="Client Padding"
+                class="node-config-form__item"
+            >
+                <el-input
+                    v-model="form.vlessEncClientPadding"
+                    placeholder="留空使用默认值100-111-1111.75-0-111.50-0-3333"
                 />
             </el-form-item>
 
