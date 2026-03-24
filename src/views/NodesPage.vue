@@ -739,12 +739,12 @@ async function handleNodeDialogSubmit(payload) {
                                 : {
                                       mode: String(payload.vlessEncMode || ""),
                                       rtt: String(payload.vlessEncRtt || ""),
-                                      ticket: String(payload.vlessEncTicket || ""),
+                                      ticket_time: String(payload.vlessEncTicket || "600s"),
                                       server_padding: String(
-                                          payload.vlessEncServerPadding || "",
+                                          payload.vlessEncServerPadding || "100-111-1111.75-0-111.50-0-3333",
                                       ),
                                       client_padding: String(
-                                          payload.vlessEncClientPadding || "",
+                                          payload.vlessEncClientPadding || "100-111-1111.75-0-111.50-0-3333",
                                       ),
                                       private_key: String(
                                           payload.vlessEncPrivateKey || "",
