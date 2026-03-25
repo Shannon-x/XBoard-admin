@@ -65,6 +65,24 @@ const hysteriaVersionOptions = [
 const hysteriaObfsTypeOptions = [
     { label: "Salamander", value: "salamander" },
 ];
+const certModeOptions = [
+    { label: "自签名", value: "selfSign" },
+    { label: "HTTP申请", value: "http" },
+    { label: "DNS申请", value: "dns" },
+    { label: "无证书(关闭TLS)", value: "none" },
+];
+const certFingerprintOptions = [
+    { label: "Chrome", value: "chrome" },
+    { label: "Firefox", value: "firefox" },
+    { label: "Safari", value: "safari" },
+    { label: "iOS", value: "ios" },
+    { label: "Android", value: "android" },
+    { label: "Edge", value: "edge" },
+    { label: "360", value: "360" },
+    { label: "QQ", value: "qq" },
+    { label: "Random", value: "random" },
+    { label: "RandomizedALPS", value: "randomized" },
+];
 const tuicVersionOptions = [
     { label: "V5", value: "v5" },
     { label: "V4", value: "v4" },
@@ -369,6 +387,13 @@ function createDefaultForm() {
         hysteriaUpMbps: null,
         hysteriaDownMbps: null,
         hysteriaHopInterval: null,
+        certMode: "selfSign",
+        certFingerprint: "chrome",
+        certRejectUnknownSni: false,
+        certPath: "",
+        keyPath: "",
+        certDnsProvider: "",
+        certDnsEnv: "",
         tuicVersion: "v5",
         tuicCongestionControl: "bbr",
         tuicAlpn: [],
@@ -486,6 +511,13 @@ function createFormFromNode(node) {
         hysteriaUpMbps: normalizeOptionalNumber(node.hysteriaUpMbps),
         hysteriaDownMbps: normalizeOptionalNumber(node.hysteriaDownMbps),
         hysteriaHopInterval: normalizeOptionalNumber(node.hysteriaHopInterval),
+        certMode: node.certMode || "selfSign",
+        certFingerprint: node.certFingerprint || "chrome",
+        certRejectUnknownSni: Boolean(node.certRejectUnknownSni),
+        certPath: node.certPath || "",
+        keyPath: node.keyPath || "",
+        certDnsProvider: node.certDnsProvider || "",
+        certDnsEnv: node.certDnsEnv || "",
         tuicVersion: node.tuicVersion || "v5",
         tuicCongestionControl: node.tuicCongestionControl || "bbr",
         tuicAlpn: Array.isArray(node.tuicAlpn) ? [...node.tuicAlpn] : [],
@@ -522,6 +554,7 @@ const dialogVisible = computed({
 });
 
 const form = reactive(createDefaultForm());
+const certConfigDialogVisible = ref(false);
 
 function generateRealityKeys() {
     try {
@@ -727,6 +760,13 @@ function handleSubmit() {
         hysteriaUpMbps: normalizeOptionalNumber(form.hysteriaUpMbps),
         hysteriaDownMbps: normalizeOptionalNumber(form.hysteriaDownMbps),
         hysteriaHopInterval: normalizeOptionalNumber(form.hysteriaHopInterval),
+        certMode: String(form.certMode || "selfSign"),
+        certFingerprint: String(form.certFingerprint || "chrome"),
+        certRejectUnknownSni: Boolean(form.certRejectUnknownSni),
+        certPath: String(form.certPath || "").trim(),
+        keyPath: String(form.keyPath || "").trim(),
+        certDnsProvider: String(form.certDnsProvider || "").trim(),
+        certDnsEnv: String(form.certDnsEnv || "").trim(),
         tuicVersion: String(form.tuicVersion || "v5").toLowerCase(),
         tuicCongestionControl: String(
             form.tuicCongestionControl || "bbr",
@@ -1010,15 +1050,26 @@ function handleSubmit() {
                 </el-select>
             </el-form-item>
 
-            <el-form-item v-if="isHysteriaProtocol" label="协议版本" class="node-config-form__item">
-                <el-select v-model="form.hysteriaVersion" placeholder="请选择协议版本">
-                    <el-option
-                        v-for="option in hysteriaVersionOptions"
-                        :key="option.value"
-                        :label="option.label"
-                        :value="option.value"
-                    />
-                </el-select>
+            <el-form-item v-if="isHysteriaProtocol" label="" class="node-config-form__item node-config-form__item--no-label">
+                <div class="node-config-form__inline-field-group">
+                    <div class="node-config-form__inline-field-labels">
+                        <span>节点协议</span>
+                        <span style="display: flex; align-items: center; gap: 8px;">安全性 <el-button link type="primary" size="small" @click="certConfigDialogVisible = true">编辑配置</el-button></span>
+                    </div>
+                    <div class="node-config-form__inline-fields">
+                        <el-select v-model="form.hysteriaVersion" placeholder="请选择协议版本">
+                            <el-option
+                                v-for="option in hysteriaVersionOptions"
+                                :key="option.value"
+                                :label="option.label"
+                                :value="option.value"
+                            />
+                        </el-select>
+                        <el-select model-value="TLS" disabled>
+                            <el-option label="TLS" value="TLS" />
+                        </el-select>
+                    </div>
+                </div>
             </el-form-item>
 
             <el-form-item v-if="isTuicProtocol" label="协议版本" class="node-config-form__item">
@@ -1078,7 +1129,7 @@ function handleSubmit() {
             </el-form-item>
 
             <div
-                v-if="isTuicProtocol || isTrojanProtocol || (isVmessProtocol && form.tls === 'tls') || isHysteriaProtocol || (isVlessProtocol && form.vlessSecurity === 'tls')"
+                v-if="isTuicProtocol || isTrojanProtocol || (isVmessProtocol && form.tls === 'tls') || (isVlessProtocol && form.vlessSecurity === 'tls')"
                 class="node-config-form__row node-config-form__row--narrow"
             >
                 <el-form-item
@@ -1576,6 +1627,82 @@ function handleSubmit() {
             </div>
         </template>
     </el-dialog>
+
+    <el-dialog
+        v-model="certConfigDialogVisible"
+        title="编辑安全性配置"
+        width="480px"
+        destroy-on-close
+        append-to-body
+    >
+        <div class="cert-config-form">
+            <div class="cert-config-form__field">
+                <label>Server Name(SNI)</label>
+                <el-input v-model="form.sni" placeholder="用于证书验证的服务器名称" />
+            </div>
+
+            <div class="cert-config-form__field">
+                <label>证书模式Cert Mode</label>
+                <el-select v-model="form.certMode" style="width: 100%">
+                    <el-option
+                        v-for="opt in certModeOptions"
+                        :key="opt.value"
+                        :label="opt.label"
+                        :value="opt.value"
+                    />
+                </el-select>
+            </div>
+
+            <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
+                <label style="display: flex; align-items: center; gap: 8px;">DNS解析提供商Provider <el-link type="primary" :underline="false" href="https://go-acme.github.io/lego/dns/" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link></label>
+                <el-input v-model="form.certDnsProvider" placeholder="书写格式cloudflare" />
+            </div>
+
+            <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
+                <label>DNS env</label>
+                <el-input v-model="form.certDnsEnv" placeholder="书写格式CF_DNS_API_TOKEN=xxxxxxx如有多条使用逗号,分隔" />
+            </div>
+
+            <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                <label>证书公钥文件地址Cert File Path</label>
+                <el-input v-model="form.certPath" placeholder="留空在/etc/v2node/目录自动生成" />
+            </div>
+
+            <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                <label>证书私钥文件地址Key File Path</label>
+                <el-input v-model="form.keyPath" placeholder="留空在/etc/v2node/目录自动生成" />
+            </div>
+
+            <div class="cert-config-form__field">
+                <label>FingerPrint</label>
+                <el-select v-model="form.certFingerprint" style="width: 100%">
+                    <el-option
+                        v-for="opt in certFingerprintOptions"
+                        :key="opt.value"
+                        :label="opt.label"
+                        :value="opt.value"
+                    />
+                </el-select>
+            </div>
+
+            <div class="cert-config-form__field">
+                <label>Reject unknown sni</label>
+                <el-switch v-model="form.certRejectUnknownSni" />
+            </div>
+
+            <div class="cert-config-form__field">
+                <label>Allow Insecure</label>
+                <el-switch v-model="form.allowInsecure" />
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="node-config-form__footer">
+                <el-button @click="certConfigDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="certConfigDialogVisible = false">确定</el-button>
+            </div>
+        </template>
+    </el-dialog>
 </template>
 
 <style scoped>
@@ -1692,6 +1819,33 @@ function handleSubmit() {
     font-weight: 500;
     line-height: 1.4;
     width: 100%;
+}
+
+.node-config-form__inline-fields:not(.node-config-form__inline-fields--three) ~ .node-config-form__inline-field-labels,
+.node-config-form__inline-field-group > .node-config-form__inline-field-labels:first-child {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.node-config-form__inline-fields:not(.node-config-form__inline-fields--three) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.cert-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.cert-config-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cert-config-form__field label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
 }
 
 

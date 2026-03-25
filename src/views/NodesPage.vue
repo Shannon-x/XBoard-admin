@@ -888,6 +888,19 @@ async function handleNodeDialogSubmit(payload) {
                       parentId: payload.parentId || "0",
                       routeIds: selectedRouteIds,
                       protocolSettings,
+                      certConfig: protocolType === "hysteria"
+                          ? {
+                                cert_mode: String(payload.certMode || "selfSign"),
+                                fingerprint: String(payload.certFingerprint || "chrome"),
+                                reject_unknown_sni: Boolean(payload.certRejectUnknownSni),
+                                server_name: String(payload.sni || "").trim(),
+                                allow_insecure: Boolean(payload.allowInsecure),
+                                cert_path: String(payload.certPath || "").trim() || undefined,
+                                key_path: String(payload.keyPath || "").trim() || undefined,
+                                dns_provider: String(payload.certDnsProvider || "").trim() || undefined,
+                                dns_env: String(payload.certDnsEnv || "").trim() || undefined,
+                            }
+                          : undefined,
                       children:
                           protocolType === "fbnode" && Array.isArray(payload.fbnodeChildren)
                               ? payload.fbnodeChildren

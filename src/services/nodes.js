@@ -190,6 +190,10 @@ function normalizeManagedNode(node, index) {
     node && typeof node.protocol_settings === "object"
       ? node.protocol_settings
       : {};
+  const certConfig =
+    node && typeof node.cert_config === "object" && node.cert_config !== null
+      ? node.cert_config
+      : {};
   const tlsSettings =
     protocolSettings && typeof protocolSettings.tls_settings === "object"
       ? protocolSettings.tls_settings
@@ -321,6 +325,13 @@ function normalizeManagedNode(node, index) {
     vlessRealityPublicKey: String(realitySettings?.public_key || ""),
     vlessRealityShortId: String(realitySettings?.short_id || ""),
     vlessRealityFingerprint: String(protocolSettings?.utls?.fingerprint || ""),
+    certMode: String(certConfig?.cert_mode || ""),
+    certFingerprint: String(certConfig?.fingerprint || ""),
+    certRejectUnknownSni: Boolean(certConfig?.reject_unknown_sni),
+    certPath: String(certConfig?.cert_path || ""),
+    keyPath: String(certConfig?.key_path || ""),
+    certDnsProvider: String(certConfig?.dns_provider || ""),
+    certDnsEnv: String(certConfig?.dns_env || ""),
     rate: formatNodeRate(node.rate),
     status,
     onlineUsers,
@@ -579,6 +590,9 @@ export async function saveManagedNode(payload = {}) {
         })
       : [],
     protocol_settings: protocolSettings,
+    cert_config: payload.certConfig && typeof payload.certConfig === "object"
+      ? payload.certConfig
+      : null,
     children: Array.isArray(payload.children)
       ? payload.children.map(function mapChildId(childId) {
           return Number(childId);
