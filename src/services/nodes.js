@@ -343,7 +343,11 @@ function normalizeManagedNode(node, index) {
     online: Boolean(node.online || node.is_online),
     lastPushAt: formatRelativeTime(node.last_push_at),
     cacheKey: node.cache_key || "--",
-    routeId: node.route_id ? String(node.route_id) : "",
+    routeIds: Array.isArray(node.route_ids)
+      ? node.route_ids.map(function mapRouteId(id) { return String(id); })
+      : node.route_id
+        ? [String(node.route_id)]
+        : [],
     children: Array.isArray(node.children)
       ? node.children.map(function mapChild(child) {
           return {
