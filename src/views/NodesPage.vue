@@ -838,15 +838,13 @@ async function handleNodeDialogSubmit(payload) {
                       : protocolType === "anytls"
                         ? (() => {
                               const security = String(payload.anytlsSecurity || "tls");
-                              let paddingScheme;
-                              try {
-                                  paddingScheme = JSON.parse(payload.anytlsPaddingScheme || "[]");
-                              } catch (_e) {
-                                  paddingScheme = [];
-                              }
+                              const paddingScheme = String(payload.anytlsPaddingScheme || "")
+                                  .split("\n")
+                                  .map(function trimLine(line) { return line.trim(); })
+                                  .filter(Boolean);
                               const settings = {
                                   tls: security === "reality" ? 2 : 1,
-                                  padding_scheme: Array.isArray(paddingScheme) ? paddingScheme : [],
+                                  padding_scheme: paddingScheme,
                                   alpn: String(payload.anytlsAlpn || "").trim() || undefined,
                               };
                               if (security === "reality") {

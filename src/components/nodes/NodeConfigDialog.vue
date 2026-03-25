@@ -412,17 +412,7 @@ function createDefaultForm() {
         tuicUdpRelayMode: "native",
         mieruBandwidth: "low",
         anytlsSecurity: "tls",
-        anytlsPaddingScheme: JSON.stringify([
-            "stop=8",
-            "0=30-30",
-            "1=100-400",
-            "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
-            "3=9-9,500-1000",
-            "4=500-1000",
-            "5=500-1000",
-            "6=500-1000",
-            "7=500-1000",
-        ], null, 2),
+        anytlsPaddingScheme: "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
         anytlsAlpn: "",
         fbnodeChildren: [],
         encryption: "aes-128-gcm",
@@ -549,17 +539,7 @@ function createFormFromNode(node) {
         tuicUdpRelayMode: node.tuicUdpRelayMode || "native",
         mieruBandwidth: node.mieruBandwidth || "low",
         anytlsSecurity: node.anytlsSecurity || "tls",
-        anytlsPaddingScheme: node.anytlsPaddingScheme || JSON.stringify([
-            "stop=8",
-            "0=30-30",
-            "1=100-400",
-            "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
-            "3=9-9,500-1000",
-            "4=500-1000",
-            "5=500-1000",
-            "6=500-1000",
-            "7=500-1000",
-        ], null, 2),
+        anytlsPaddingScheme: node.anytlsPaddingScheme || "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
         anytlsAlpn: node.anytlsAlpn || "",
         fbnodeChildren: Array.isArray(node.children)
             ? node.children.map(function mapChild(child) {
@@ -1059,7 +1039,7 @@ function handleSubmit() {
                 </el-select>
             </el-form-item>
             <el-form-item
-                v-if="!isVmessProtocol && !isTrojanProtocol && !isHysteriaProtocol && !isVlessProtocol && !isTuicProtocol && !isMieruProtocol && !isFbnodeProtocol"
+                v-if="!isVmessProtocol && !isTrojanProtocol && !isHysteriaProtocol && !isVlessProtocol && !isTuicProtocol && !isMieruProtocol && !isFbnodeProtocol && !isAnytlsProtocol"
                 label="插件选项"
                 class="node-config-form__item"
             >
@@ -1244,7 +1224,7 @@ function handleSubmit() {
             </el-form-item>
 
             <div
-                v-if="isVlessProtocol && form.vlessSecurity === 'reality' || isAnytlsProtocol && form.anytlsSecurity === 'reality'"
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
                 class="node-config-form__row node-config-form__row--reality"
             >
                 <el-form-item label="伪装站点(dest)" class="node-config-form__item">
@@ -1289,7 +1269,7 @@ function handleSubmit() {
             </el-form-item>
 
             <el-form-item
-                v-if="(isVlessProtocol && form.vlessSecurity === 'reality') || (isAnytlsProtocol && form.anytlsSecurity === 'reality')"
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
                 label="公钥(Public key)"
                 class="node-config-form__item"
             >
@@ -1300,7 +1280,7 @@ function handleSubmit() {
             </el-form-item>
 
             <el-form-item
-                v-if="(isVlessProtocol && form.vlessSecurity === 'reality') || (isAnytlsProtocol && form.anytlsSecurity === 'reality')"
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
                 label="Short ID"
                 class="node-config-form__item"
             >
@@ -1318,7 +1298,7 @@ function handleSubmit() {
             </el-form-item>
 
             <el-form-item
-                v-if="(isVlessProtocol && form.vlessSecurity === 'reality') || (isAnytlsProtocol && form.anytlsSecurity === 'reality')"
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
                 label="客户端指纹 (FingerPrint)"
                 class="node-config-form__item"
             >
@@ -1527,6 +1507,30 @@ function handleSubmit() {
                         :value="option.value"
                     />
                 </el-select>
+            </el-form-item>
+
+            <el-form-item v-if="isAnytlsProtocol" class="node-config-form__item">
+                <template #label>
+                    <div class="node-config-form__label">
+                        <span>填充方案</span>
+                        <el-button
+                            class="node-config-form__inline-btn"
+                            link
+                            type="primary"
+                            size="small"
+                            @click="form.anytlsPaddingScheme = 'stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000'"
+                        >
+                            使用默认方案
+                        </el-button>
+                    </div>
+                </template>
+                <p class="node-config-form__hint" style="margin: 0 0 6px;">用于混淆流量特征的填充方案，每行一条规则，支持通配符。*</p>
+                <el-input
+                    v-model="form.anytlsPaddingScheme"
+                    type="textarea"
+                    :rows="8"
+                    placeholder="stop=8&#10;0=30-30&#10;1=100-400"
+                />
             </el-form-item>
 
             <div v-if="isFbnodeProtocol" class="node-rate-rules">
@@ -1758,35 +1762,72 @@ function handleSubmit() {
                 <label>Allow Insecure</label>
                 <el-switch v-model="form.allowInsecure" />
             </div>
+
+            <template v-if="isAnytlsProtocol && form.anytlsSecurity === 'reality'">
+                <div class="cert-config-form__field">
+                    <label>伪装站点(dest)</label>
+                    <el-input v-model="form.vlessRealityDest" placeholder="例如：example.com" />
+                </div>
+                <div class="cert-config-form__field">
+                    <label>端口(port)</label>
+                    <el-input-number
+                        v-model="form.vlessRealityPort"
+                        :min="0"
+                        :max="65535"
+                        :step="1"
+                        :precision="0"
+                        step-strictly
+                        :controls="false"
+                        placeholder="443"
+                        style="width: 100%"
+                    />
+                </div>
+                <div class="cert-config-form__field">
+                    <label>私钥(Private key)</label>
+                    <el-input v-model="form.vlessRealityPrivateKey" placeholder="请输入私钥">
+                        <template #append>
+                            <el-button :icon="Key" @click="generateRealityKeys" title="自动生成密钥对" />
+                        </template>
+                    </el-input>
+                </div>
+                <div class="cert-config-form__field">
+                    <label>公钥(Public key)</label>
+                    <el-input v-model="form.vlessRealityPublicKey" placeholder="请输入公钥" />
+                </div>
+                <div class="cert-config-form__field">
+                    <label>Short ID</label>
+                    <el-input v-model="form.vlessRealityShortId" placeholder="可留空，长度为 2 的倍数，最长 16 位">
+                        <template #append>
+                            <el-button :icon="Refresh" @click="generateShortId" title="自动生成 Short ID" />
+                        </template>
+                    </el-input>
+                </div>
+                <div class="cert-config-form__field">
+                    <label>客户端指纹 (FingerPrint)</label>
+                    <el-select v-model="form.vlessRealityFingerprint" style="width: 100%" placeholder="请选择客户端指纹">
+                        <el-option label="Chrome" value="chrome" />
+                        <el-option label="Firefox" value="firefox" />
+                        <el-option label="Safari" value="safari" />
+                        <el-option label="iOS" value="ios" />
+                        <el-option label="Android" value="android" />
+                        <el-option label="Edge" value="edge" />
+                        <el-option label="360" value="360" />
+                        <el-option label="QQ" value="qq" />
+                        <el-option label="Random" value="random" />
+                        <el-option label="RandomizedALPS" value="randomized" />
+                    </el-select>
+                </div>
+                <div class="cert-config-form__field">
+                    <label>允许不安全?</label>
+                    <el-switch v-model="form.allowInsecure" />
+                </div>
+            </template>
         </div>
 
         <template #footer>
             <div class="node-config-form__footer">
                 <el-button @click="certConfigDialogVisible = false">取消</el-button>
                 <el-button type="primary" @click="certConfigDialogVisible = false">确定</el-button>
-            </div>
-        </template>
-    </el-dialog>
-
-    <el-dialog
-        v-model="paddingSchemeDialogVisible"
-        title="编辑填充方案"
-        width="560px"
-        destroy-on-close
-        append-to-body
-    >
-        <div class="cert-config-form">
-            <el-input
-                v-model="form.anytlsPaddingScheme"
-                type="textarea"
-                :rows="12"
-                placeholder="请输入 JSON 格式的填充方案配置"
-            />
-        </div>
-        <template #footer>
-            <div class="node-config-form__footer">
-                <el-button @click="paddingSchemeDialogVisible = false">取消</el-button>
-                <el-button type="primary" @click="paddingSchemeDialogVisible = false">确定</el-button>
             </div>
         </template>
     </el-dialog>

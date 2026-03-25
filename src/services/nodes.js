@@ -297,18 +297,8 @@ function normalizeManagedNode(node, index) {
         : "tls",
     ),
     anytlsPaddingScheme: Array.isArray(protocolSettings?.padding_scheme)
-      ? JSON.stringify(protocolSettings.padding_scheme, null, 2)
-      : JSON.stringify([
-          "stop=8",
-          "0=30-30",
-          "1=100-400",
-          "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
-          "3=9-9,500-1000",
-          "4=500-1000",
-          "5=500-1000",
-          "6=500-1000",
-          "7=500-1000",
-        ], null, 2),
+      ? protocolSettings.padding_scheme.join("\n")
+      : "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
     anytlsAlpn: String(protocolSettings?.alpn || ""),
     vlessSecurity: String(
       protocolSettings?.security ||
