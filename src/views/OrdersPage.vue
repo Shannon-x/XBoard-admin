@@ -13,6 +13,7 @@ import {
   assignOrder,
   createEmptyManagedOrdersPagination,
   ORDER_STATUS_MAP,
+  PERIOD_LABEL_MAP,
 } from '../services/orders'
 import { fetchManagedPlans } from '../services/plans'
 import { fetchPayments } from '../services/payment'
@@ -29,6 +30,8 @@ const isCommission = ref(false)
 const commissionStatusFilter = ref('')
 const plans = ref([])
 const paymentMap = ref({})
+const paymentOptions = ref([])
+const paymentFilter = ref('')
 
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -76,6 +79,9 @@ async function loadOrders() {
     }
     if (commissionStatusFilter.value !== '') {
       filter.push({ id: 'commission_status', value: `eq:${commissionStatusFilter.value}` })
+    }
+    if (paymentFilter.value !== '') {
+      filter.push({ id: 'payment_id', value: `eq:${paymentFilter.value}` })
     }
     const result = await fetchManagedOrders({
       page: pagination.value.page,
@@ -185,6 +191,7 @@ onMounted(function onMount() {
     const map = {}
     list.forEach(p => { map[p.id] = p.name })
     paymentMap.value = map
+    paymentOptions.value = list.map(p => ({ label: p.name, value: String(p.id) }))
   }).catch(() => {})
 })
 </script>
@@ -243,6 +250,21 @@ onMounted(function onMount() {
             <el-option label="已发放" value="2" />
             <el-option label="无效" value="3" />
           </el-select>
+          <el-select
+            v-model="paymentFilter"
+            placeholder="支付方式"
+            style="width: 130px"
+            @change="handleSearch"
+            clearable
+          >
+            <el-option label="全部" value="" />
+            <el-option
+              v-for="opt in paymentOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
         </el-space>
       </div>
 
@@ -254,9 +276,9 @@ onMounted(function onMount() {
             <span style="font-family: monospace; font-size: 12px">{{ row.tradeNo }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="类型" width="60" prop="typeText" />
+        <el-table-column label="类型" width="80" prop="typeText" />
         <el-table-column label="订阅计划" min-width="140" prop="planName" show-overflow-tooltip />
-        <el-table-column label="周期" width="80" prop="period" />
+        <el-table-column label="周期" width="80" prop="periodText" />
         <el-table-column label="支付金额" width="90">
           <template #default="{ row }">{{ row.totalAmountText }}</template>
         </el-table-column>
@@ -311,11 +333,13 @@ onMounted(function onMount() {
     <el-dialog v-model="detailDialogVisible" title="订单详情" width="600px" destroy-on-close>
       <div v-loading="detailLoading">
         <template v-if="detailData">
-          <el-descriptions :column="2" border>
-            <el-descriptions-item label="订单号">{{ detailData.tradeNo }}</el-descriptions-item>
+          <el-descriptions :column="2" border size="small">
+            <el-descriptions-item label="订单号" :span="2">
+              <span style="font-family: monospace; font-size: 12px; word-break: break-all;">{{ detailData.tradeNo }}</span>
+            </el-descriptions-item>
             <el-descriptions-item label="类型">{{ detailData.typeText }}</el-descriptions-item>
-            <el-descriptions-item label="套餐">{{ detailData.planName }}</el-descriptions-item>
-            <el-descriptions-item label="周期">{{ detailData.period }}</el-descriptions-item>
+            <el-descriptions-item label="周期">{{ detailData.periodText }}</el-descriptions-item>
+            <el-descriptions-item label="套餐" :span="2">{{ detailData.planName }}</el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
             <el-descriptions-item label="支付方式">{{ paymentMap[detailData.paymentId] || '--' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
@@ -325,7 +349,9 @@ onMounted(function onMount() {
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>
             <el-descriptions-item label="支付时间">{{ detailData.paidAt }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>
-            <el-descriptions-item label="回调单号" :span="2">{{ detailData.callbackNo || '--' }}</el-descriptions-item>
+            <el-descriptions-item label="回调单号" :span="2">
+              <span style="word-break: break-all; font-size: 12px;">{{ detailData.callbackNo || '--' }}</span>
+            </el-descriptions-item>
           </el-descriptions>
         </template>
       </div>

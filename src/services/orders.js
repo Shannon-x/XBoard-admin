@@ -47,6 +47,17 @@ const COMMISSION_STATUS_MAP = {
   3: { text: '无效', type: 'info' },
 }
 
+const PERIOD_LABEL_MAP = {
+  month_price: '月付',
+  quarter_price: '季付',
+  half_year_price: '半年付',
+  year_price: '年付',
+  two_year_price: '两年付',
+  three_year_price: '三年付',
+  onetime_price: '一次性',
+  reset_price: '重置包',
+}
+
 function formatTimestamp(value) {
   const timestamp = Number(value || 0)
 
@@ -73,10 +84,12 @@ function normalizeOrder(order) {
   const status = Number(order?.status ?? 0)
   const statusInfo = ORDER_STATUS_MAP[status] || { text: '未知', type: 'info' }
   const type = Number(order?.type ?? 0)
+  const commissionBalance = order?.commission_balance ? Number(order.commission_balance) : 0
+  const hasCommission = commissionBalance > 0
   const commissionStatus = order?.commission_status
-  const commissionInfo = commissionStatus !== null && commissionStatus !== undefined
-    ? COMMISSION_STATUS_MAP[commissionStatus] || { text: '--', type: 'info' }
-    : { text: '--', type: 'info' }
+  const commissionInfo = hasCommission
+    ? COMMISSION_STATUS_MAP[Number(commissionStatus)] || { text: '--', type: 'info' }
+    : null
   const planName = order?.plan?.name || '--'
 
   return {
@@ -87,6 +100,7 @@ function normalizeOrder(order) {
     planId: order?.plan_id || null,
     planName,
     period: String(order?.period || '--'),
+    periodText: PERIOD_LABEL_MAP[order?.period] || String(order?.period || '--'),
     type,
     typeText: ORDER_TYPE_MAP[type] || '未知',
     totalAmount: Number(order?.total_amount || 0) / 100,
@@ -95,9 +109,9 @@ function normalizeOrder(order) {
     status,
     statusText: statusInfo.text,
     statusType: statusInfo.type,
-    commissionStatus: commissionStatus ?? null,
-    commissionStatusText: commissionInfo.text,
-    commissionStatusType: commissionInfo.type,
+    commissionStatus: hasCommission ? Number(commissionStatus) : null,
+    commissionStatusText: commissionInfo ? commissionInfo.text : '--',
+    commissionStatusType: commissionInfo ? commissionInfo.type : 'info',
     commissionBalance: order?.commission_balance ? Number(order.commission_balance) / 100 : 0,
     inviteUserId: order?.invite_user_id || null,
     paymentId: order?.payment_id || null,
@@ -214,4 +228,4 @@ export async function assignOrder(data) {
   })
 }
 
-export { ORDER_STATUS_MAP, ORDER_TYPE_MAP, COMMISSION_STATUS_MAP }
+export { ORDER_STATUS_MAP, ORDER_TYPE_MAP, COMMISSION_STATUS_MAP, PERIOD_LABEL_MAP }
