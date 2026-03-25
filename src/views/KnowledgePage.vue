@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import SortDialog from '../components/common/SortDialog.vue'
 import {
@@ -182,8 +182,10 @@ onMounted(loadData)
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
-            <el-button link size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <el-button link size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
+              <el-button link size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>

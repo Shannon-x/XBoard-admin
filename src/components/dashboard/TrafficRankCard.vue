@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
+import { RefreshCw } from 'lucide-vue-next'
 import { useI18n } from "vue-i18n";
 const props = defineProps({
     loading: {
@@ -84,7 +84,7 @@ function changeClass(change) {
                 <span class="traffic-rank-badge">{{
                     t("traffic.topLabel", { count: rankData.list.length })
                 }}</span>
-                <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
+                <el-button :icon="RefreshCw" size="small" plain @click="emit('refresh')">刷新</el-button>
             </div>
         </div>
 

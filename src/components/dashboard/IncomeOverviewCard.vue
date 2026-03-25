@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ChevronDown } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -335,7 +335,7 @@ const chartSeries = computed(function chartSeries() {
         >
           <button class="income-range-button" type="button">
             <span>{{ currentRangeLabel }}</span>
-            <el-icon><ArrowDown /></el-icon>
+            <el-icon><ChevronDown /></el-icon>
           </button>
 
           <template #dropdown>

@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CopyDocument } from '@element-plus/icons-vue'
+import { Plus, Pencil, Trash2, Copy } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchPayments,

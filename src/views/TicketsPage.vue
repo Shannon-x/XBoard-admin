@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, ChatDotRound, Close } from '@element-plus/icons-vue'
+import { Search, RefreshCw, MessageCircle, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -182,7 +182,7 @@ onMounted(function onMount() {
             @keyup.enter="handleSearch"
             @clear="handleSearch"
           />
-          <el-button :icon="Refresh" class="ghost-btn small" plain type="info" @click="loadTickets">
+          <el-button :icon="RefreshCw" class="ghost-btn small" plain type="info" @click="loadTickets">
             刷新
           </el-button>
         </el-space>
@@ -222,16 +222,18 @@ onMounted(function onMount() {
             <el-tag :type="row.levelType" size="small">{{ row.levelText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="80">
+        <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.replyStatusType" effect="dark" size="small">{{ row.replyStatusText }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="更新时间" width="160" prop="updatedAt" />
-        <el-table-column fixed="right" label="操作" width="100">
+        <el-table-column fixed="right" label="操作" width="120">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click.stop="openDetail(row)">查看</el-button>
-            <el-button v-if="row.status === 0" link size="small" type="danger" @click.stop="handleClose(row)">关闭</el-button>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <el-button link size="small" type="primary" @click.stop="openDetail(row)">查看</el-button>
+              <el-button v-if="row.status === 0" link size="small" type="danger" @click.stop="handleClose(row)">关闭</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -278,7 +280,7 @@ onMounted(function onMount() {
             <el-tag :type="getLevelInfo(detailData.level).type" size="small">{{ getLevelInfo(detailData.level).label }}</el-tag>
           </div>
         </div>
-        <el-button class="ticket-dialog-close" :icon="Close" text @click="detailDialogVisible = false" />
+        <el-button class="ticket-dialog-close" :icon="X" text @click="detailDialogVisible = false" />
       </template>
 
       <div v-loading="detailLoading" class="ticket-chat-wrapper">

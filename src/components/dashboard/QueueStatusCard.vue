@@ -1,5 +1,5 @@
 <script setup>
-import { Refresh } from '@element-plus/icons-vue'
+import { RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 const props = defineProps({
   loading: {
@@ -37,7 +37,7 @@ function statusTagType(tone) {
         <el-tag :type="statusTagType(queueStatus.statusTone)" effect="dark">
           {{ queueStatus.statusText }}
         </el-tag>
-        <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
+        <el-button :icon="RefreshCw" size="small" plain @click="emit('refresh')">刷新</el-button>
       </div>
     </div>
 

@@ -41,6 +41,21 @@
     --space-5: 20px;
     --space-6: 24px;
     --space-8: 32px;
+
+    /* ── Status Colors (soft palette) ── */
+    --success: #10b981;
+    --success-soft: rgba(16, 185, 129, 0.1);
+    --warning: #f59e0b;
+    --warning-soft: rgba(245, 158, 11, 0.1);
+    --danger: #f43f5e;
+    --danger-soft: rgba(244, 63, 94, 0.1);
+    --info: #6366f1;
+    --info-soft: rgba(99, 102, 241, 0.1);
+
+    /* ── Glassmorphism ── */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-blur: blur(16px);
+    --glass-border: rgba(255, 255, 255, 0.2);
 }
 
 * {
@@ -69,6 +84,26 @@ body {
 a {
     color: inherit;
     text-decoration: none;
+}
+
+/* ── Lucide icon sizing fix ── */
+/* Lucide SVGs default to 24×24; inside el-icon (1em) they overflow. */
+.el-icon svg {
+    width: 1em;
+    height: 1em;
+}
+
+/* For :icon prop on el-button, ensure icon sizing */
+.el-button .el-icon svg {
+    width: 1em;
+    height: 1em;
+}
+
+/* el-input prefix/suffix icons */
+.el-input__prefix .el-icon svg,
+.el-input__suffix .el-icon svg {
+    width: 1em;
+    height: 1em;
 }
 
 .el-container,
@@ -110,6 +145,16 @@ a {
     --el-card-border-color: var(--line);
     --el-box-shadow-light: var(--shadow-sm);
     --el-box-shadow: var(--shadow-md);
+
+    /* ── Map Element Plus status colors to soft palette ── */
+    --el-color-success: var(--success);
+    --el-color-warning: var(--warning);
+    --el-color-danger: var(--danger);
+    --el-color-info: var(--info);
+    --el-color-success-light-9: var(--success-soft);
+    --el-color-warning-light-9: var(--warning-soft);
+    --el-color-danger-light-9: var(--danger-soft);
+    --el-color-info-light-9: var(--info-soft);
 }
 
 button,
@@ -3272,4 +3317,200 @@ button {
         transition: none !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ======================================================================
+   PHASE 3: Component-level Overrides
+   ====================================================================== */
+
+/* ── el-table: Larger rows, uppercase headers, softer hover ── */
+.el-table {
+    --el-table-row-hover-bg-color: rgba(79, 110, 245, 0.03);
+}
+
+.el-table th.el-table__cell {
+    background: var(--bg) !important;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+
+.el-table td.el-table__cell {
+    padding: 14px 12px;
+    font-size: 14px;
+}
+
+.el-table .el-table__row {
+    transition: background 0.15s ease;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+    background: rgba(15, 23, 42, 0.015);
+}
+
+/* ── el-input: Focus ring ── */
+.el-input__wrapper {
+    border-radius: 8px !important;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08) inset !important;
+    transition: box-shadow 0.15s ease !important;
+}
+
+.el-input__wrapper:hover {
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.14) inset !important;
+}
+
+.el-input__wrapper.is-focus {
+    box-shadow: 0 0 0 1px var(--primary) inset,
+        0 0 0 3px rgba(79, 110, 245, 0.1) !important;
+}
+
+/* ── el-select wrapper: Focus ring ── */
+.el-select__wrapper {
+    border-radius: 8px !important;
+}
+
+/* ── el-button: Unified radius & lift ── */
+.el-button {
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.el-button--primary {
+    --el-button-bg-color: var(--primary);
+    --el-button-border-color: var(--primary);
+    box-shadow: 0 1px 3px rgba(79, 110, 245, 0.25);
+}
+
+.el-button--primary:hover {
+    box-shadow: 0 4px 12px rgba(79, 110, 245, 0.3);
+    transform: translateY(-1px);
+}
+
+.el-button--primary:active {
+    transform: translateY(0);
+}
+
+/* ── el-dialog: Rounded corners & frosted backdrop ── */
+.el-dialog {
+    border-radius: 20px !important;
+}
+
+.el-overlay {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+}
+
+.el-dialog__header {
+    padding: 20px 24px 0 !important;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.el-dialog__body {
+    padding: 16px 24px !important;
+}
+
+.el-dialog__footer {
+    padding: 0 24px 20px !important;
+}
+
+/* ── el-card: Breathing room ── */
+.section-card.el-card .el-card__body {
+    padding: 24px;
+}
+
+/* ── Topbar: Glassmorphism ── */
+.topbar {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+}
+
+/* ── el-tag: Softer rounding ── */
+.el-tag {
+    border-radius: 6px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+.el-tag--dark {
+    font-weight: 600;
+}
+
+/* ── el-pagination: Rounded buttons ── */
+.el-pagination {
+    margin-top: 20px;
+}
+
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pagination .el-pager li {
+    border-radius: 8px;
+}
+
+/* ======================================================================
+   PHASE 4: Typography Enhancements
+   ====================================================================== */
+
+/* Data numbers — prominent display */
+.metric-value,
+.metric-split-value__number {
+    font-family: "Inter", "Fira Code", monospace;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+}
+
+/* Table cell tightening */
+.el-table .cell {
+    letter-spacing: -0.01em;
+}
+
+/* Auxiliary text — softer */
+.metric-label,
+.metric-change,
+.section-head p {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* ======================================================================
+   PHASE 5: Micro-animations & Transitions
+   ====================================================================== */
+
+/* Metric card hover lift */
+.metric-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.metric-card--clickable {
+    cursor: pointer;
+}
+
+/* Navigation item feedback */
+.nav-item {
+    transition: background 0.15s ease, border-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+.nav-item:active {
+    transform: scale(0.98);
+}
+
+/* Button press feedback */
+.el-button:active {
+    transform: scale(0.97);
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
 }

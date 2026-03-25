@@ -1,14 +1,14 @@
 <script setup>
 import {
-  CircleCheck,
-  Close,
-  Document,
+  CheckCircle2,
+  FileText,
   Lock,
   Minus,
-  Monitor,
-  SetUp,
+  Server,
+  Settings2,
   Upload,
-} from '@element-plus/icons-vue'
+  X,
+} from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -48,11 +48,11 @@ const filters = reactive({
 })
 
 const statusStyleMap = new Map([
-  [STATUS_ENABLED, { type: 'success', icon: CircleCheck }],
+  [STATUS_ENABLED, { type: 'success', icon: CheckCircle2 }],
   [STATUS_DISABLED, { type: 'info', icon: Minus }],
-  [STATUS_NOT_INSTALLED, { type: 'danger', icon: Close }],
+  [STATUS_NOT_INSTALLED, { type: 'danger', icon: X }],
   [STATUS_PROTECTED, { type: 'primary', icon: Lock }],
-  [STATUS_UNKNOWN, { type: 'warning', icon: Monitor }],
+  [STATUS_UNKNOWN, { type: 'warning', icon: Server }],
 ])
 
 const renderedReadme = computed(function resolveRenderedReadme() {
@@ -145,7 +145,7 @@ function resolveStatusType(status) {
 
 function resolveStatusIcon(status) {
   const normalized = normalizeStatusKey(status)
-  return statusStyleMap.get(normalized)?.icon || SetUp
+  return statusStyleMap.get(normalized)?.icon || Settings2
 }
 
 function resolveTypeLabel(type) {
@@ -554,7 +554,7 @@ onMounted(function initializePluginsPage() {
                             @click="handleReadme(plugin)"
                         >
                             <el-icon>
-                                <Document />
+                                <FileText />
                             </el-icon>
                         </el-button>
                     </header>

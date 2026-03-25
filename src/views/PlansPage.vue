@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -230,7 +230,7 @@ onMounted(function onMount() {
           <el-button :icon="Plus" class="primary-btn small" type="success" @click="openCreateDialog">
             创建套餐
           </el-button>
-          <el-button :icon="Refresh" class="ghost-btn small" plain type="info" @click="loadPlans">
+          <el-button :icon="RefreshCw" class="ghost-btn small" plain type="info" @click="loadPlans">
             刷新
           </el-button>
         </el-space>

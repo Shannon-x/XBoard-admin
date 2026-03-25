@@ -1,5 +1,5 @@
 <script setup>
-import { CircleCheckFilled } from '@element-plus/icons-vue'
+import { CheckCircle2 } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -174,7 +174,7 @@ function handleCategoryChange(categoryKey) {
     >
       <div class="settings-mail-test-result">
         <div class="settings-mail-test-result__status">
-          <el-icon class="settings-mail-test-result__status-icon"><CircleCheckFilled /></el-icon>
+          <el-icon class="settings-mail-test-result__status-icon"><CheckCircle2 /></el-icon>
           <div>
             <p class="settings-mail-test-result__status-title">
               {{ t('systemSettings.messages.testMailSuccess') }}

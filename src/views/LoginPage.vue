@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { MagicStick, Message, Lock, Right } from '@element-plus/icons-vue'
+import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-vue-next'
 
 import { useAuthStore } from '../stores/auth'
 
@@ -104,11 +104,11 @@ async function handleLogin() {
               autocomplete="username"
             >
               <template #prefix>
-                <el-icon><Message /></el-icon>
+                <el-icon><Mail /></el-icon>
               </template>
               <template #suffix>
                 <span class="login-form__suffix-badge">
-                  <el-icon><MagicStick /></el-icon>
+                  <el-icon><Sparkles /></el-icon>
                 </span>
               </template>
             </el-input>
@@ -142,7 +142,7 @@ async function handleLogin() {
             @click="handleLogin"
           >
             <span>{{ t('auth.login') }}</span>
-            <el-icon><Right /></el-icon>
+            <el-icon><ArrowRight /></el-icon>
           </el-button>
         </el-form>
       </el-card>
