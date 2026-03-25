@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Refresh, View } from '@element-plus/icons-vue'
+import { RefreshCw, Eye } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
 
@@ -186,7 +186,7 @@ onMounted(() => {
   <section class="page-stack">
     <SectionCard title="系统日志" description="审计日志记录管理员操作，失败任务记录队列异常，可用于排查系统问题。">
       <template #actions>
-        <el-button :icon="Refresh" type="info" plain size="small" @click="handleRefresh">刷新</el-button>
+        <el-button :icon="RefreshCw" type="info" plain size="small" @click="handleRefresh">刷新</el-button>
       </template>
 
       <el-tabs v-model="activeTab" class="log-tabs">
@@ -292,7 +292,7 @@ onMounted(() => {
             </el-table-column>
             <el-table-column label="操作" width="70" align="center">
               <template #default="{ row }">
-                <el-button :icon="View" link type="primary" @click="showJobDetail(row)" />
+                <el-button :icon="Eye" link type="primary" @click="showJobDetail(row)" />
               </template>
             </el-table-column>
           </el-table>
@@ -340,7 +340,7 @@ onMounted(() => {
       </template>
 
       <template #footer>
-        <el-button :icon="Refresh" @click="loadFailedJobs">刷新</el-button>
+        <el-button :icon="RefreshCw" @click="loadFailedJobs">刷新</el-button>
         <el-button type="primary" @click="failedDetailVisible = false">关闭</el-button>
       </template>
     </el-dialog>

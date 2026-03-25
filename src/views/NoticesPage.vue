@@ -2,12 +2,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Delete,
-  Edit,
+  Trash2,
+  Pencil,
   Plus,
-  Refresh,
+  RefreshCw,
   Search,
-} from '@element-plus/icons-vue'
+} from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
 import NoticeEditorDialog from '../components/notices/NoticeEditorDialog.vue'
@@ -170,7 +170,7 @@ onMounted(function loadNoticesOnMount() {
           <el-button @click="sortDialogVisible = true" :disabled="adminStore.managedNotices.length < 2">排序</el-button>
 
           <el-button class="ghost-btn" :loading="refreshing" @click="loadNotices(true)">
-            <el-icon><Refresh /></el-icon>
+            <el-icon><RefreshCw /></el-icon>
             {{ t('notices.actions.refresh') }}
           </el-button>
 
@@ -232,10 +232,10 @@ onMounted(function loadNoticesOnMount() {
             <template #default="{ row }">
               <div class="notice-actions-cell">
                 <el-button circle text @click="openEditDialog(row)">
-                  <el-icon><Edit /></el-icon>
+                  <el-icon><Pencil /></el-icon>
                 </el-button>
                 <el-button circle text @click="handleDelete(row)">
-                  <el-icon><Delete /></el-icon>
+                  <el-icon><Trash2 /></el-icon>
                 </el-button>
               </div>
             </template>

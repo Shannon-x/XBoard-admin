@@ -143,7 +143,7 @@ watch(
             v-model="form.content"
             language="zh-CN"
             :toolbars="editorToolbars"
-            :preview="true"
+            :preview="false"
             preview-theme="default"
             code-theme="github"
             style="height: min(440px, 42vh)"

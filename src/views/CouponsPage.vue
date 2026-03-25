@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete, Edit, Search } from '@element-plus/icons-vue'
+import { Plus, Trash2, Pencil, Search } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchManagedCoupons,

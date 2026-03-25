@@ -1,31 +1,31 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import {
+  Activity,
+  BadgeDollarSign,
+  BarChart3,
   Bell,
-  Coin,
-  Connection,
+  BookOpen,
+  Coins,
   CreditCard,
-  DataAnalysis,
-  Document,
-  Files,
-  Goods,
-  Grid,
-  Guide,
-  Iphone,
+  FileText,
   Lock,
-  Message,
-  Monitor,
-  Notebook,
-  Operation,
-  Picture,
-  Promotion,
-  Service,
-  Setting,
+  Mail,
+  MessageSquare,
+  Package,
+  Palette,
+  Puzzle,
+  Route,
+  Server,
+  Settings,
+  Shield,
   ShoppingCart,
-  Tickets,
-  User,
+  Smartphone,
+  Ticket,
+  TicketCheck,
+  Users,
   Wallet,
-} from "@element-plus/icons-vue";
+} from "lucide-vue-next";
 
 import {
   createDefaultDashboardStats,
@@ -158,7 +158,7 @@ export const useAdminStore = defineStore("admin", () => {
       items: [
         {
           labelKey: "nav.dashboard",
-          icon: DataAnalysis,
+          icon: BarChart3,
           routeName: "dashboard",
         },
       ],
@@ -166,36 +166,36 @@ export const useAdminStore = defineStore("admin", () => {
     {
       title: "系统管理",
       items: [
-        { labelKey: "nav.settings", icon: Setting, routeName: "settings" },
-        { labelKey: "nav.plugins", icon: Operation, routeName: "plugins" },
-        { label: "主题配置", icon: Picture, routeName: "themeConfig" },
+        { labelKey: "nav.settings", icon: Settings, routeName: "settings" },
+        { labelKey: "nav.plugins", icon: Puzzle, routeName: "plugins" },
+        { label: "主题配置", icon: Palette, routeName: "themeConfig" },
         { labelKey: "nav.notices", icon: Bell, routeName: "notices" },
         { labelKey: "nav.payment", icon: Wallet, routeName: "payment" },
-        { labelKey: "nav.knowledge", icon: Notebook, routeName: "knowledge" },
+        { labelKey: "nav.knowledge", icon: BookOpen, routeName: "knowledge" },
       ],
     },
     {
       title: "节点管理",
       items: [
-        { labelKey: "nav.nodes", icon: Monitor, routeName: "nodes" },
-        { label: "权限组管理", icon: Grid, routeName: "nodeGroups" },
-        { label: "路由管理", icon: Guide, routeName: "nodeRoutes" },
+        { labelKey: "nav.nodes", icon: Server, routeName: "nodes" },
+        { label: "权限组管理", icon: Shield, routeName: "nodeGroups" },
+        { label: "路由管理", icon: Route, routeName: "nodeRoutes" },
       ],
     },
     {
       title: "订阅管理",
       items: [
-        { labelKey: "nav.plans", icon: Files, routeName: "plans" },
+        { labelKey: "nav.plans", icon: Package, routeName: "plans" },
         { labelKey: "nav.orders", icon: ShoppingCart, routeName: "orders" },
-        { labelKey: "nav.coupons", icon: Promotion, routeName: "coupons" },
+        { labelKey: "nav.coupons", icon: Ticket, routeName: "coupons" },
         { labelKey: "nav.giftcards", icon: CreditCard, routeName: "giftcards" },
       ],
     },
     {
       title: "用户管理",
       items: [
-        { labelKey: "nav.users", icon: User, routeName: "users" },
-        { labelKey: "nav.tickets", icon: Service, routeName: "tickets" },
+        { labelKey: "nav.users", icon: Users, routeName: "users" },
+        { labelKey: "nav.tickets", icon: MessageSquare, routeName: "tickets" },
       ],
     },
   ];
@@ -233,7 +233,7 @@ export const useAdminStore = defineStore("admin", () => {
   const systemSettingsGroups = [
     {
       key: "site",
-      icon: Setting,
+      icon: Settings,
       titleKey: "systemSettings.groups.site.title",
       descriptionKey: "systemSettings.groups.site.description",
       fields: [
@@ -603,7 +603,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "subscription",
-      icon: Tickets,
+      icon: TicketCheck,
       titleKey: "systemSettings.groups.subscription.title",
       descriptionKey: "systemSettings.groups.subscription.description",
       fields: [
@@ -686,7 +686,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "invite",
-      icon: Coin,
+      icon: Coins,
       titleKey: "systemSettings.groups.invite.title",
       descriptionKey: "systemSettings.groups.invite.description",
       fields: [
@@ -808,7 +808,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "node",
-      icon: Monitor,
+      icon: Server,
       titleKey: "systemSettings.groups.node.title",
       descriptionKey: "systemSettings.groups.node.description",
       fields: [
@@ -866,7 +866,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "mail",
-      icon: Message,
+      icon: Mail,
       titleKey: "systemSettings.groups.mail.title",
       descriptionKey: "systemSettings.groups.mail.description",
       fields: [
@@ -939,7 +939,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "telegram",
-      icon: Promotion,
+      icon: Ticket,
       titleKey: "systemSettings.groups.telegram.title",
       descriptionKey: "systemSettings.groups.telegram.description",
       fields: [
@@ -976,7 +976,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "app",
-      icon: Iphone,
+      icon: Smartphone,
       titleKey: "systemSettings.groups.app.title",
       descriptionKey: "systemSettings.groups.app.description",
       fields: [
@@ -1027,7 +1027,7 @@ export const useAdminStore = defineStore("admin", () => {
     },
     {
       key: "subscribeTemplate",
-      icon: Document,
+      icon: FileText,
       titleKey: "systemSettings.groups.subscribeTemplate.title",
       descriptionKey: "systemSettings.groups.subscribeTemplate.description",
       fields: [

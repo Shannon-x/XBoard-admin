@@ -3,13 +3,13 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
-    ArrowDown,
-    Expand,
-    Fold,
-    FolderOpened,
+    ChevronDown,
+    LogOut,
+    Menu,
+    PanelLeftClose,
+    PanelLeftOpen,
     Search,
-    SwitchButton,
-} from "@element-plus/icons-vue";
+} from "lucide-vue-next";
 
 import { useAdminStore } from "../stores/admin";
 import { useAuthStore } from "../stores/auth";
@@ -194,7 +194,7 @@ onUnmounted(function detachResizeListener() {
                 @click="toggleSidebar"
             >
                 <el-icon>
-                    <component :is="isSidebarCollapsed ? Expand : Fold" />
+                    <component :is="isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose" />
                 </el-icon>
             </el-button>
             <div class="brand-panel">
@@ -256,7 +256,7 @@ onUnmounted(function detachResizeListener() {
                     type="button"
                     @click="toggleMobileNav"
                 >
-                    <el-icon><FolderOpened /></el-icon>
+                    <el-icon><Menu /></el-icon>
                 </button>
                 <div class="topbar-copy">
                     <span class="topbar-kicker">{{ pageEyebrow }}</span>
@@ -298,14 +298,14 @@ onUnmounted(function detachResizeListener() {
                             </div>
 
                             <el-icon class="header-account__arrow"
-                                ><ArrowDown
+                                ><ChevronDown
                             /></el-icon>
                         </button>
 
                         <template #dropdown>
                             <el-dropdown-menu class="header-account__menu">
                                 <el-dropdown-item command="logout">
-                                    <el-icon><SwitchButton /></el-icon>
+                                    <el-icon><LogOut /></el-icon>
                                     <span>{{ t("auth.logout") }}</span>
                                 </el-dropdown-item>
                             </el-dropdown-menu>

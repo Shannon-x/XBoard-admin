@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Download, Plus, Filter, Message, CirclePlus, Remove } from '@element-plus/icons-vue'
+import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -393,14 +393,14 @@ onMounted(function onMount() {
             @keyup.enter="handleSearch"
             @clear="handleSearch"
           />
-          <el-button :icon="Filter" class="ghost-btn small" plain type="info" @click="showFilters = !showFilters">
+          <el-button :icon="SlidersHorizontal" class="ghost-btn small" plain type="info" @click="showFilters = !showFilters">
             筛选
           </el-button>
           <el-button :icon="Search" class="ghost-btn small" plain type="info" @click="handleSearch">
             搜索
           </el-button>
           <el-dropdown trigger="click">
-            <el-button :icon="Message" class="ghost-btn small" plain type="info">
+            <el-button :icon="Mail" class="ghost-btn small" plain type="info">
               发送邮件
             </el-button>
             <template #dropdown>
@@ -423,7 +423,7 @@ onMounted(function onMount() {
       <div v-if="showFilters" class="user-filter-panel">
         <div class="user-filter-panel__header">
           <span>筛选条件</span>
-          <el-button :icon="CirclePlus" size="small" text type="primary" @click="addFilterCondition">添加条件</el-button>
+          <el-button :icon="PlusCircle" size="small" text type="primary" @click="addFilterCondition">添加条件</el-button>
         </div>
         <div v-for="(cond, idx) in filterConditions" :key="idx" class="user-filter-row">
           <span class="user-filter-row__label">条件 {{ idx + 1 }}</span>
@@ -444,7 +444,7 @@ onMounted(function onMount() {
           <template v-else>
             <el-input v-model="cond.value" placeholder="输入值" style="width: 180px" :type="getFieldDef(cond.field)?.type === 'number' ? 'number' : 'text'" />
           </template>
-          <el-button :icon="Remove" size="small" text type="danger" @click="removeFilterCondition(idx)" />
+          <el-button :icon="X" size="small" text type="danger" @click="removeFilterCondition(idx)" />
         </div>
         <div v-if="filterConditions.length > 0" style="text-align: right; margin-top: 8px">
           <el-button size="small" type="primary" @click="handleSearch">应用筛选</el-button>
@@ -455,9 +455,9 @@ onMounted(function onMount() {
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="users" stripe style="width: 100%">
-        <el-table-column label="ID" prop="id" width="60" />
+        <el-table-column label="ID" prop="id" width="88" />
         <el-table-column label="邮箱" prop="email" width="180" show-overflow-tooltip />
-        <el-table-column label="状态" width="70">
+        <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>

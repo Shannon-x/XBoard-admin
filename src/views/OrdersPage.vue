@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { Delete, Refresh, Key } from "@element-plus/icons-vue";
+import { Trash2, RefreshCw, KeyRound } from "lucide-vue-next";
 import nacl from "tweetnacl";
 
 function toBase64Url(uint8Array) {

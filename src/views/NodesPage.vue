@@ -4,16 +4,16 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useI18n } from "vue-i18n";
 import {
-    DataLine,
-    Delete,
-    Edit,
-    Monitor,
-    MoreFilled,
-    Refresh,
-    Search,
-    CopyDocument,
+    Activity,
+    Copy,
+    MoreHorizontal,
+    Pencil,
     Plus,
-} from "@element-plus/icons-vue";
+    RefreshCw,
+    Search,
+    Server,
+    Trash2,
+} from "lucide-vue-next";
 
 import { useAdminStore } from "../stores/admin";
 import NodeConfigDialog from "../components/nodes/NodeConfigDialog.vue";
@@ -1143,7 +1143,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     plain
                     @click="runBatchHealthCheck"
                 >
-                    <el-icon><Refresh /></el-icon>
+                    <el-icon><RefreshCw /></el-icon>
                     {{ t("nodes.refresh") }}
                 </el-button>
                 <el-button
@@ -1166,7 +1166,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                     @clear="filters.nodeId = ''"
                 >
                     <template #prefix>
-                        <el-icon><DataLine /></el-icon>
+                        <el-icon><Activity /></el-icon>
                     </template>
                 </el-input>
 
@@ -1250,7 +1250,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                         </div>
                     </template>
                 </el-table-column>
-                <el-table-column :label="t('nodes.table.visible')" width="60">
+                <el-table-column :label="t('nodes.table.visible')" width="80">
                     <template #default="{ row }">
                         <el-switch
                             :model-value="Boolean(row.show)"
@@ -1312,7 +1312,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 >
                     <template #default="{ row }">
                         <div class="node-online">
-                            <el-icon><Monitor /></el-icon>
+                            <el-icon><Server /></el-icon>
                             {{ row.onlineUsers }}
                         </div>
                     </template>
@@ -1344,7 +1344,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 
                 <el-table-column
                     :label="t('nodes.table.actions')"
-                    width="60"
+                    width="70"
                     fixed="right"
                 >
                     <template #default="{ row }">
@@ -1353,27 +1353,27 @@ onUnmounted(function clearDebounceOnUnmount() {
                                 class="node-action-trigger"
                                 type="primary"
                                 plain
-                                :icon="MoreFilled"
+                                :icon="MoreHorizontal"
                             />
                             <template #dropdown>
                                 <el-dropdown-menu class="node-action-menu">
                                     <el-dropdown-item
                                         @click="openEditNodeDialog(row)"
                                     >
-                                        <el-icon><Edit /></el-icon>
+                                        <el-icon><Pencil /></el-icon>
                                         {{ t("nodes.actions.edit") }}
                                     </el-dropdown-item>
                                     <el-dropdown-item
                                         @click="handleCopyNode(row)"
                                     >
-                                        <el-icon><CopyDocument /></el-icon>
+                                        <el-icon><Copy /></el-icon>
                                         {{ t("nodes.actions.copy") }}
                                     </el-dropdown-item>
                                     <el-dropdown-item
                                         class="node-action-menu__danger"
                                         @click="handleDeleteNode(row)"
                                     >
-                                        <el-icon><Delete /></el-icon>
+                                        <el-icon><Trash2 /></el-icon>
                                         {{ t("nodes.actions.delete") }}
                                     </el-dropdown-item>
                                 </el-dropdown-menu>

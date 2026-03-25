@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Refresh, View } from '@element-plus/icons-vue'
+import { RefreshCw, Eye } from 'lucide-vue-next'
 
 const props = defineProps({
   loading: {
@@ -48,8 +48,8 @@ function statusTagType(tone) {
         <el-tag :type="statusTagType(runtimeStatus.horizonStatusTone)" effect="dark" size="small">
           {{ t('system.horizon', { status: runtimeStatus.horizonStatusText }) }}
         </el-tag>
-        <el-button :icon="Refresh" size="small" plain @click="emit('refresh')">刷新</el-button>
-        <el-button :icon="View" size="small" plain type="primary" @click="goToLogs">查看审计日志</el-button>
+        <el-button :icon="RefreshCw" size="small" plain @click="emit('refresh')">刷新</el-button>
+        <el-button :icon="Eye" size="small" plain type="primary" @click="goToLogs">查看审计日志</el-button>
       </div>
     </div>
 

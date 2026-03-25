@@ -1,17 +1,16 @@
 <script setup>
 import { useI18n } from "vue-i18n";
 import {
-    Coin,
-    Connection,
-    DataLine,
-    Download,
-    Money,
-    Monitor,
-    Tickets,
-    Upload,
-    User,
-    UserFilled,
-} from "@element-plus/icons-vue";
+    Activity,
+    ArrowDownToLine,
+    ArrowUpFromLine,
+    BadgeDollarSign,
+    Coins,
+    Server,
+    Smartphone,
+    TicketCheck,
+    UserRound,
+} from "lucide-vue-next";
 
 defineProps({
     loading: {
@@ -29,15 +28,15 @@ const emit = defineEmits(['metric-click'])
 const { t } = useI18n();
 
 const metricIconMap = {
-    收入: Coin,
-    佣金: Money,
-    工单: Tickets,
-    用户: User,
-    上传: Upload,
-    下载: Download,
-    节点: Connection,
-    设备: Monitor,
-    流量: DataLine,
+    收入: Coins,
+    佣金: BadgeDollarSign,
+    工单: TicketCheck,
+    用户: UserRound,
+    上传: ArrowUpFromLine,
+    下载: ArrowDownToLine,
+    节点: Server,
+    设备: Smartphone,
+    流量: Activity,
 };
 
 function resolveMetricIcon(label) {
@@ -47,7 +46,7 @@ function resolveMetricIcon(label) {
         },
     );
 
-    return matchedKeyword ? metricIconMap[matchedKeyword] : UserFilled;
+    return matchedKeyword ? metricIconMap[matchedKeyword] : UserRound;
 }
 
 function resolveTrendClass(changeText) {
