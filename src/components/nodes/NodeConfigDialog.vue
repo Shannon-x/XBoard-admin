@@ -1254,7 +1254,7 @@ function handleSubmit() {
             </div>
 
             <el-form-item
-                v-if="(isVlessProtocol && form.vlessSecurity === 'reality') || (isAnytlsProtocol && form.anytlsSecurity === 'reality')"
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
                 label="私钥(Private key)"
                 class="node-config-form__item"
             >
@@ -1704,72 +1704,80 @@ function handleSubmit() {
         append-to-body
     >
         <div class="cert-config-form">
-            <div class="cert-config-form__field">
-                <label>Server Name(SNI)</label>
-                <el-input v-model="form.sni" placeholder="用于证书验证的服务器名称" />
-            </div>
+            <!-- TLS 模式 -->
+            <template v-if="!isAnytlsProtocol || form.anytlsSecurity === 'tls'">
+                <div class="cert-config-form__field">
+                    <label>Server Name(SNI)</label>
+                    <el-input v-model="form.sni" placeholder="用于证书验证的服务器名称" />
+                </div>
 
-            <div class="cert-config-form__field">
-                <label>证书模式Cert Mode</label>
-                <el-select v-model="form.certMode" style="width: 100%">
-                    <el-option
-                        v-for="opt in certModeOptions"
-                        :key="opt.value"
-                        :label="opt.label"
-                        :value="opt.value"
-                    />
-                </el-select>
-            </div>
+                <div class="cert-config-form__field">
+                    <label>证书模式Cert Mode</label>
+                    <el-select v-model="form.certMode" style="width: 100%">
+                        <el-option
+                            v-for="opt in certModeOptions"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="opt.value"
+                        />
+                    </el-select>
+                </div>
 
-            <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
-                <label style="display: flex; align-items: center; gap: 8px;">DNS解析提供商Provider <el-link type="primary" :underline="false" href="https://go-acme.github.io/lego/dns/" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link></label>
-                <el-input v-model="form.certDnsProvider" placeholder="书写格式cloudflare" />
-            </div>
+                <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
+                    <label style="display: flex; align-items: center; gap: 8px;">DNS解析提供商Provider <el-link type="primary" :underline="false" href="https://go-acme.github.io/lego/dns/" target="_blank" style="font-size: 13px; font-weight: 600;">填写参考</el-link></label>
+                    <el-input v-model="form.certDnsProvider" placeholder="书写格式cloudflare" />
+                </div>
 
-            <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
-                <label>DNS env</label>
-                <el-input v-model="form.certDnsEnv" placeholder="书写格式CF_DNS_API_TOKEN=xxxxxxx如有多条使用逗号,分隔" />
-            </div>
+                <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
+                    <label>DNS env</label>
+                    <el-input v-model="form.certDnsEnv" placeholder="书写格式CF_DNS_API_TOKEN=xxxxxxx如有多条使用逗号,分隔" />
+                </div>
 
-            <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
-                <label>证书公钥文件地址Cert File Path</label>
-                <el-input v-model="form.certPath" placeholder="留空在/etc/v2node/目录自动生成" />
-            </div>
+                <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                    <label>证书公钥文件地址Cert File Path</label>
+                    <el-input v-model="form.certPath" placeholder="留空在/etc/v2node/目录自动生成" />
+                </div>
 
-            <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
-                <label>证书私钥文件地址Key File Path</label>
-                <el-input v-model="form.keyPath" placeholder="留空在/etc/v2node/目录自动生成" />
-            </div>
+                <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                    <label>证书私钥文件地址Key File Path</label>
+                    <el-input v-model="form.keyPath" placeholder="留空在/etc/v2node/目录自动生成" />
+                </div>
 
-            <div class="cert-config-form__field">
-                <label>FingerPrint</label>
-                <el-select v-model="form.certFingerprint" style="width: 100%">
-                    <el-option
-                        v-for="opt in certFingerprintOptions"
-                        :key="opt.value"
-                        :label="opt.label"
-                        :value="opt.value"
-                    />
-                </el-select>
-            </div>
+                <div class="cert-config-form__field">
+                    <label>FingerPrint</label>
+                    <el-select v-model="form.certFingerprint" style="width: 100%">
+                        <el-option
+                            v-for="opt in certFingerprintOptions"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="opt.value"
+                        />
+                    </el-select>
+                </div>
 
-            <div class="cert-config-form__field">
-                <label>Reject unknown sni</label>
-                <el-switch v-model="form.certRejectUnknownSni" />
-            </div>
+                <div class="cert-config-form__field">
+                    <label>Reject unknown sni</label>
+                    <el-switch v-model="form.certRejectUnknownSni" />
+                </div>
 
-            <div class="cert-config-form__field">
-                <label>Allow Insecure</label>
-                <el-switch v-model="form.allowInsecure" />
-            </div>
+                <div class="cert-config-form__field">
+                    <label>Allow Insecure</label>
+                    <el-switch v-model="form.allowInsecure" />
+                </div>
+            </template>
 
+            <!-- Reality 模式 -->
             <template v-if="isAnytlsProtocol && form.anytlsSecurity === 'reality'">
                 <div class="cert-config-form__field">
-                    <label>伪装站点(dest)</label>
-                    <el-input v-model="form.vlessRealityDest" placeholder="例如：example.com" />
+                    <label>Server Name(SNI)</label>
+                    <el-input v-model="form.sni" placeholder="REALITY必填，与后端保持一致" />
                 </div>
                 <div class="cert-config-form__field">
-                    <label>端口(port)</label>
+                    <label>Server Address</label>
+                    <el-input v-model="form.vlessRealityDest" placeholder="REALITY目标地址，默认使用SNI" />
+                </div>
+                <div class="cert-config-form__field">
+                    <label>Server Port</label>
                     <el-input-number
                         v-model="form.vlessRealityPort"
                         :min="0"
@@ -1778,32 +1786,32 @@ function handleSubmit() {
                         :precision="0"
                         step-strictly
                         :controls="false"
-                        placeholder="443"
+                        placeholder="REALITY目标端口，默认443"
                         style="width: 100%"
                     />
                 </div>
                 <div class="cert-config-form__field">
-                    <label>私钥(Private key)</label>
-                    <el-input v-model="form.vlessRealityPrivateKey" placeholder="请输入私钥">
+                    <label>Private Key</label>
+                    <el-input v-model="form.vlessRealityPrivateKey" placeholder="留空自动生成">
                         <template #append>
                             <el-button :icon="Key" @click="generateRealityKeys" title="自动生成密钥对" />
                         </template>
                     </el-input>
                 </div>
                 <div class="cert-config-form__field">
-                    <label>公钥(Public key)</label>
-                    <el-input v-model="form.vlessRealityPublicKey" placeholder="请输入公钥" />
+                    <label>Public Key</label>
+                    <el-input v-model="form.vlessRealityPublicKey" placeholder="留空自动生成" />
                 </div>
                 <div class="cert-config-form__field">
-                    <label>Short ID</label>
-                    <el-input v-model="form.vlessRealityShortId" placeholder="可留空，长度为 2 的倍数，最长 16 位">
+                    <label>ShortId</label>
+                    <el-input v-model="form.vlessRealityShortId" placeholder="留空自动生成">
                         <template #append>
                             <el-button :icon="Refresh" @click="generateShortId" title="自动生成 Short ID" />
                         </template>
                     </el-input>
                 </div>
                 <div class="cert-config-form__field">
-                    <label>客户端指纹 (FingerPrint)</label>
+                    <label>FingerPrint</label>
                     <el-select v-model="form.vlessRealityFingerprint" style="width: 100%" placeholder="请选择客户端指纹">
                         <el-option label="Chrome" value="chrome" />
                         <el-option label="Firefox" value="firefox" />
@@ -1818,7 +1826,7 @@ function handleSubmit() {
                     </el-select>
                 </div>
                 <div class="cert-config-form__field">
-                    <label>允许不安全?</label>
+                    <label>Allow Insecure</label>
                     <el-switch v-model="form.allowInsecure" />
                 </div>
             </template>
