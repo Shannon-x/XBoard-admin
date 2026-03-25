@@ -1,9 +1,9 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, View } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
-import { buildDashboardApiUrl, requestDashboardApi } from '../services/api'
+import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
 
 const route = useRoute()
 
@@ -19,7 +19,6 @@ const searchKeyword = ref('')
 const auditPage = ref(1)
 const auditPageSize = ref(20)
 const auditTotal = ref(0)
-const auditExpandedRows = ref(new Set())
 
 const actionOptions = [
   { label: '全部', value: 'all' },
@@ -34,9 +33,10 @@ const failedJobs = ref([])
 const failedLoading = ref(false)
 const failedError = ref('')
 const failedPage = ref(1)
-const failedPageSize = ref(20)
+const failedPageSize = ref(10)
 const failedTotal = ref(0)
-const failedExpandedRows = ref(new Set())
+const failedDetailVisible = ref(false)
+const failedDetailJob = ref(null)
 
 // ===================== Audit Log =====================
 
@@ -57,7 +57,6 @@ async function loadAuditLogs() {
     const apiUrl = buildDashboardApiUrl('system/getAuditLog', queryEntries)
     const payload = await requestDashboardApi(apiUrl)
     const raw = payload?.data
-
     if (Array.isArray(raw)) {
       auditLogs.value = raw.map(normalizeAuditLog)
       auditTotal.value = Number(payload?.total || raw.length)
@@ -65,7 +64,6 @@ async function loadAuditLogs() {
       auditLogs.value = []
       auditTotal.value = 0
     }
-    auditExpandedRows.value = new Set()
   } catch (err) {
     auditError.value = err.message
   } finally {
@@ -79,7 +77,6 @@ function normalizeAuditLog(item) {
   const adminEmail = item.admin?.email || '--'
   const adminId = item.admin_id || item.admin?.id || '--'
   const createdAt = item.created_at || 0
-
   let requestData = null
   if (item.request_data) {
     if (typeof item.request_data === 'string') {
@@ -88,7 +85,6 @@ function normalizeAuditLog(item) {
       requestData = item.request_data
     }
   }
-
   return { id: item.id, action, uri, adminEmail, adminId, requestData, createdAt }
 }
 
@@ -103,17 +99,21 @@ async function loadFailedJobs() {
       ['page_size', failedPageSize.value],
     ]
     const apiUrl = buildDashboardApiUrl('system/getHorizonFailedJobs', queryEntries)
-    const payload = await requestDashboardApi(apiUrl)
+    const res = await fetch(apiUrl, {
+      headers: getDashboardApiHeaders(),
+    })
+    if (!res.ok) {
+      throw new Error(`请求失败: ${res.status}`)
+    }
+    const payload = await res.json()
     const raw = payload?.data
-
     if (Array.isArray(raw)) {
-      failedJobs.value = raw.map(normalizeFailedJob)
+      failedJobs.value = raw
       failedTotal.value = Number(payload?.total || raw.length)
     } else {
       failedJobs.value = []
       failedTotal.value = 0
     }
-    failedExpandedRows.value = new Set()
   } catch (err) {
     failedError.value = err.message
   } finally {
@@ -121,21 +121,35 @@ async function loadFailedJobs() {
   }
 }
 
-function normalizeFailedJob(item) {
-  const name = item.name || item.payload?.displayName || '--'
-  const queue = item.queue || '--'
-  const failedAt = item.failed_at || ''
-  const exception = item.exception || ''
-  const firstLine = exception.split('\n')[0]?.substring(0, 200) || '--'
-  const isLong = exception.length > 200
+function getJobDisplayName(job) {
+  if (job.name) return job.name
+  if (job.payload) {
+    try {
+      const p = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload
+      return p.displayName || p.job || '--'
+    } catch { /* ignore */ }
+  }
+  return '--'
+}
 
-  return { id: item.id, name, queue, failedAt, exception, firstLine, isLong }
+function getExceptionSummary(job) {
+  const ex = job.exception || ''
+  if (!ex) return '--'
+  const firstLine = ex.split('\n')[0] || ''
+  return firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine
+}
+
+function showJobDetail(job) {
+  failedDetailJob.value = job
+  failedDetailVisible.value = true
 }
 
 // ===================== Helpers =====================
 
 function formatTime(ts) {
   if (!ts) return '--'
+  if (typeof ts === 'string' && ts.includes('/')) return ts
+  if (typeof ts === 'string' && ts.includes('-')) return ts
   const d = new Date(typeof ts === 'number' ? ts * 1000 : ts)
   if (Number.isNaN(d.getTime())) return String(ts)
   return d.toLocaleString('zh-CN')
@@ -146,10 +160,6 @@ function actionTagType(action) {
   return map[action] || 'info'
 }
 
-function toggleExpand(set, id) {
-  if (set.has(id)) { set.delete(id) } else { set.add(id) }
-}
-
 function handleRefresh() {
   if (activeTab.value === 'audit') loadAuditLogs()
   else loadFailedJobs()
@@ -158,14 +168,17 @@ function handleRefresh() {
 watch(activeAction, () => { auditPage.value = 1; loadAuditLogs() })
 
 watch(activeTab, (tab) => {
-  if (tab === 'audit' && auditLogs.value.length === 0) loadAuditLogs()
-  if (tab === 'failed' && failedJobs.value.length === 0) loadFailedJobs()
+  if (tab === 'failed' && failedJobs.value.length === 0 && !failedLoading.value) {
+    loadFailedJobs()
+  }
 })
 
 onMounted(() => {
   const tab = route.query.tab
   if (tab === 'failed') activeTab.value = 'failed'
   loadAuditLogs()
+  // Pre-load failed jobs to get count for badge
+  loadFailedJobs()
 })
 </script>
 
@@ -181,15 +194,14 @@ onMounted(() => {
         <el-tab-pane label="审计日志" name="audit">
           <el-alert v-if="auditError" type="error" :closable="false" :title="auditError" style="margin-bottom:12px;" />
 
-          <div style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+          <div class="log-filter-bar">
             <el-radio-group v-model="activeAction" size="small">
               <el-radio-button v-for="opt in actionOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </el-radio-button>
             </el-radio-group>
             <el-input
-              v-model="searchKeyword"
-              clearable placeholder="搜索 URI / 请求数据"
+              v-model="searchKeyword" clearable placeholder="搜索 URI / 请求数据"
               size="small" style="max-width: 240px;"
               @keyup.enter="loadAuditLogs" @clear="loadAuditLogs"
             />
@@ -224,9 +236,9 @@ onMounted(() => {
                   <div style="max-height:400px;overflow:auto;">
                     <h4 style="margin:0 0 8px;">操作信息</h4>
                     <table style="font-size:12px;width:100%;border-collapse:collapse;">
-                      <tr><td style="padding:4px 8px;font-weight:600;">操作</td><td style="padding:4px 8px;">{{ row.action }}</td></tr>
-                      <tr><td style="padding:4px 8px;font-weight:600;">URI</td><td style="padding:4px 8px;word-break:break-all;">{{ row.uri }}</td></tr>
-                      <tr><td style="padding:4px 8px;font-weight:600;">管理员</td><td style="padding:4px 8px;">{{ row.adminEmail }} (ID: {{ row.adminId }})</td></tr>
+                      <tr><td class="detail-label">操作</td><td class="detail-value">{{ row.action }}</td></tr>
+                      <tr><td class="detail-label">URI</td><td class="detail-value" style="word-break:break-all;">{{ row.uri }}</td></tr>
+                      <tr><td class="detail-label">管理员</td><td class="detail-value">{{ row.adminEmail }} (ID: {{ row.adminId }})</td></tr>
                     </table>
                     <template v-if="row.requestData">
                       <h4 style="margin:12px 0 8px;">请求数据</h4>
@@ -238,7 +250,7 @@ onMounted(() => {
             </el-table-column>
           </el-table>
 
-          <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <div class="log-pagination">
             <el-pagination
               v-model:current-page="auditPage" v-model:page-size="auditPageSize"
               :page-sizes="[10, 20, 50, 100]" :total="auditTotal"
@@ -252,38 +264,40 @@ onMounted(() => {
         <el-tab-pane name="failed">
           <template #label>
             失败任务
-            <el-badge v-if="failedTotal > 0" :value="failedTotal" :max="99" style="margin-left:4px;" />
+            <el-badge v-if="failedTotal > 0" :value="failedTotal" :max="99" style="margin-left:6px;" />
           </template>
 
           <el-alert v-if="failedError" type="error" :closable="false" :title="failedError" style="margin-bottom:12px;" />
 
           <el-table :data="failedJobs" v-loading="failedLoading" class="dashboard-table" max-height="580">
-            <el-table-column label="ID" prop="id" width="200" />
-            <el-table-column label="任务名" min-width="200">
+            <el-table-column label="时间" width="170">
               <template #default="{ row }">
-                <span style="font-size:12px;font-family:monospace;">{{ row.name }}</span>
+                <span style="font-size:12px;">{{ row.failed_at || '--' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="队列" width="120" prop="queue" />
-            <el-table-column label="失败时间" width="170">
-              <template #default="{ row }">{{ formatTime(row.failedAt) }}</template>
-            </el-table-column>
-            <el-table-column label="异常" min-width="300">
+            <el-table-column label="队列" width="140">
               <template #default="{ row }">
-                <div>
-                  <span style="font-size:12px;color:var(--el-color-danger);">{{ row.firstLine }}</span>
-                  <div v-if="row.isLong" style="margin-top:4px;">
-                    <el-button link size="small" type="primary" @click="toggleExpand(failedExpandedRows, row.id)">
-                      {{ failedExpandedRows.has(row.id) ? '收起' : '展开堆栈' }}
-                    </el-button>
-                  </div>
-                  <pre v-if="failedExpandedRows.has(row.id)" class="log-stack-trace">{{ row.exception }}</pre>
-                </div>
+                <el-tag size="small" type="info">{{ row.queue || '--' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="任务名称" min-width="200">
+              <template #default="{ row }">
+                <span style="font-size:12px;font-family:monospace;">{{ getJobDisplayName(row) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="异常信息" min-width="260">
+              <template #default="{ row }">
+                <span style="font-size:12px;color:var(--el-color-danger);">{{ getExceptionSummary(row) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="70" align="center">
+              <template #default="{ row }">
+                <el-button :icon="View" link type="primary" @click="showJobDetail(row)" />
               </template>
             </el-table-column>
           </el-table>
 
-          <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <div class="log-pagination">
             <el-pagination
               v-model:current-page="failedPage" v-model:page-size="failedPageSize"
               :page-sizes="[10, 20, 50]" :total="failedTotal"
@@ -294,6 +308,42 @@ onMounted(() => {
         </el-tab-pane>
       </el-tabs>
     </SectionCard>
+
+    <!-- ========== 失败任务详情对话框 ========== -->
+    <el-dialog
+      v-model="failedDetailVisible"
+      title="失败任务详情"
+      width="720px"
+      destroy-on-close
+    >
+      <template v-if="failedDetailJob">
+        <el-descriptions :column="2" border size="small" style="margin-bottom:16px;">
+          <el-descriptions-item label="任务 ID" :span="2">
+            <span style="font-family:monospace;font-size:12px;">{{ failedDetailJob.id }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="任务名称">
+            <span style="font-family:monospace;font-size:12px;">{{ getJobDisplayName(failedDetailJob) }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="队列">
+            <el-tag size="small" type="info">{{ failedDetailJob.queue || '--' }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="失败时间">
+            {{ failedDetailJob.failed_at || '--' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="连接">
+            {{ failedDetailJob.connection || '--' }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <h4 style="margin:0 0 8px;font-size:14px;">异常堆栈</h4>
+        <pre class="log-stack-trace">{{ failedDetailJob.exception || '无异常信息' }}</pre>
+      </template>
+
+      <template #footer>
+        <el-button :icon="Refresh" @click="loadFailedJobs">刷新</el-button>
+        <el-button type="primary" @click="failedDetailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -302,18 +352,43 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
+.log-filter-bar {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.log-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.detail-label {
+  padding: 4px 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.detail-value {
+  padding: 4px 8px;
+}
+
 .log-stack-trace {
   font-size: 11px;
   font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
   background: #1e1e2e;
   color: #a6adc8;
-  padding: 10px;
+  padding: 12px;
   border-radius: 8px;
   overflow-x: auto;
-  margin: 8px 0 0;
+  margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
+  line-height: 1.5;
 }
 </style>
