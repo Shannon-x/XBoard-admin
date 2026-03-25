@@ -835,6 +835,39 @@ async function handleNodeDialogSubmit(payload) {
                                 payload.mieruBandwidth || "low",
                             ).toLowerCase(),
                         }
+                      : protocolType === "anytls"
+                        ? (() => {
+                              const security = String(payload.anytlsSecurity || "tls");
+                              let paddingScheme;
+                              try {
+                                  paddingScheme = JSON.parse(payload.anytlsPaddingScheme || "[]");
+                              } catch (_e) {
+                                  paddingScheme = [];
+                              }
+                              const settings = {
+                                  tls: security === "reality" ? 2 : 1,
+                                  padding_scheme: Array.isArray(paddingScheme) ? paddingScheme : [],
+                                  alpn: String(payload.anytlsAlpn || "").trim() || undefined,
+                              };
+                              if (security === "reality") {
+                                  settings.reality_settings = {
+                                      server_name: String(payload.vlessRealityDest || "").trim(),
+                                      server_port: payload.vlessRealityPort
+                                          ? Number(payload.vlessRealityPort)
+                                          : undefined,
+                                      public_key: String(payload.vlessRealityPublicKey || "").trim(),
+                                      private_key: String(payload.vlessRealityPrivateKey || "").trim(),
+                                      short_id: String(payload.vlessRealityShortId || "").trim(),
+                                      allow_insecure: Boolean(payload.allowInsecure),
+                                  };
+                              } else {
+                                  settings.tls_settings = {
+                                      server_name: String(payload.sni || "").trim(),
+                                      allow_insecure: Boolean(payload.allowInsecure),
+                                  };
+                              }
+                              return settings;
+                          })()
                       : protocolType === "fbnode"
                         ? {}
                       : {
@@ -888,7 +921,7 @@ async function handleNodeDialogSubmit(payload) {
                       parentId: payload.parentId || "0",
                       routeIds: selectedRouteIds,
                       protocolSettings,
-                      certConfig: protocolType === "hysteria"
+                      certConfig: (protocolType === "hysteria" || (protocolType === "anytls" && String(payload.anytlsSecurity || "tls") === "tls"))
                           ? {
                                 cert_mode: String(payload.certMode || "selfSign"),
                                 fingerprint: String(payload.certFingerprint || "chrome"),
