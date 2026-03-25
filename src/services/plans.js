@@ -32,19 +32,39 @@ const PERIOD_LABELS = {
   reset_price: '重置包',
 }
 
+// Maps frontend form keys to backend API price keys (inside the prices JSON column)
+const FORM_TO_API_PRICE_KEY = {
+  month_price: 'monthly',
+  quarter_price: 'quarterly',
+  half_year_price: 'half_yearly',
+  year_price: 'yearly',
+  two_year_price: 'two_yearly',
+  three_year_price: 'three_yearly',
+  onetime_price: 'onetime',
+  reset_price: 'reset_traffic',
+}
+
+// Reverse mapping: backend API keys to frontend form keys
+const API_TO_FORM_PRICE_KEY = Object.fromEntries(
+  Object.entries(FORM_TO_API_PRICE_KEY).map(([formKey, apiKey]) => [apiKey, formKey])
+)
+
 function normalizePlan(plan) {
   const prices = {}
   const priceTexts = []
+  const rawPrices = plan?.prices || {}
 
-  Object.keys(PERIOD_LABELS).forEach(function mapPeriod(periodKey) {
-    const priceValue = plan?.[periodKey]
+  // Read from the nested prices object using API keys, map to form keys
+  Object.keys(PERIOD_LABELS).forEach(function mapPeriod(formKey) {
+    const apiKey = FORM_TO_API_PRICE_KEY[formKey]
+    const priceValue = rawPrices[apiKey]
 
     if (priceValue !== null && priceValue !== undefined && Number(priceValue) > 0) {
-      const amount = Number(priceValue) / 100
-      prices[periodKey] = amount
-      priceTexts.push(`${PERIOD_LABELS[periodKey]}: ¥${amount.toFixed(2)}`)
+      const amount = Number(priceValue)
+      prices[formKey] = amount
+      priceTexts.push(`${PERIOD_LABELS[formKey]}: ¥${amount.toFixed(2)}`)
     } else {
-      prices[periodKey] = null
+      prices[formKey] = null
     }
   })
 
@@ -90,6 +110,15 @@ export async function fetchManagedPlans() {
 export async function saveManagedPlan(data) {
   const apiUrl = buildSecureV2ApiUrl('plan/save')
 
+  // Build the prices object using API keys (prices are stored in yuan)
+  const apiPrices = {}
+  Object.keys(PERIOD_LABELS).forEach(function mapPeriod(formKey) {
+    const apiKey = FORM_TO_API_PRICE_KEY[formKey]
+    if (data.prices && data.prices[formKey] !== undefined && data.prices[formKey] !== null && data.prices[formKey] !== '') {
+      apiPrices[apiKey] = Number(Number(data.prices[formKey]).toFixed(2))
+    }
+  })
+
   const requestBody = {
     name: String(data.name || '').trim(),
     group_id: data.groupId != null ? Number(data.groupId) : null,
@@ -102,15 +131,8 @@ export async function saveManagedPlan(data) {
     content: data.content || null,
     reset_traffic_method: data.resetTrafficMethod === -1 ? null : (data.resetTrafficMethod ?? null),
     capacity_limit: data.capacityLimit ? Number(data.capacityLimit) : null,
+    prices: apiPrices,
   }
-
-  Object.keys(PERIOD_LABELS).forEach(function mapPeriod(periodKey) {
-    if (data.prices && data.prices[periodKey] !== undefined && data.prices[periodKey] !== null && data.prices[periodKey] !== '') {
-      requestBody[periodKey] = Math.round(Number(data.prices[periodKey]) * 100)
-    } else {
-      requestBody[periodKey] = null
-    }
-  })
 
   if (data.id) {
     requestBody.id = Number(data.id)
