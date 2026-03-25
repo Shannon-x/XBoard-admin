@@ -15,6 +15,7 @@ import {
   ORDER_STATUS_MAP,
 } from '../services/orders'
 import { fetchManagedPlans } from '../services/plans'
+import { fetchPayments } from '../services/payment'
 
 const { t } = useI18n()
 
@@ -27,6 +28,7 @@ const statusFilter = ref('')
 const isCommission = ref(false)
 const commissionStatusFilter = ref('')
 const plans = ref([])
+const paymentMap = ref({})
 
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -179,6 +181,11 @@ async function submitAssign() {
 onMounted(function onMount() {
   loadOrders()
   fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
+  fetchPayments().then(list => {
+    const map = {}
+    list.forEach(p => { map[p.id] = p.name })
+    paymentMap.value = map
+  }).catch(() => {})
 })
 </script>
 
@@ -310,6 +317,7 @@ onMounted(function onMount() {
             <el-descriptions-item label="套餐">{{ detailData.planName }}</el-descriptions-item>
             <el-descriptions-item label="周期">{{ detailData.period }}</el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
+            <el-descriptions-item label="支付方式">{{ paymentMap[detailData.paymentId] || '--' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
             </el-descriptions-item>
