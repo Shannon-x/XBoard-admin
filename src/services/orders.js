@@ -101,6 +101,7 @@ function normalizeOrder(order) {
     commissionBalance: order?.commission_balance ? Number(order.commission_balance) / 100 : 0,
     inviteUserId: order?.invite_user_id || null,
     paymentId: order?.payment_id || null,
+    paymentName: order?.payment?.name || (order?.payment_id ? `#${order.payment_id}` : '--'),
     couponId: order?.coupon_id || null,
     callbackNo: order?.callback_no || null,
     paidAt: formatTimestamp(order?.paid_at),
