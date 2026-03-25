@@ -39,12 +39,12 @@ function normalizePlan(plan) {
   Object.keys(PERIOD_LABELS).forEach(function mapPeriod(periodKey) {
     const priceValue = plan?.[periodKey]
 
-    if (priceValue !== null && priceValue !== undefined) {
+    if (priceValue !== null && priceValue !== undefined && Number(priceValue) > 0) {
       const amount = Number(priceValue) / 100
       prices[periodKey] = amount
-      if (amount > 0) {
-        priceTexts.push(`${PERIOD_LABELS[periodKey]}: ¥${amount.toFixed(2)}`)
-      }
+      priceTexts.push(`${PERIOD_LABELS[periodKey]}: ¥${amount.toFixed(2)}`)
+    } else {
+      prices[periodKey] = null
     }
   })
 
@@ -54,7 +54,7 @@ function normalizePlan(plan) {
   return {
     id: Number(plan?.id || 0),
     name: String(plan?.name || '--'),
-    groupId: plan?.group_id || null,
+    groupId: plan?.group_id != null ? String(plan.group_id) : null,
     groupName,
     transferEnable: transferEnable,
     transferEnableText: formatBytes(transferEnable * 1073741824),
@@ -66,7 +66,7 @@ function normalizePlan(plan) {
     show: Boolean(plan?.show),
     sell: Boolean(plan?.sell),
     renew: Boolean(plan?.renew),
-    resetTrafficMethod: plan?.reset_traffic_method ?? null,
+    resetTrafficMethod: plan?.reset_traffic_method ?? -1,
     sort: plan?.sort || null,
     content: plan?.content || '',
     usersCount: Number(plan?.users_count || 0),
@@ -92,7 +92,7 @@ export async function saveManagedPlan(data) {
 
   const requestBody = {
     name: String(data.name || '').trim(),
-    group_id: data.groupId || null,
+    group_id: data.groupId != null ? Number(data.groupId) : null,
     transfer_enable: Number(data.transferEnableGB || 0),
     speed_limit: data.speedLimit ? Number(data.speedLimit) : null,
     device_limit: data.deviceLimit ? Number(data.deviceLimit) : null,
@@ -100,7 +100,7 @@ export async function saveManagedPlan(data) {
     sell: data.sell ? 1 : 0,
     renew: data.renew ? 1 : 0,
     content: data.content || null,
-    reset_traffic_method: data.resetTrafficMethod ?? null,
+    reset_traffic_method: data.resetTrafficMethod === -1 ? null : (data.resetTrafficMethod ?? null),
     capacity_limit: data.capacityLimit ? Number(data.capacityLimit) : null,
   }
 

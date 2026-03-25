@@ -43,7 +43,7 @@ function createEmptyPlanForm() {
     sell: true,
     renew: true,
     content: '',
-    resetTrafficMethod: null,
+    resetTrafficMethod: -1,
     capacityLimit: null,
     forceUpdate: false,
     prices: {
@@ -98,7 +98,7 @@ function openEditDialog(plan) {
     sell: plan.sell,
     renew: plan.renew,
     content: plan.content,
-    resetTrafficMethod: plan.resetTrafficMethod,
+    resetTrafficMethod: plan.resetTrafficMethod ?? -1,
     capacityLimit: plan.capacityLimit,
     forceUpdate: false,
     prices: { ...plan.prices },
@@ -156,7 +156,7 @@ const periodKeys = Object.keys(PERIOD_LABELS)
 const periodLabelEntries = Object.entries(PERIOD_LABELS)
 
 const resetTrafficOptions = [
-  { label: '跟随系统设置', value: null },
+  { label: '跟随系统设置', value: -1 },
   { label: '每月1日', value: 0 },
   { label: '按月重置（从订阅日起算）', value: 1 },
   { label: '不重置（流量叠加）', value: 2 },
