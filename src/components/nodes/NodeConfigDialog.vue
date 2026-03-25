@@ -384,7 +384,7 @@ function createDefaultForm() {
         sni: "",
         allowInsecure: false,
         parentId: "",
-        routeGroup: "",
+        routeIds: [],
     };
 }
 
@@ -508,7 +508,7 @@ function createFormFromNode(node) {
         sni: node.sni || "",
         allowInsecure: Boolean(node.allowInsecure),
         parentId: node.parentId ? String(node.parentId) : "",
-        routeGroup: node.routeId || node.routeGroup || "",
+        routeIds: Array.isArray(node.routeIds) ? node.routeIds : [],
     };
 }
 
@@ -752,7 +752,7 @@ function handleSubmit() {
         sni: String(form.sni || "").trim(),
         allowInsecure: Boolean(form.allowInsecure),
         parentId: form.parentId,
-        routeGroup: String(form.routeGroup || "").trim(),
+        routeIds: Array.isArray(form.routeIds) ? form.routeIds : [],
     });
 }
 </script>
@@ -1472,11 +1472,14 @@ function handleSubmit() {
 
             <el-form-item label="路由组" class="node-config-form__item">
                 <el-select
-                    v-model="form.routeGroup"
+                    v-model="form.routeIds"
+                    multiple
                     clearable
                     filterable
+                    collapse-tags
+                    collapse-tags-tooltip
                     :loading="false"
-                    placeholder="选择路由组"
+                    placeholder="选择路由组（可多选）"
                 >
                     <el-option
                         v-for="route in routeOptions"

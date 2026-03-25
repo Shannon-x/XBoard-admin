@@ -687,7 +687,7 @@ async function handleNodeDialogSubmit(payload) {
     const protocolType = String(
         payload.protocol || nodeDialogProtocol.value || "shadowsocks",
     ).toLowerCase();
-    const selectedRouteId = String(payload.routeGroup || "").trim();
+    const selectedRouteIds = Array.isArray(payload.routeIds) ? payload.routeIds : [];
     const protocolSettings =
         protocolType === "vmess"
             ? {
@@ -886,7 +886,7 @@ async function handleNodeDialogSubmit(payload) {
                       port: payload.port,
                       serverPort: payload.serverPort,
                       parentId: payload.parentId || "0",
-                      routeIds: selectedRouteId ? [selectedRouteId] : [],
+                      routeIds: selectedRouteIds,
                       protocolSettings,
                       children:
                           protocolType === "fbnode" && Array.isArray(payload.fbnodeChildren)
