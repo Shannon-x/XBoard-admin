@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, reactive, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Refresh } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import SortDialog from '../components/common/SortDialog.vue'
 import {
@@ -147,7 +147,6 @@ onMounted(loadData)
         <el-space wrap>
           <el-button @click="sortDialogVisible = true" :disabled="articles.length < 2">排序</el-button>
           <el-button type="primary" :icon="Plus" @click="openCreateDialog">添加知识</el-button>
-          <el-button :icon="Refresh" plain type="info" @click="loadData">刷新</el-button>
         </el-space>
       </template>
 

@@ -457,6 +457,10 @@ export default {
         label: '在订阅中线路名称中显示协议名称',
         description: '开启后订阅线路名称将协议名称（例如：[Hy2]香港）。',
       },
+      ticketReplyLimit: {
+        label: '工单等待回复限制',
+        description: '开启后，用户在管理员回复前无法在同一工单内连续发送消息。',
+      },
       defaultRemindExpire: {
         label: '默认到期提醒',
         description: '新用户订阅默认开启到期提醒。',
@@ -542,6 +546,15 @@ export default {
       deviceLimitMode: {
         label: '设备限制模式',
         description: '宽松模式下，同一 IP 地址使用多个节点只统计为一个设备。',
+      },
+      websocketEnable: {
+        label: '启用 WebSocket 通信',
+        description: '开启后节点将通过 WebSocket 与面板进行实时通信，延迟更低、推送更及时。',
+      },
+      websocketUrl: {
+        label: 'WebSocket 地址',
+        description: '节点连接面板的 WebSocket 地址。',
+        placeholder: 'wss://example.com/ws',
       },
       emailHost: {
         label: 'SMTP主机',

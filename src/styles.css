@@ -2189,8 +2189,11 @@ button {
 }
 
 .notice-editor-dialog .el-dialog__body {
+    flex: 1;
     padding-top: 10px;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .notice-editor-dialog .el-dialog__header,
@@ -2215,7 +2218,7 @@ button {
 }
 
 .notice-editor-form__markdown--wide .md-editor {
-    min-height: min(440px, 42vh);
+    min-height: min(520px, 52vh);
 }
 
 .notice-editor-form__markdown .md-editor {
@@ -2236,7 +2239,7 @@ button {
 }
 
 .notice-editor-form__markdown .md-editor-content {
-    min-height: min(392px, 34vh);
+    min-height: min(480px, 48vh);
 }
 
 .notice-editor-form__switch-row {

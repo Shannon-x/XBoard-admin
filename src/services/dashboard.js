@@ -20,14 +20,30 @@ function createDateRange(days) {
   };
 }
 
-function createUnixTimeRange(days) {
+function createUnixTimeRange(rangeKey) {
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(now.getDate() - days);
-  startDate.setHours(0, 0, 0, 0);
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const bjMs = utcMs + 8 * 3600000;
+  const bjNow = new Date(bjMs);
+
+  const bjMidnight = new Date(bjNow);
+  bjMidnight.setHours(0, 0, 0, 0);
+
+  let daysBack = 0;
+  if (rangeKey === '7d') {
+    daysBack = 7;
+  } else if (rangeKey === '30d') {
+    daysBack = 30;
+  }
+
+  if (daysBack > 0) {
+    bjMidnight.setDate(bjMidnight.getDate() - daysBack);
+  }
+
+  const startUtcMs = bjMidnight.getTime() - 8 * 3600000 - now.getTimezoneOffset() * 60000;
 
   return {
-    startTime: Math.floor(startDate.getTime() / 1000),
+    startTime: Math.floor(startUtcMs / 1000),
     endTime: Math.floor(now.getTime() / 1000),
   };
 }
@@ -541,7 +557,7 @@ export async function fetchIncomeOverview(range = {}) {
 }
 
 export async function fetchTrafficRank(options = {}) {
-  const fallbackRange = createUnixTimeRange(DEFAULT_RANK_RANGE_DAYS);
+  const fallbackRange = createUnixTimeRange(options.rangeKey || 'today');
   const rankType = options.type || "node";
   const apiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
     ["type", rankType],
