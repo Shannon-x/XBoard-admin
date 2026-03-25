@@ -291,6 +291,25 @@ function normalizeManagedNode(node, index) {
       protocolSettings?.udp_relay_mode || "native",
     ).toLowerCase(),
     mieruBandwidth: String(protocolSettings?.multiplexing || "low").toLowerCase(),
+    anytlsSecurity: String(
+      protocolSettings?.tls === 2 || protocolSettings?.tls === "2"
+        ? "reality"
+        : "tls",
+    ),
+    anytlsPaddingScheme: Array.isArray(protocolSettings?.padding_scheme)
+      ? JSON.stringify(protocolSettings.padding_scheme, null, 2)
+      : JSON.stringify([
+          "stop=8",
+          "0=30-30",
+          "1=100-400",
+          "2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000",
+          "3=9-9,500-1000",
+          "4=500-1000",
+          "5=500-1000",
+          "6=500-1000",
+          "7=500-1000",
+        ], null, 2),
+    anytlsAlpn: String(protocolSettings?.alpn || ""),
     vlessSecurity: String(
       protocolSettings?.security ||
         (realityEnabled ? "reality" : tlsEnabled ? "tls" : "none"),
