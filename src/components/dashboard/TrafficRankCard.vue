@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { useI18n } from "vue-i18n";
 const props = defineProps({
@@ -20,9 +21,22 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'change-range'])
 
 const { t } = useI18n();
+
+const rangeOptions = [
+    { label: '今日', value: 'today' },
+    { label: '近7天', value: '7d' },
+    { label: '近30天', value: '30d' },
+]
+
+const activeRange = ref('today')
+
+function handleRangeChange(val) {
+    activeRange.value = val
+    emit('change-range', val)
+}
 
 function progressWidth(value, maxValue) {
     if (!maxValue) {
@@ -57,6 +71,16 @@ function changeClass(change) {
                 <h3>{{ title }}</h3>
             </div>
             <div style="display:flex; align-items:center; gap:8px">
+                <el-segmented
+                    v-model="activeRange"
+                    :options="rangeOptions"
+                    size="small"
+                    @change="handleRangeChange"
+                >
+                    <template #default="{ item }">
+                        {{ item.label }}
+                    </template>
+                </el-segmented>
                 <span class="traffic-rank-badge">{{
                     t("traffic.topLabel", { count: rankData.list.length })
                 }}</span>

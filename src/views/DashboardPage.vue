@@ -40,6 +40,14 @@ function refreshUserTraffic() {
     adminStore.loadUserTrafficRank();
 }
 
+function handleNodeTrafficRange(rangeKey) {
+    adminStore.loadNodeTrafficRank({ rangeKey });
+}
+
+function handleUserTrafficRange(rangeKey) {
+    adminStore.loadUserTrafficRank({ rangeKey });
+}
+
 function refreshQueueStats() {
     adminStore.loadQueueStats();
 }
@@ -121,6 +129,7 @@ onMounted(function loadStatsOnMount() {
                     :empty-text="t('traffic.emptyNode')"
                     :title="t('traffic.nodeTitle')"
                     @refresh="refreshNodeTraffic"
+                    @change-range="handleNodeTrafficRange"
                 />
 
                 <div class="page-stack compact-stack">
@@ -143,6 +152,7 @@ onMounted(function loadStatsOnMount() {
                         :empty-text="t('traffic.emptyUser')"
                         :title="t('traffic.userTitle')"
                         @refresh="refreshUserTraffic"
+                        @change-range="handleUserTrafficRange"
                     />
                 </div>
             </div>

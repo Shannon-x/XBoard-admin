@@ -74,7 +74,7 @@ async function loadPlans() {
 async function loadGroups() {
   try {
     const result = await fetchManagedNodeGroups()
-    groups.value = result?.groups || []
+    groups.value = Array.isArray(result) ? result : []
   } catch (err) {
     // 非关键错误，静默处理
   }
@@ -156,7 +156,7 @@ const periodKeys = Object.keys(PERIOD_LABELS)
 const periodLabelEntries = Object.entries(PERIOD_LABELS)
 
 const resetTrafficOptions = [
-  { label: '不重置', value: null },
+  { label: '跟随系统设置', value: null },
   { label: '每月1日', value: 0 },
   { label: '按月重置（从订阅日起算）', value: 1 },
   { label: '不重置（流量叠加）', value: 2 },
@@ -308,7 +308,7 @@ onMounted(function onMount() {
           <el-input v-model="editForm.name" placeholder="输入套餐名称" />
         </el-form-item>
 
-        <el-form-item label="服务器分组">
+        <el-form-item label="权限组">
           <el-select v-model="editForm.groupId" clearable placeholder="选择权限组" style="width: 100%">
             <el-option
               v-for="group in groups"

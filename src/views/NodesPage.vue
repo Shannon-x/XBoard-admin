@@ -8,6 +8,7 @@ import {
     Delete,
     Edit,
     Monitor,
+    MoreFilled,
     Refresh,
     Search,
     CopyDocument,
@@ -1299,9 +1300,8 @@ onUnmounted(function clearDebounceOnUnmount() {
                                 class="node-action-trigger"
                                 type="primary"
                                 plain
-                            >
-                                ...
-                            </el-button>
+                                :icon="MoreFilled"
+                            />
                             <template #dropdown>
                                 <el-dropdown-menu class="node-action-menu">
                                     <el-dropdown-item

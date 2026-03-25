@@ -48,6 +48,7 @@ export function createEmptySiteSettings() {
     changeOrderEventId: 0,
     showInfoToServerEnable: false,
     showProtocolToServerEnable: false,
+    ticketReplyLimit: false,
     defaultRemindExpire: false,
     defaultRemindTraffic: false,
     subscribePath: '',
@@ -68,6 +69,8 @@ export function createEmptySiteSettings() {
     serverPullInterval: 60,
     serverPushInterval: 60,
     deviceLimitMode: 1,
+    websocketEnable: false,
+    websocketUrl: '',
     emailTemplate: 'default',
     emailHost: '',
     emailPort: 25,
@@ -453,6 +456,7 @@ function normalizeSubscribeSettings(subscribe) {
       changeOrderEventId: fallback.changeOrderEventId,
       showInfoToServerEnable: fallback.showInfoToServerEnable,
       showProtocolToServerEnable: fallback.showProtocolToServerEnable,
+      ticketReplyLimit: fallback.ticketReplyLimit,
       defaultRemindExpire: fallback.defaultRemindExpire,
       defaultRemindTraffic: fallback.defaultRemindTraffic,
       subscribePath: fallback.subscribePath,
@@ -468,6 +472,7 @@ function normalizeSubscribeSettings(subscribe) {
     changeOrderEventId: Number(subscribe.change_order_event_id ?? fallback.changeOrderEventId) || 0,
     showInfoToServerEnable: Boolean(subscribe.show_info_to_server_enable),
     showProtocolToServerEnable: Boolean(subscribe.show_protocol_to_server_enable),
+    ticketReplyLimit: Boolean(subscribe.ticket_reply_limit),
     defaultRemindExpire: Boolean(subscribe.default_remind_expire),
     defaultRemindTraffic: Boolean(subscribe.default_remind_traffic),
     subscribePath: String(subscribe.subscribe_path ?? ''),
@@ -484,6 +489,7 @@ function createSubscribeSettingsPayload(settings = {}) {
     change_order_event_id: Number(settings.changeOrderEventId || 0),
     show_info_to_server_enable: settings.showInfoToServerEnable ? 1 : 0,
     show_protocol_to_server_enable: settings.showProtocolToServerEnable ? 1 : 0,
+    ticket_reply_limit: settings.ticketReplyLimit ? 1 : 0,
     default_remind_expire: settings.defaultRemindExpire ? 1 : 0,
     default_remind_traffic: settings.defaultRemindTraffic ? 1 : 0,
     subscribe_path: String(settings.subscribePath || '').trim(),
@@ -581,6 +587,8 @@ function normalizeServerSettings(server) {
       serverPullInterval: fallback.serverPullInterval,
       serverPushInterval: fallback.serverPushInterval,
       deviceLimitMode: fallback.deviceLimitMode,
+      websocketEnable: fallback.websocketEnable,
+      websocketUrl: fallback.websocketUrl,
     }
   }
 
@@ -589,6 +597,8 @@ function normalizeServerSettings(server) {
     serverPullInterval: Number(server.server_pull_interval ?? fallback.serverPullInterval) || 0,
     serverPushInterval: Number(server.server_push_interval ?? fallback.serverPushInterval) || 0,
     deviceLimitMode: Number(server.device_limit_mode ?? fallback.deviceLimitMode) || 0,
+    websocketEnable: Boolean(server.websocket_enable),
+    websocketUrl: String(server.websocket_url ?? ''),
   }
 }
 
@@ -598,6 +608,8 @@ function createServerSettingsPayload(settings = {}) {
     server_pull_interval: Number(settings.serverPullInterval || 0),
     server_push_interval: Number(settings.serverPushInterval || 0),
     device_limit_mode: Number(settings.deviceLimitMode || 0),
+    websocket_enable: settings.websocketEnable ? 1 : 0,
+    websocket_url: String(settings.websocketUrl || '').trim(),
   }
 }
 
