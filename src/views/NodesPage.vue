@@ -796,6 +796,15 @@ async function handleNodeDialogSubmit(payload) {
                                       allow_insecure: payload.allowInsecure ? 1 : 0,
                                   }
                                 : null,
+                        utls:
+                            payload.vlessRealityFingerprint
+                                ? {
+                                      enabled: true,
+                                      fingerprint: String(
+                                          payload.vlessRealityFingerprint || "chrome",
+                                      ),
+                                  }
+                                : null,
                     }
                   : protocolType === "tuic"
                     ? {

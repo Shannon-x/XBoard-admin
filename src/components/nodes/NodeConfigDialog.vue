@@ -361,6 +361,7 @@ function createDefaultForm() {
         vlessRealityPrivateKey: "",
         vlessRealityPublicKey: "",
         vlessRealityShortId: "",
+        vlessRealityFingerprint: "chrome",
         hysteriaVersion: "v2",
         hysteriaObfs: false,
         hysteriaObfsType: "salamander",
@@ -477,6 +478,7 @@ function createFormFromNode(node) {
         vlessRealityPrivateKey: node.vlessRealityPrivateKey || "",
         vlessRealityPublicKey: node.vlessRealityPublicKey || "",
         vlessRealityShortId: node.vlessRealityShortId || "",
+        vlessRealityFingerprint: node.vlessRealityFingerprint || "chrome",
         hysteriaVersion: node.hysteriaVersion || "v2",
         hysteriaObfs: Boolean(node.hysteriaObfs),
         hysteriaObfsType: node.hysteriaObfsType || "salamander",
@@ -717,6 +719,7 @@ function handleSubmit() {
         vlessRealityPrivateKey: String(form.vlessRealityPrivateKey || "").trim(),
         vlessRealityPublicKey: String(form.vlessRealityPublicKey || "").trim(),
         vlessRealityShortId: String(form.vlessRealityShortId || "").trim(),
+        vlessRealityFingerprint: String(form.vlessRealityFingerprint || "chrome"),
         hysteriaVersion: String(form.hysteriaVersion || "v2").toLowerCase(),
         hysteriaObfs: Boolean(form.hysteriaObfs),
         hysteriaObfsType: String(form.hysteriaObfsType || "salamander"),
@@ -1196,6 +1199,28 @@ function handleSubmit() {
                 </el-input>
                 <p class="node-config-form__hint">
                     客户端可用 shortId 列表，可用于区分不同的客户端，使用 0-f 作为十六进制字符
+                </p>
+            </el-form-item>
+
+            <el-form-item
+                v-if="isVlessProtocol && form.vlessSecurity === 'reality'"
+                label="客户端指纹 (FingerPrint)"
+                class="node-config-form__item"
+            >
+                <el-select v-model="form.vlessRealityFingerprint" placeholder="请选择客户端指纹">
+                    <el-option label="Chrome" value="chrome" />
+                    <el-option label="Firefox" value="firefox" />
+                    <el-option label="Safari" value="safari" />
+                    <el-option label="iOS" value="ios" />
+                    <el-option label="Android" value="android" />
+                    <el-option label="Edge" value="edge" />
+                    <el-option label="360" value="360" />
+                    <el-option label="QQ" value="qq" />
+                    <el-option label="Random" value="random" />
+                    <el-option label="RandomizedALPS" value="randomized" />
+                </el-select>
+                <p class="node-config-form__hint">
+                    用于降低被识别风险的 uTLS 客户端指纹伪装
                 </p>
             </el-form-item>
 

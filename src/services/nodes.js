@@ -320,6 +320,7 @@ function normalizeManagedNode(node, index) {
     vlessRealityPrivateKey: String(realitySettings?.private_key || ""),
     vlessRealityPublicKey: String(realitySettings?.public_key || ""),
     vlessRealityShortId: String(realitySettings?.short_id || ""),
+    vlessRealityFingerprint: String(protocolSettings?.utls?.fingerprint || ""),
     rate: formatNodeRate(node.rate),
     status,
     onlineUsers,
