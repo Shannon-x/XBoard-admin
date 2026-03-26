@@ -238,35 +238,39 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="plans" stripe style="width: 100%">
-        <el-table-column label="ID" prop="id" width="60" />
-        <el-table-column label="名称" min-width="140" prop="name" />
-        <el-table-column label="权限组" width="100" prop="groupName" />
-        <el-table-column label="流量" width="100" prop="transferEnableText" />
-        <el-table-column label="速率限制" width="100">
+      <el-table v-loading="loading" :data="plans" stripe style="width: 100%" table-layout="auto">
+        <el-table-column label="ID" prop="id" width="70" align="center" />
+        <el-table-column label="名称" min-width="180" prop="name" show-overflow-tooltip />
+        <el-table-column label="权限组" min-width="130" prop="groupName" show-overflow-tooltip />
+        <el-table-column label="流量" width="110">
           <template #default="{ row }">
-            {{ row.speedLimit ? row.speedLimit + ' Mbps' : '--' }}
+            <span style="white-space:nowrap">{{ row.transferEnableText }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="用户数" width="90">
+        <el-table-column label="速率限制" width="110">
           <template #default="{ row }">
-            {{ row.activeUsersCount }} / {{ row.usersCount }}
+            <span style="white-space:nowrap">{{ row.speedLimit ? row.speedLimit + ' Mbps' : '--' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="定价" min-width="180">
+        <el-table-column label="用户数" width="120">
           <template #default="{ row }">
-            <div v-if="row.priceTexts.length > 0" class="price-list">
+            <span style="white-space:nowrap">
+              <span style="color:var(--el-color-success);font-weight:600">{{ row.activeUsersCount }}</span>
+              <span style="color:var(--el-text-color-secondary)"> / {{ row.usersCount }}</span>
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="定价" min-width="300">
+          <template #default="{ row }">
+            <div v-if="row.priceTexts.length > 0" style="display:flex;flex-wrap:wrap;gap:4px;">
               <el-tag
-                v-for="(text, idx) in row.priceTexts.slice(0, 3)"
+                v-for="(text, idx) in row.priceTexts"
                 :key="idx"
                 size="small"
                 type="info"
-                style="margin: 2px"
+                style="white-space:nowrap;"
               >
                 {{ text }}
-              </el-tag>
-              <el-tag v-if="row.priceTexts.length > 3" size="small" style="margin: 2px">
-                +{{ row.priceTexts.length - 3 }}
               </el-tag>
             </div>
             <span v-else>--</span>

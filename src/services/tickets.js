@@ -31,8 +31,8 @@ const TICKET_STATUS = {
 }
 
 const TICKET_REPLY_STATUS = {
-  0: { text: '待回复', type: 'warning' },
-  1: { text: '已回复', type: 'success' },
+  0: { text: '已回复', type: 'success' },
+  1: { text: '待回复', type: 'warning' },
 }
 
 function formatTimestamp(value) {
@@ -105,22 +105,20 @@ export async function fetchManagedTickets(options = {}) {
     ['pageSize', pageSize],
   ]
 
+  const apiUrl = buildSecureV2ApiUrl('ticket/fetch', queryEntries)
+  const body = {}
+
   if (options.status !== null && options.status !== undefined && options.status !== '') {
-    queryEntries.push(['status', options.status])
+    body.status = options.status
   }
 
   if (options.email) {
-    queryEntries.push(['email', options.email])
+    body.email = options.email
   }
 
   if (Array.isArray(options.replyStatus) && options.replyStatus.length > 0) {
-    options.replyStatus.forEach(function mapStatus(s) {
-      queryEntries.push(['reply_status[]', s])
-    })
+    body.reply_status = options.replyStatus
   }
-
-  const apiUrl = buildSecureV2ApiUrl('ticket/fetch', queryEntries)
-  const body = {}
 
   if (Array.isArray(options.filter) && options.filter.length > 0) {
     body.filter = options.filter

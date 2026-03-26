@@ -135,6 +135,15 @@ export async function requestDashboardMutation(url, payload, method = "POST") {
   }
 
   if (!response.ok) {
+    if (response.status === 422) {
+      const errBody = await response.json().catch(() => null);
+      console.error('[Mutation] 422 validation error:', JSON.stringify(errBody));
+      throw new Error(
+        errBody?.message || errBody?.errors
+          ? `验证失败: ${JSON.stringify(errBody?.errors || errBody?.message)}`
+          : `请求失败: ${response.status}`,
+      );
+    }
     throw new Error(
       resolveMessage("defaults.dashboardRequestFailed", {
         status: response.status,

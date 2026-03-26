@@ -1301,7 +1301,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                                     @click="copyAddress(row)"
                                 >
                                     <el-icon
-                                        ><CopyDocument
+                                        ><Copy
                                     /></el-icon> </el-button
                             ></strong>
                         </div>

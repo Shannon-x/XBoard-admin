@@ -612,6 +612,13 @@ export async function saveManagedNode(payload = {}) {
     type: String(payload.type || "shadowsocks"),
   };
 
+  console.log('[Nodes] Save request body:', JSON.stringify({
+    id: requestBody.id,
+    code: requestBody.code,
+    name: requestBody.name,
+    type: requestBody.type,
+  }));
+
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {

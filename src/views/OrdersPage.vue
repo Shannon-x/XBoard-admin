@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -19,6 +20,7 @@ import { fetchManagedPlans } from '../services/plans'
 import { fetchPayments } from '../services/payment'
 
 const { t } = useI18n()
+const route = useRoute()
 
 const orders = ref([])
 const pagination = ref(createEmptyManagedOrdersPagination())
@@ -184,7 +186,31 @@ async function submitAssign() {
   }
 }
 
+async function handleCommissionConfirm(row, newStatus) {
+  const actionText = newStatus === 2 ? '确认' : '取消'
+  try {
+    await ElMessageBox.confirm(
+      `确定要${actionText}订单 ${row.tradeNo} 的佣金吗？`,
+      `${actionText}佣金`,
+      { type: newStatus === 2 ? 'info' : 'warning' },
+    )
+    await updateOrder({ tradeNo: row.tradeNo, commissionStatus: newStatus })
+    ElMessage.success(`佣金已${actionText}`)
+    loadOrders()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.message || `${actionText}佣金失败`)
+    }
+  }
+}
+
 onMounted(function onMount() {
+  if (route.query.commission === '1') {
+    isCommission.value = true
+  }
+  if (route.query.commission_status) {
+    commissionStatusFilter.value = String(route.query.commission_status)
+  }
   loadOrders()
   fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
   fetchPayments().then(list => {
@@ -308,6 +334,8 @@ onMounted(function onMount() {
                 <el-dropdown-menu>
                   <el-dropdown-item @click="openDetail(row)">详情</el-dropdown-item>
                   <el-dropdown-item v-if="row.status === 0" @click="handleMarkPaid(row)">确认付款</el-dropdown-item>
+                  <el-dropdown-item v-if="row.commissionStatus === 0" @click="handleCommissionConfirm(row, 2)">确认佣金</el-dropdown-item>
+                  <el-dropdown-item v-if="row.commissionStatus === 0" @click="handleCommissionConfirm(row, 3)" style="color:var(--el-color-warning)">取消佣金</el-dropdown-item>
                   <el-dropdown-item v-if="row.status === 0" divided @click="handleCancel(row)" style="color:var(--el-color-danger)">取消</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
