@@ -424,7 +424,7 @@ const filteredNodes = computed(function filteredNodes() {
         const matchesNodeId =
             !nodeIdFilter ||
             String(node.id) === nodeIdFilter ||
-            String(node.rawId) === nodeIdFilter;
+            String(node.id) === nodeIdFilter;
 
         return matchesStatus && matchesGroup && matchesAbnormal && matchesNodeId;
     });
@@ -637,7 +637,7 @@ async function handleDeleteNode(node) {
                 cancelButtonText: t("nodes.messages.deleteConfirmCancel"),
             },
         );
-        await adminStore.deleteManagedNodeItem(node?.rawId || node?.id);
+        await adminStore.deleteManagedNodeItem(node?.id);
         await adminStore.loadManagedNodes({
             page: pagination.value.page,
             limit: pagination.value.limit,
@@ -662,7 +662,7 @@ async function handleDeleteNode(node) {
 
 async function handleCopyNode(node) {
     try {
-        await adminStore.copyManagedNodeItem(node?.rawId || node?.id);
+        await adminStore.copyManagedNodeItem(node?.id);
         await adminStore.loadManagedNodes({
             page: pagination.value.page,
             limit: pagination.value.limit,
@@ -881,7 +881,7 @@ async function handleNodeDialogSubmit(payload) {
                 ? {
                       id: isEditing
                           ? Number(
-                                activeNode.value?.rawId || activeNode.value?.id || 0,
+                                activeNode.value?.id || 0,
                             ) || null
                           : null,
                       type: protocolType,
@@ -897,7 +897,7 @@ async function handleNodeDialogSubmit(payload) {
                 : {
                       id: isEditing
                           ? Number(
-                                activeNode.value?.rawId || activeNode.value?.id || 0,
+                                activeNode.value?.id || 0,
                             ) || null
                           : null,
                       specificKey: null,
@@ -1029,7 +1029,7 @@ function handleKeywordClear() {
 async function handleShowToggle(node, value) {
     const nextValue = Boolean(value);
     const previousValue = Boolean(node.show);
-    const nodeId = node?.rawId || node?.id;
+    const nodeId = node?.id;
 
     if (!nodeId) {
         ElMessage.error(t("nodes.messages.showIdMissing"));

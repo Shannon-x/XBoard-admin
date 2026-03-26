@@ -227,8 +227,7 @@ function normalizeManagedNode(node, index) {
   const pluginOpts = String(protocolSettings?.plugin_opts || "").trim();
 
   return {
-    id: String(node.id || `NODE-${1000 + index}`),
-    rawId: Number(node.id || 0),
+    id: Number(node.id || 0),
     parentId: node.parent_id,
     name: node.name || `节点 ${index + 1}`,
     type: String(node.type || "--").toUpperCase(),
@@ -530,19 +529,19 @@ async function requestManagedNodeAction(path, payload) {
 
 export async function deleteManagedNode(id) {
   return requestManagedNodeAction("server/manage/drop", {
-    id: Number(id || 0),
+    id: Number(id) || 0,
   });
 }
 
 export async function copyManagedNode(id) {
   return requestManagedNodeAction("server/manage/copy", {
-    id: Number(id || 0),
+    id: Number(id) || 0,
   });
 }
 
 export async function updateManagedNodeShow(id, show) {
   return requestManagedNodeAction("server/manage/update", {
-    id: Number(id || 0),
+    id: Number(id) || 0,
     show: Number(show ? 1 : 0),
   });
 }
@@ -573,7 +572,9 @@ export async function saveManagedNode(payload = {}) {
           client_fingerprint: String(payload.clientFingerprint || "chrome"),
         };
   const requestBody = {
-    id: payload.id ?? null,
+    id: (payload.id !== null && payload.id !== undefined && Number(payload.id) > 0)
+      ? Number(payload.id)
+      : null,
     specific_key: payload.specificKey ?? null,
     code: payload.code || "",
     show: Boolean(payload.show),

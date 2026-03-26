@@ -2829,8 +2829,10 @@ button {
 }
 
 .login-page__content {
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     min-height: calc(100vh - 48px);
     gap: 30px;
 }
@@ -3225,13 +3227,19 @@ button {
         padding: 10px 14px 0;
     }
 
-    /* Tables: ensure horizontal scroll on narrow screens */
+    /* Tables: horizontal scroll + compact on narrow screens */
     .el-table {
         font-size: 13px;
     }
 
     .el-table .el-table__cell {
-        padding: 8px 0;
+        padding: 8px 4px;
+    }
+
+    .el-table__header-wrapper,
+    .el-table__body-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     /* Pagination: compact on mobile */
@@ -3252,14 +3260,35 @@ button {
         margin: 12px auto !important;
     }
 
+    .el-dialog__header {
+        padding: 16px 16px 0 !important;
+    }
+
     .el-dialog__body {
         max-height: 70vh;
         overflow-y: auto;
+        padding: 12px 16px !important;
+    }
+
+    .el-dialog__footer {
+        padding: 0 16px 16px !important;
+    }
+
+    /* Drawers: full width on mobile */
+    .el-drawer {
+        width: 100% !important;
     }
 
     /* Toolbars: wrap */
     .el-space {
         flex-wrap: wrap !important;
+    }
+
+    /* SectionCard header: stack title + actions vertically */
+    .section-card .el-card__header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
     }
 
     /* Filter panel: stack vertically */
@@ -3274,9 +3303,125 @@ button {
         width: 100% !important;
     }
 
+    /* Order/ticket filter bar: scroll horizontally */
+    .order-filter-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px;
+    }
+
+    .order-filter-bar .el-space {
+        flex-wrap: nowrap !important;
+        min-width: max-content;
+    }
+
+    .order-filter-bar .el-select {
+        min-width: 100px;
+    }
+
+    /* el-descriptions: single column on mobile */
+    .el-descriptions {
+        --el-descriptions-table-border: 1px solid var(--line);
+    }
+
+    .el-descriptions.is-bordered .el-descriptions__body .el-descriptions__table .el-descriptions__cell {
+        padding: 8px 10px;
+    }
+
+    /* Node config dialog: nearly full screen */
+    .node-config-dialog .el-dialog {
+        width: calc(100vw - 16px) !important;
+        max-height: calc(100vh - 16px);
+        margin: 8px auto !important;
+    }
+
     /* Plan price grid: 2 columns on mobile */
     .plan-price-grid {
         grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Metric grid: 2 columns on mobile */
+    .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    /* Filter selects in filter bar: auto width */
+    .order-filter-bar .el-select {
+        width: auto !important;
+    }
+
+    /* Ticket detail dialog chat compact */
+    .ticket-chat-wrapper {
+        max-height: 60vh;
+    }
+
+    .chat-bubble {
+        max-width: 90%;
+    }
+
+    /* Knowledge/notice form full width inputs */
+    .knowledge-form .el-input,
+    .knowledge-form .el-select,
+    .notice-editor-form .el-input,
+    .notice-editor-form .el-select {
+        width: 100% !important;
+    }
+}
+
+/* ── Extra-small screens (≤480px) ── */
+@media (max-width: 480px) {
+    .main-panel,
+    .sidebar {
+        padding: 10px;
+    }
+
+    .topbar {
+        padding: 10px 12px;
+    }
+
+    .topbar h1 {
+        font-size: 20px;
+    }
+
+    /* Metric grid: single column */
+    .metric-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .metric-value,
+    .metric-split-value__number {
+        font-size: 22px;
+    }
+
+    /* Plan price grid: single column */
+    .plan-price-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Tables: very compact */
+    .el-table {
+        font-size: 12px;
+    }
+
+    .el-table .el-table__cell {
+        padding: 6px 2px;
+    }
+
+    /* Hide less important columns */
+    .el-table-column--hide-mobile {
+        display: none;
+    }
+
+    /* Buttons: full width */
+    .primary-btn,
+    .ghost-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Login card padding */
+    .login-card.el-card .el-card__body {
+        padding: 20px 16px;
     }
 }
 
