@@ -424,7 +424,7 @@ const filteredNodes = computed(function filteredNodes() {
         const matchesNodeId =
             !nodeIdFilter ||
             String(node.id) === nodeIdFilter ||
-            String(node.id) === nodeIdFilter;
+            String(node.code || '') === nodeIdFilter;
 
         return matchesStatus && matchesGroup && matchesAbnormal && matchesNodeId;
     });
@@ -1231,7 +1231,7 @@ onUnmounted(function clearDebounceOnUnmount() {
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"
             >
-                <el-table-column :label="t('nodes.table.id')" min-width="90">
+                <el-table-column :label="t('nodes.table.id')" min-width="110">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <el-tag
@@ -1242,11 +1242,14 @@ onUnmounted(function clearDebounceOnUnmount() {
                                 type="info"
                                 effect="dark"
                             >
-                                {{ row.id }}
+                                {{ row.code || row.id }}
                                 <a v-if="row.parentId != 0 && row.parentId">
                                     -> {{ row.parentId }}
                                 </a>
                             </el-tag>
+                            <span v-if="row.code" style="font-size: 11px; color: var(--el-text-color-secondary); margin-left: 4px;">
+                                #{{ row.id }}
+                            </span>
                         </div>
                     </template>
                 </el-table-column>
