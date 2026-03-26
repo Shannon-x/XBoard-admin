@@ -901,8 +901,8 @@ async function handleNodeDialogSubmit(payload) {
                             ) || null
                           : null,
                       specificKey: null,
-                      code: "",
-                      show: false,
+                      code: payload.customNodeId || "",
+                      show: isEditing ? Boolean(activeNode.value?.show) : false,
                       name: payload.name,
                       rate: String(payload.baseRate || 1),
                       rateTimeEnable: Boolean(payload.dynamicRate),

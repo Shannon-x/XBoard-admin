@@ -488,7 +488,7 @@ function createFormFromNode(node) {
                   return normalizeDynamicRule(rule);
               })
             : [createDefaultRateRule()],
-        customNodeId: node.customNodeId || "",
+        customNodeId: node.code || node.customNodeId || "",
         tags: Array.isArray(node.rawTags)
             ? [...node.rawTags]
             : Array.isArray(node.tags)
