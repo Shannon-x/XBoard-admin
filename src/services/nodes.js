@@ -228,6 +228,7 @@ function normalizeManagedNode(node, index) {
 
   return {
     id: Number(node.id || 0),
+    code: node.code || null,
     parentId: node.parent_id,
     name: node.name || `节点 ${index + 1}`,
     type: String(node.type || "--").toUpperCase(),
