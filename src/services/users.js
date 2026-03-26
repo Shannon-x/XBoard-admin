@@ -90,6 +90,7 @@ function normalizeUser(user) {
     downloadRaw: Number(user?.d || 0),
     speedLimit: user?.speed_limit || null,
     deviceLimit: user?.device_limit || null,
+    onlineCount: Number(user?.online_count || 0),
     expiredAt: formatTimestamp(user?.expired_at),
     expiredAtRaw: user?.expired_at || null,
     createdAt: formatTimestamp(user?.created_at),

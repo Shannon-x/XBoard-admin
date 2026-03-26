@@ -16,7 +16,8 @@ import {
   sendMailToUsers,
   createEmptyManagedUsersPagination,
 } from '../services/users'
-import { fetchManagedPlans } from '../services/plans'
+import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
+import { assignOrder } from '../services/orders'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -33,6 +34,28 @@ const sendMailDialogVisible = ref(false)
 const sendMailForm = ref({ subject: '', content: '' })
 const sendMailSending = ref(false)
 const sendMailScope = ref('all') // 'all' or 'filter'
+
+const assignDialogVisible = ref(false)
+const assignSaving = ref(false)
+const assignForm = ref({
+  email: '',
+  planId: null,
+  period: '',
+  totalAmount: 0,
+})
+
+const periodOptions = computed(function getPeriodOptions() {
+  if (!assignForm.value.planId) return []
+  const plan = plans.value.find(p => p.id === assignForm.value.planId)
+  if (!plan) return []
+  const result = []
+  Object.keys(PERIOD_LABELS).forEach(function mapKey(key) {
+    if (plan.prices[key] !== null && plan.prices[key] !== undefined) {
+      result.push({ value: key, label: PERIOD_LABELS[key], price: plan.prices[key] })
+    }
+  })
+  return result
+})
 
 const filterFieldOptions = [
   { id: 'email', label: '邮箱', type: 'text', operators: ['模糊', '精确'] },
@@ -101,15 +124,31 @@ const generateForm = ref({
 })
 const generateSaving = ref(false)
 
+const sortField = ref('')
+const sortOrder = ref('desc')
+const sortOptions = [
+  { label: '默认', value: '' },
+  { label: '已用流量', value: 'd' },
+  { label: '到期时间', value: 'expired_at' },
+  { label: '余额', value: 'balance' },
+  { label: '佣金', value: 'commission_balance' },
+  { label: '在线设备', value: 'online_count' },
+]
+
 async function loadUsers() {
   loading.value = true
   errorMsg.value = ''
   try {
     const filter = buildFilterArray()
+    const sort = []
+    if (sortField.value) {
+      sort.push({ id: sortField.value, desc: sortOrder.value === 'desc' })
+    }
     const result = await fetchManagedUsers({
       page: pagination.value.page,
       pageSize: pagination.value.pageSize,
       filter,
+      sort,
     })
     users.value = result.list
     pagination.value = result.pagination
@@ -132,6 +171,25 @@ function handlePageSizeChange(size) {
 }
 
 function handleSearch() {
+  pagination.value.page = 1
+  loadUsers()
+}
+
+function handleSortChange({ prop, order }) {
+  const fieldMap = {
+    totalUsedRaw: 'd',
+    expiredAtRaw: 'expired_at',
+    balance: 'balance',
+    commissionBalance: 'commission_balance',
+    onlineCount: 'online_count',
+  }
+  if (prop && order && fieldMap[prop]) {
+    sortField.value = fieldMap[prop]
+    sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
+  } else {
+    sortField.value = ''
+    sortOrder.value = 'desc'
+  }
   pagination.value.page = 1
   loadUsers()
 }
@@ -169,14 +227,33 @@ async function saveEditForm() {
     if (!payload.password) {
       delete payload.password
     }
+    // Convert balance/commission from display format to numeric
+    if (payload.balance !== undefined) {
+      payload.balance = Number(payload.balance) || 0
+    }
+    if (payload.commission_balance !== undefined) {
+      payload.commission_balance = Number(payload.commission_balance) || 0
+    }
+    // Convert GB to bytes and round to integer (backend requires integer)
     if (payload.transfer_enable !== undefined) {
-      payload.transfer_enable = Number(payload.transfer_enable) * 1073741824
+      payload.transfer_enable = Math.round(Number(payload.transfer_enable) * 1073741824)
     }
     if (payload.u !== undefined) {
-      payload.u = Number(payload.u) * 1073741824
+      payload.u = Math.round(Number(payload.u) * 1073741824)
     }
     if (payload.d !== undefined) {
-      payload.d = Number(payload.d) * 1073741824
+      payload.d = Math.round(Number(payload.d) * 1073741824)
+    }
+    // Ensure integer types for boolean-like fields
+    payload.banned = Number(payload.banned) || 0
+    payload.is_admin = Number(payload.is_admin) || 0
+    payload.is_staff = Number(payload.is_staff) || 0
+    payload.commission_type = Number(payload.commission_type) || 0
+    if (payload.commission_rate !== null && payload.commission_rate !== undefined) {
+      payload.commission_rate = Number(payload.commission_rate)
+    }
+    if (payload.discount !== null && payload.discount !== undefined) {
+      payload.discount = Number(payload.discount)
     }
     await updateManagedUser(payload)
     ElMessage.success('用户信息已更新')
@@ -237,7 +314,42 @@ async function handleDelete(user) {
 }
 
 function handleAssignOrder(user) {
-  router.push({ path: 'orders', query: { assign_email: user.email } })
+  assignForm.value = {
+    email: user.email,
+    planId: null,
+    period: '',
+    totalAmount: 0,
+  }
+  assignDialogVisible.value = true
+}
+
+function onAssignPlanChange() {
+  assignForm.value.period = ''
+  assignForm.value.totalAmount = 0
+}
+
+function onAssignPeriodChange(period) {
+  const opt = periodOptions.value.find(o => o.value === period)
+  if (opt) {
+    assignForm.value.totalAmount = opt.price
+  }
+}
+
+async function submitAssignOrder() {
+  if (!assignForm.value.planId || !assignForm.value.period) {
+    ElMessage.warning('请选择订阅计划和周期')
+    return
+  }
+  assignSaving.value = true
+  try {
+    await assignOrder(assignForm.value)
+    ElMessage.success('订单已分配')
+    assignDialogVisible.value = false
+  } catch (err) {
+    ElMessage.error(err.message || '分配订单失败')
+  } finally {
+    assignSaving.value = false
+  }
 }
 
 function copySubscribeUrl(user) {
@@ -268,6 +380,15 @@ function copyLoginUrl(user) {
 
 function navigateToUserOrders(user) {
   router.push({ path: 'orders', query: { user_email: user.email } })
+}
+
+function navigateToUserInvites(user) {
+  filterConditions.value = [{
+    field: 'invite_user_id',
+    operator: '等于',
+    value: String(user.id)
+  }]
+  handleSearch()
 }
 
 function navigateToUserTickets(user) {
@@ -396,6 +517,12 @@ onMounted(function onMount() {
           <el-button :icon="SlidersHorizontal" class="ghost-btn small" plain type="info" @click="showFilters = !showFilters">
             筛选
           </el-button>
+          <el-select v-model="sortField" placeholder="排序" style="width:120px" size="default" @change="handleSearch">
+            <el-option v-for="opt in sortOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+          <el-button v-if="sortField" size="default" plain @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'; handleSearch()">
+            {{ sortOrder === 'desc' ? '↓ 降序' : '↑ 升序' }}
+          </el-button>
           <el-button :icon="Search" class="ghost-btn small" plain type="info" @click="handleSearch">
             搜索
           </el-button>
@@ -454,7 +581,7 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="users" stripe style="width: 100%">
+      <el-table v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
         <el-table-column label="ID" prop="id" width="88" />
         <el-table-column label="邮箱" prop="email" width="180" show-overflow-tooltip />
         <el-table-column label="状态" width="90">
@@ -463,17 +590,32 @@ onMounted(function onMount() {
           </template>
         </el-table-column>
         <el-table-column label="订阅" prop="planName" min-width="120" show-overflow-tooltip />
-        <el-table-column label="已用/总量" min-width="140">
+        <el-table-column label="已用/总量" min-width="140" prop="totalUsedRaw" sortable="custom">
           <template #default="{ row }">
-            {{ row.totalUsed }} / {{ row.transferEnable }}
+            <span :style="{ color: row.totalUsedRaw > row.transferEnableRaw ? 'var(--el-color-danger)' : '', fontWeight: row.totalUsedRaw > row.transferEnableRaw ? '600' : '' }">
+              {{ row.totalUsed }} / {{ row.transferEnable }}
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="到期时间" prop="expiredAt" width="140" />
-        <el-table-column label="余额" width="80">
+        <el-table-column label="到期时间" prop="expiredAtRaw" width="140" sortable="custom">
+          <template #default="{ row }">
+            <span :style="{ color: !row.expiredAtRaw || row.expiredAtRaw * 1000 < Date.now() ? 'var(--el-color-danger)' : '', fontWeight: !row.expiredAtRaw || row.expiredAtRaw * 1000 < Date.now() ? '600' : '' }">
+              {{ row.expiredAt }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="余额" width="100" prop="balance" sortable="custom">
           <template #default="{ row }">¥{{ row.balance }}</template>
         </el-table-column>
-        <el-table-column label="佣金" width="80">
+        <el-table-column label="佣金" width="100" prop="commissionBalance" sortable="custom">
           <template #default="{ row }">¥{{ row.commissionBalance }}</template>
+        </el-table-column>
+        <el-table-column label="在线设备" width="110" prop="onlineCount" sortable="custom">
+          <template #default="{ row }">
+            <span :style="{ color: row.deviceLimit && row.onlineCount > row.deviceLimit ? 'var(--el-color-danger)' : '' }">
+              {{ row.onlineCount }}<span v-if="row.deviceLimit" style="color:var(--el-text-color-secondary)"> / {{ row.deviceLimit }}</span>
+            </span>
+          </template>
         </el-table-column>
         <el-table-column label="注册时间" prop="createdAt" width="140" />
         <el-table-column fixed="right" label="操作" width="120">
@@ -488,6 +630,7 @@ onMounted(function onMount() {
                   <el-dropdown-item @click="copyLoginUrl(row)">生成登录/订阅URL</el-dropdown-item>
                   <el-dropdown-item divided @click="navigateToUserOrders(row)">TA的订单</el-dropdown-item>
                   <el-dropdown-item @click="navigateToUserTickets(row)">TA的工单</el-dropdown-item>
+                  <el-dropdown-item @click="navigateToUserInvites(row)">TA的邀请</el-dropdown-item>
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>
@@ -666,6 +809,32 @@ onMounted(function onMount() {
       <template #footer>
         <el-button @click="sendMailDialogVisible = false">取消</el-button>
         <el-button :loading="sendMailSending" type="primary" @click="submitSendMail">发送</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 分配订单对话框 -->
+    <el-dialog v-model="assignDialogVisible" title="分配订单" width="480px" destroy-on-close>
+      <el-form label-width="90px">
+        <el-form-item label="用户邮箱">
+          <el-input :model-value="assignForm.email" disabled />
+        </el-form-item>
+        <el-form-item label="订阅计划" required>
+          <el-select v-model="assignForm.planId" placeholder="请选择订阅计划" style="width:100%" @change="onAssignPlanChange">
+            <el-option v-for="plan in plans" :key="plan.id" :label="plan.name" :value="plan.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="订阅周期" required>
+          <el-select v-model="assignForm.period" placeholder="请先选择订阅计划" style="width:100%" :disabled="!assignForm.planId" @change="onAssignPeriodChange">
+            <el-option v-for="opt in periodOptions" :key="opt.value" :label="`${opt.label} - ¥${opt.price}`" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="支付金额" required>
+          <el-input-number v-model="assignForm.totalAmount" :min="0" :precision="2" :step="1" style="width:100%" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="assignDialogVisible = false">取消</el-button>
+        <el-button :loading="assignSaving" type="primary" @click="submitAssignOrder">确认分配</el-button>
       </template>
     </el-dialog>
   </section>

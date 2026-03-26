@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, MessageCircle, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -13,6 +14,7 @@ import {
 } from '../services/tickets'
 
 const { t } = useI18n()
+const route = useRoute()
 
 const tickets = ref([])
 const pagination = ref(createEmptyManagedTicketsPagination())
@@ -44,10 +46,10 @@ async function loadTickets() {
     }
     if (statusFilter.value === 'pending') {
       options.status = 0
-      options.replyStatus = [0]
+      options.replyStatus = [1]
     } else if (statusFilter.value === 'replied') {
       options.status = 0
-      options.replyStatus = [1]
+      options.replyStatus = [0]
     } else if (statusFilter.value === 'closed') {
       options.status = 1
     }
@@ -164,6 +166,9 @@ function getLevelInfo(level) {
 }
 
 onMounted(function onMount() {
+  if (route.query.user_email) {
+    emailSearch.value = String(route.query.user_email)
+  }
   loadTickets()
 })
 </script>
@@ -192,15 +197,12 @@ onMounted(function onMount() {
       <div class="order-filter-bar">
         <el-space wrap :size="6">
           <el-tag
-            :effect="statusFilter === '' ? 'dark' : 'plain'"
+            v-for="opt in statusOptions"
+            :key="opt.value"
+            :effect="statusFilter === opt.value ? 'dark' : 'plain'"
             class="order-filter-tag"
-            @click="statusFilter = ''; handleSearch()"
-          >待回复</el-tag>
-          <el-tag
-            :effect="statusFilter === '1' ? 'dark' : 'plain'"
-            class="order-filter-tag"
-            @click="statusFilter = '1'; handleSearch()"
-          >已关闭</el-tag>
+            @click="statusFilter = opt.value; handleSearch()"
+          >{{ opt.label }}</el-tag>
           <el-divider direction="vertical" />
           <el-tag
             v-for="opt in [{label:'高优先', value:'2'},{label:'中优先', value:'1'},{label:'低优先', value:'0'}]"
