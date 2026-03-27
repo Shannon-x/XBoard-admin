@@ -226,7 +226,8 @@ onMounted(function onMount() {
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.replyStatusType" effect="dark" size="small">{{ row.replyStatusText }}</el-tag>
+            <el-tag v-if="row.status === 1" type="info" effect="dark" size="small">已关闭</el-tag>
+            <el-tag v-else :type="row.replyStatusType" effect="dark" size="small">{{ row.replyStatusText }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="更新时间" width="160" prop="updatedAt" />
