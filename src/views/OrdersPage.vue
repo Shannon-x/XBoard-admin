@@ -365,16 +365,23 @@ onMounted(function onMount() {
             <el-descriptions-item label="订单号" :span="2">
               <span style="font-family: monospace; font-size: 12px; word-break: break-all;">{{ detailData.tradeNo }}</span>
             </el-descriptions-item>
+            <el-descriptions-item label="用户邮箱" :span="2">
+              <span style="font-weight: 600; color: var(--el-color-primary);">{{ detailData.userEmail }}</span>
+              <span style="color: var(--el-text-color-secondary); margin-left: 8px;">(ID: {{ detailData.userId }})</span>
+            </el-descriptions-item>
             <el-descriptions-item label="类型">{{ detailData.typeText }}</el-descriptions-item>
             <el-descriptions-item label="周期">{{ detailData.periodText }}</el-descriptions-item>
             <el-descriptions-item label="套餐" :span="2">{{ detailData.planName }}</el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
+            <el-descriptions-item label="优惠">{{ detailData.discountAmount ? '¥' + detailData.discountAmount.toFixed(2) : '--' }}</el-descriptions-item>
             <el-descriptions-item label="支付方式">{{ paymentMap[detailData.paymentId] || '--' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="佣金">¥{{ detailData.commissionBalance.toFixed(2) }}</el-descriptions-item>
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>
+            <el-descriptions-item label="邀请人ID">{{ detailData.inviteUserId || '--' }}</el-descriptions-item>
+            <el-descriptions-item label="优惠券ID">{{ detailData.couponId || '--' }}</el-descriptions-item>
             <el-descriptions-item label="支付时间">{{ detailData.paidAt }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>
             <el-descriptions-item label="回调单号" :span="2">
