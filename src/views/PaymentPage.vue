@@ -235,12 +235,15 @@ onMounted(loadPayments)
         </el-table-column>
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button link size="small" type="primary" @click="openEditDialog(row)">
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button link size="small" type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
+            <el-dropdown trigger="click">
+              <el-button link size="small" type="primary">操作</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openEditDialog(row)">编辑</el-dropdown-item>
+                  <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
