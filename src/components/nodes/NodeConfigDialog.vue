@@ -261,6 +261,17 @@ const currentProtocol = computed(function currentProtocol() {
     return String(props.protocol || "shadowsocks").toLowerCase();
 });
 
+const availableGroupOptions = computed(function availableGroupOptions() {
+    const selectedSet = new Set(
+        (form.groupIds || []).map(function mapId(id) {
+            return String(id);
+        }),
+    );
+    return props.groupOptions.filter(function filterGroup(group) {
+        return !selectedSet.has(String(group.value));
+    });
+});
+
 const isVmessProtocol = computed(function isVmessProtocol() {
     return currentProtocol.value === "vmess";
 });
@@ -474,6 +485,50 @@ function normalizePortValue(value) {
     return Math.min(65535, Math.max(0, integerValue));
 }
 
+function isValidPortOrRange(value) {
+    const str = String(value || "").trim();
+    if (!str) {
+        return false;
+    }
+
+    // Single port: "443"
+    if (/^\d+$/.test(str)) {
+        const num = Number(str);
+        return num >= 0 && num <= 65535;
+    }
+
+    // Port range: "37000-37499"
+    const rangeMatch = str.match(/^(\d+)-(\d+)$/);
+    if (rangeMatch) {
+        const start = Number(rangeMatch[1]);
+        const end = Number(rangeMatch[2]);
+        return start >= 0 && start <= 65535 && end >= 0 && end <= 65535 && start <= end;
+    }
+
+    return false;
+}
+
+function normalizePortOrRangeValue(value) {
+    const str = String(value || "").trim();
+    if (!str) {
+        return "";
+    }
+
+    // Port range: keep as-is
+    if (/^\d+-\d+$/.test(str)) {
+        return str;
+    }
+
+    // Single port: normalize
+    const numericValue = Number(str);
+    if (Number.isFinite(numericValue)) {
+        const integerValue = Math.trunc(numericValue);
+        return String(Math.min(65535, Math.max(0, integerValue)));
+    }
+
+    return str;
+}
+
 function createFormFromNode(node) {
     if (!node) {
         return createDefaultForm();
@@ -500,7 +555,7 @@ function createFormFromNode(node) {
               })
             : [],
         host: node.host || "",
-        port: normalizePortValue(node.port),
+        port: normalizePortOrRangeValue(node.port),
         serverPort: normalizePortValue(node.serverPort),
         vlessSecurity: node.vlessSecurity || "none",
         vlessFlow: node.vlessFlow || "none",
@@ -669,11 +724,22 @@ function removeFbnodeChild(index) {
 }
 
 function syncPortToServerPort() {
-    form.serverPort = normalizePortValue(form.port);
+    // If port is a range like "37000-37499", use the start port
+    const portStr = String(form.port || "").trim();
+    const rangeMatch = portStr.match(/^(\d+)-(\d+)$/);
+    if (rangeMatch) {
+        form.serverPort = normalizePortValue(rangeMatch[1]);
+    } else {
+        form.serverPort = normalizePortValue(portStr);
+    }
 }
 
 function sanitizePortField(fieldName) {
-    form[fieldName] = normalizePortValue(form[fieldName]);
+    if (fieldName === 'port') {
+        form[fieldName] = normalizePortOrRangeValue(form[fieldName]);
+    } else {
+        form[fieldName] = normalizePortValue(form[fieldName]);
+    }
 }
 
 function addDynamicRule() {
@@ -728,11 +794,13 @@ function handleSubmit() {
         return;
     }
 
-    if (
-        normalizePortValue(form.port) === "" ||
-        normalizePortValue(form.serverPort) === ""
-    ) {
-        ElMessage.warning("端口只允许输入 0-65535 的数字");
+    if (!isValidPortOrRange(form.port)) {
+        ElMessage.warning("连接端口格式不正确，支持单个端口(如 443)或端口范围(如 37000-37499)");
+        return;
+    }
+
+    if (normalizePortValue(form.serverPort) === "") {
+        ElMessage.warning("服务端口只允许输入 0-65535 的数字");
         return;
     }
 
@@ -943,7 +1011,7 @@ function handleSubmit() {
                     placeholder="请选择权限组"
                 >
                     <el-option
-                        v-for="group in groupOptions"
+                        v-for="group in availableGroupOptions"
                         :key="group.value"
                         :label="group.label"
                         :value="String(group.value)"
@@ -960,17 +1028,14 @@ function handleSubmit() {
 
             <div class="node-config-form__row">
                 <el-form-item label="连接端口" class="node-config-form__item">
-                    <el-input-number
+                    <el-input
                         v-model="form.port"
-                        :min="0"
-                        :max="65535"
-                        :step="1"
-                        :precision="0"
-                        step-strictly
-                        :controls="false"
-                        placeholder="用户连接端口"
-                        @change="sanitizePortField('port')"
+                        placeholder="端口或范围，如 443 或 37000-37499"
+                        @blur="sanitizePortField('port')"
                     />
+                    <p v-if="isHysteriaProtocol" class="node-config-form__hint">
+                        Hysteria 支持端口范围，如 37000-37499
+                    </p>
                 </el-form-item>
                 <div class="node-config-form__equals">
                     <el-button
