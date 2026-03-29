@@ -693,9 +693,13 @@ async function handleNodeDialogSubmit(payload) {
             ? {
                   tls: payload.tls === "tls" ? 1 : 0,
                   network: String(payload.transportProtocol || "tcp"),
-                  transport_config: String(
-                      payload.transportConfig || "",
-                  ).trim(),
+                  network_settings: (function() {
+                      try {
+                          return payload.transportConfig ? JSON.parse(payload.transportConfig) : null;
+                      } catch (e) {
+                          return null;
+                      }
+                  })(),
                   tls_settings:
                       payload.tls === "tls"
                           ? {
@@ -709,9 +713,13 @@ async function handleNodeDialogSubmit(payload) {
                     server_name: String(payload.sni || "").trim(),
                     allow_insecure: payload.allowInsecure ? 1 : 0,
                     network: String(payload.transportProtocol || "tcp"),
-                    transport_config: String(
-                        payload.transportConfig || "",
-                    ).trim(),
+                    network_settings: (function() {
+                        try {
+                            return payload.transportConfig ? JSON.parse(payload.transportConfig) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
                 }
               : protocolType === "hysteria"
                 ? {
@@ -759,9 +767,13 @@ async function handleNodeDialogSubmit(payload) {
                                       password: String(payload.vlessEncPassword || ""),
                                   },
                         network: String(payload.transportProtocol || "tcp"),
-                        transport_config: String(
-                            payload.transportConfig || "",
-                        ).trim(),
+                        network_settings: (function() {
+                            try {
+                                return payload.transportConfig ? JSON.parse(payload.transportConfig) : null;
+                            } catch (e) {
+                                return null;
+                            }
+                        })(),
                         tls:
                             payload.vlessSecurity === "reality"
                                 ? 2
