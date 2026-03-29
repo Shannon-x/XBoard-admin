@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -71,8 +71,11 @@ function fillDefaultOutboundConfig() {
 // Actions that need no action_value at all
 const NO_VALUE_ACTIONS = ['block', 'block_ip', 'block_port', 'protocol']
 
+let watchIgnore = false
+
 // Clear action_value when switching action type to prevent cross-contamination
 watch(() => form.value.action, (newAction, oldAction) => {
+  if (watchIgnore) return
   if (newAction === oldAction) return
   // Determine category of old and new to decide if we should reset
   const getCategory = (a) => {
@@ -106,12 +109,15 @@ const displayRoutes = computed(() => {
 
 function openCreateDialog() {
   dialogMode.value = 'create'
+  watchIgnore = true
   form.value = createEmptyForm()
   dialogVisible.value = true
+  nextTick(() => { watchIgnore = false })
 }
 
 function openEditDialog(route) {
   dialogMode.value = 'edit'
+  watchIgnore = true
   form.value = {
     id: route.id,
     remarks: route.remarks,
@@ -120,6 +126,7 @@ function openEditDialog(route) {
     action_value: route.actionValue || '',
   }
   dialogVisible.value = true
+  nextTick(() => { watchIgnore = false })
 }
 
 async function handleSave() {

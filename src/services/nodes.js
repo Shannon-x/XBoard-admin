@@ -242,9 +242,9 @@ function normalizeManagedNode(node, index) {
     tls: tlsEnabled ? "tls" : "none",
     transportProtocol: protocolSettings?.transport || protocolSettings?.network || "",
     transportConfig:
-      protocolSettings?.network_settings ||
-      protocolSettings?.transport_config ||
-      "",
+      (typeof (protocolSettings?.network_settings || protocolSettings?.transport_config) === "object" && (protocolSettings?.network_settings || protocolSettings?.transport_config) !== null)
+        ? JSON.stringify((protocolSettings?.network_settings || protocolSettings?.transport_config), null, 2)
+        : String(protocolSettings?.network_settings || protocolSettings?.transport_config || ""),
     sni:
       tlsSettings?.server_name ||
       realitySettings?.server_name ||
