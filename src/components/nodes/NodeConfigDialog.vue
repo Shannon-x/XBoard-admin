@@ -1009,9 +1009,10 @@ function handleSubmit() {
                     multiple
                     filterable
                     placeholder="请选择权限组"
+                    popper-class="group-select-hide-selected"
                 >
                     <el-option
-                        v-for="group in availableGroupOptions"
+                        v-for="group in groupOptions"
                         :key="group.value"
                         :label="group.label"
                         :value="String(group.value)"
@@ -1033,9 +1034,6 @@ function handleSubmit() {
                         placeholder="端口或范围，如 443 或 37000-37499"
                         @blur="sanitizePortField('port')"
                     />
-                    <p v-if="isHysteriaProtocol" class="node-config-form__hint">
-                        Hysteria 支持端口范围，如 37000-37499
-                    </p>
                 </el-form-item>
                 <div class="node-config-form__equals">
                     <el-button
@@ -1061,6 +1059,9 @@ function handleSubmit() {
                     />
                 </el-form-item>
             </div>
+            <p v-if="isHysteriaProtocol" class="node-config-form__hint" style="margin-top: -8px;">
+                Hysteria 支持端口范围，如 37000-37499
+            </p>
 
             <el-form-item
                 v-if="!isVmessProtocol && !isTrojanProtocol && !isHysteriaProtocol && !isVlessProtocol && !isTuicProtocol && !isMieruProtocol && !isFbnodeProtocol && !isAnytlsProtocol"
@@ -2139,5 +2140,11 @@ function handleSubmit() {
     .node-config-form__equals {
         display: none;
     }
+}
+</style>
+
+<style>
+.group-select-hide-selected .el-select-dropdown__item.is-selected {
+    display: none !important;
 }
 </style>
