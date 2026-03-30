@@ -738,6 +738,11 @@ onMounted(function onMount() {
             </el-input>
           </el-form-item>
         </div>
+        <div style="margin-top: -10px; margin-bottom: 12px; text-align: right;">
+          <el-button size="small" type="primary" link icon="DataLine" @click="handleViewTraffic({ id: editForm.id })">
+            查看流量明细
+          </el-button>
+        </div>
 
         <el-form-item label="流量">
           <el-input v-model.number="editForm.transfer_enable" placeholder="请输入流量" type="number">
