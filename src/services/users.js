@@ -268,3 +268,69 @@ export async function setInviteUser(id, inviteUserEmail) {
     invite_user_email: inviteUserEmail,
   })
 }
+
+export async function fetchUserTrafficStats(userId, options = {}) {
+  const current = Number(options.page || 1)
+  const pageSize = Number(options.pageSize || 10)
+  const queryEntries = [
+    ['user_id', userId],
+    ['current', current],
+    ['pageSize', pageSize],
+  ]
+  const apiUrl = buildSecureV2ApiUrl('stat/getStatUser', queryEntries)
+
+  const headers = { ...getDashboardApiHeaders() }
+  const response = await fetch(apiUrl, { headers })
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error('鉴权失败，请重新登录')
+  }
+
+  if (!response.ok) {
+    throw new Error(`请求失败: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  const list = Array.isArray(payload?.data) ? payload.data : []
+  const total = Number(payload?.total || 0)
+
+  return {
+    list: list.map(item => {
+      const u = Number(item.u || 0)
+      const d = Number(item.d || 0)
+      
+      const formatBytes = (val) => {
+        const units = ["B", "KB", "MB", "GB", "TB", "PB"]
+        let size = Number(val || 0)
+        let index = 0
+        while (size >= 1024 && index < units.length - 1) {
+          size /= 1024
+          index++
+        }
+        return `${size.toFixed(2)} ${units[index]}`
+      }
+
+      const date = new Date((item.record_at || 0) * 1000)
+      const dateStr = date.getTime() ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : '--'
+
+      return {
+        id: item.id,
+        recordAt: item.record_at,
+        date: dateStr,
+        serverRate: item.server_rate || '1.0',
+        u: u,
+        d: d,
+        total: u + d,
+        uText: formatBytes(u),
+        dText: formatBytes(d),
+        totalText: formatBytes(u + d)
+      }
+    }),
+    pagination: {
+      page: current,
+      pageSize,
+      total,
+    }
+  }
+}
+

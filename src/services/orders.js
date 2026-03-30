@@ -114,6 +114,7 @@ function normalizeOrder(order) {
     commissionStatusType: commissionInfo ? commissionInfo.type : 'info',
     commissionBalance: order?.commission_balance ? Number(order.commission_balance) / 100 : 0,
     inviteUserId: order?.invite_user_id || null,
+    inviteUserEmail: order?.invite_user?.email || null,
     paymentId: order?.payment_id || null,
     paymentName: order?.payment?.name || (order?.payment_id ? `#${order.payment_id}` : '--'),
     couponId: order?.coupon_id || null,
