@@ -101,7 +101,7 @@ function changeClass(change) {
                     <div class="traffic-rank-copy">
                         <strong>{{ item.name }}</strong>
                         <small>{{
-                            t("traffic.previousLabel", {
+                            t(`traffic.previousLabel_${activeRange}`, {
                                 value: item.previousTrafficText,
                             })
                         }}</small>

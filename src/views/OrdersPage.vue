@@ -380,7 +380,12 @@ onMounted(function onMount() {
             </el-descriptions-item>
             <el-descriptions-item label="佣金">¥{{ detailData.commissionBalance.toFixed(2) }}</el-descriptions-item>
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>
-            <el-descriptions-item label="邀请人ID">{{ detailData.inviteUserId || '--' }}</el-descriptions-item>
+            <el-descriptions-item label="邀请人">
+              <span v-if="detailData.inviteUserId">
+                {{ detailData.inviteUserEmail || '--' }} (ID: {{ detailData.inviteUserId }})
+              </span>
+              <span v-else>--</span>
+            </el-descriptions-item>
             <el-descriptions-item label="优惠券ID">{{ detailData.couponId || '--' }}</el-descriptions-item>
             <el-descriptions-item label="支付时间">{{ detailData.paidAt }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>

@@ -162,6 +162,9 @@ export default {
     updatedAt: '更新于 {time}',
     topLabel: 'Top {count}',
     previousLabel: '昨日 {value}',
+    previousLabel_today: '昨日 {value}',
+    previousLabel_7d: '前7天 {value}',
+    previousLabel_30d: '前30天 {value}',
   },
   queue: {
     statusTitle: '队列状态',

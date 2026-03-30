@@ -15,6 +15,7 @@ import {
   dumpUsersCSV,
   sendMailToUsers,
   createEmptyManagedUsersPagination,
+  fetchUserTrafficStats,
 } from '../services/users'
 import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
 import { assignOrder } from '../services/orders'
@@ -44,6 +45,41 @@ const assignForm = ref({
   totalAmount: 0,
 })
 
+const trafficDialogVisible = ref(false)
+const trafficLoading = ref(false)
+const trafficData = ref([])
+const trafficPagination = ref({ page: 1, pageSize: 10, total: 0 })
+const currentTrafficUserId = ref(null)
+
+async function loadTrafficData() {
+  if (!currentTrafficUserId.value) return
+  trafficLoading.value = true
+  try {
+    const result = await fetchUserTrafficStats(currentTrafficUserId.value, {
+      page: trafficPagination.value.page,
+      pageSize: trafficPagination.value.pageSize,
+    })
+    trafficData.value = result.list
+    trafficPagination.value = result.pagination
+  } catch (err) {
+    ElMessage.error(err.message || '加载流量详情失败')
+  } finally {
+    trafficLoading.value = false
+  }
+}
+
+function handleViewTraffic(row) {
+  currentTrafficUserId.value = row.id
+  trafficPagination.value.page = 1
+  trafficDialogVisible.value = true
+  loadTrafficData()
+}
+
+function handleTrafficPageChange(page) {
+  trafficPagination.value.page = page
+  loadTrafficData()
+}
+
 const periodOptions = computed(function getPeriodOptions() {
   if (!assignForm.value.planId) return []
   const plan = plans.value.find(p => p.id === assignForm.value.planId)
@@ -57,10 +93,10 @@ const periodOptions = computed(function getPeriodOptions() {
   return result
 })
 
-const filterFieldOptions = [
+const filterFieldOptions = computed(() => [
   { id: 'email', label: '邮箱', type: 'text', operators: ['模糊', '精确'] },
   { id: 'id', label: '用户ID', type: 'number', operators: ['等于', '大于', '小于'] },
-  { id: 'plan_id', label: '订阅', type: 'number', operators: ['等于'] },
+  { id: 'plan_id', label: '订阅', type: 'select', operators: ['等于'], selectOptions: plans.value.map(p => ({ label: p.name, value: String(p.id) })) },
   { id: 'transfer_enable', label: '流量', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'd', label: '已用流量', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'online_count', label: '在线设备', type: 'number', operators: ['大于', '小于', '等于'] },
@@ -73,10 +109,20 @@ const filterFieldOptions = [
   { id: 'invite_user_id', label: '邀请人ID', type: 'number', operators: ['等于'] },
   { id: 'is_admin', label: '管理员', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
   { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
-]
+])
 
 function getFieldDef(fieldId) {
-  return filterFieldOptions.find(f => f.id === fieldId)
+  return filterFieldOptions.value.find(f => f.id === fieldId)
+}
+
+function onFilterFieldChange(cond) {
+  cond.value = ''
+  const def = getFieldDef(cond.field)
+  if (def?.operators?.length === 1) {
+    cond.operator = def.operators[0]
+  } else {
+    cond.operator = ''
+  }
 }
 
 function addFilterCondition() {
@@ -554,7 +600,7 @@ onMounted(function onMount() {
         </div>
         <div v-for="(cond, idx) in filterConditions" :key="idx" class="user-filter-row">
           <span class="user-filter-row__label">条件 {{ idx + 1 }}</span>
-          <el-select v-model="cond.field" placeholder="选择字段" style="width: 140px" @change="cond.operator = ''; cond.value = ''">
+          <el-select v-model="cond.field" placeholder="选择字段" style="width: 140px" @change="onFilterFieldChange(cond)">
             <el-option v-for="f in filterFieldOptions" :key="f.id" :label="f.label" :value="f.id" />
           </el-select>
           <el-select v-model="cond.operator" placeholder="条件" style="width: 100px" :disabled="!cond.field">
@@ -632,6 +678,7 @@ onMounted(function onMount() {
                   <el-dropdown-item @click="navigateToUserTickets(row)">TA的工单</el-dropdown-item>
                   <el-dropdown-item @click="navigateToUserInvites(row)">TA的邀请</el-dropdown-item>
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
+                  <el-dropdown-item @click="handleViewTraffic(row)">流量详情</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -836,6 +883,24 @@ onMounted(function onMount() {
         <el-button @click="assignDialogVisible = false">取消</el-button>
         <el-button :loading="assignSaving" type="primary" @click="submitAssignOrder">确认分配</el-button>
       </template>
+    </el-dialog>
+    <!-- 流量详情对话框 -->
+    <el-dialog v-model="trafficDialogVisible" title="流量详情" width="600px" destroy-on-close>
+      <el-table v-loading="trafficLoading" :data="trafficData" stripe style="width: 100%">
+        <el-table-column prop="date" label="统计日期" width="120" />
+        <el-table-column prop="uText" label="上行流量" />
+        <el-table-column prop="dText" label="下行流量" />
+        <el-table-column prop="totalText" label="合计流量" />
+        <el-table-column prop="serverRate" label="最后倍率" width="100" />
+      </el-table>
+      <el-pagination
+        :current-page="trafficPagination.page"
+        :page-size="trafficPagination.pageSize"
+        :total="trafficPagination.total"
+        layout="total, prev, pager, next"
+        style="margin-top: 16px; justify-content: flex-end"
+        @current-change="handleTrafficPageChange"
+      />
     </el-dialog>
   </section>
 </template>
