@@ -650,11 +650,28 @@ export async function saveManagedNode(payload = {}) {
 }
 
 export async function sortManagedNodes(ids) {
-  return requestManagedNodeAction("server/manage/sort", {
-    ids: ids.map(function mapId(id) {
-      return Number(id);
-    }),
+  const payload = ids.map(function mapId(id, index) {
+    return { id: Number(id), order: index };
   });
+  const apiUrl = buildDashboardApiUrl("server/manage/sort");
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      ...getDashboardApiHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`排序保存失败: ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (result?.code !== undefined && Number(result.code) !== 0) {
+    throw new Error(result.message || "排序保存失败");
+  }
+  return result;
 }
 
 export async function saveManagedNodeGroup(data) {
