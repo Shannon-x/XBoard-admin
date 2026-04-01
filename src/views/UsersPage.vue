@@ -105,7 +105,7 @@ const filterFieldOptions = computed(() => [
   { id: 'token', label: 'Token', type: 'text', operators: ['精确'] },
   { id: 'banned', label: '账号状态', type: 'select', operators: ['等于'], selectOptions: [{ label: '正常', value: '0' }, { label: '已封禁', value: '1' }] },
   { id: 'remarks', label: '备注', type: 'text', operators: ['模糊'] },
-  { id: 'invite_user_email', label: '邀请人邮箱', type: 'text', operators: ['模糊', '精确'] },
+  { id: 'invite_user.email', label: '邀请人邮箱', type: 'text', operators: ['模糊', '精确'] },
   { id: 'invite_user_id', label: '邀请人ID', type: 'number', operators: ['等于'] },
   { id: 'is_admin', label: '管理员', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
   { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },

@@ -147,7 +147,13 @@ export async function fetchManagedUsers(options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(`用户列表请求失败: ${response.status}`)
+    let errMsg = `用户列表请求失败: ${response.status}`
+    try {
+      const errBody = await response.json()
+      if (errBody?.message) errMsg += ` - ${errBody.message}`
+      else if (errBody?.errors) errMsg += ` - ${JSON.stringify(errBody.errors)}`
+    } catch (_) { /* ignore parse failure */ }
+    throw new Error(errMsg)
   }
 
   const payload = await response.json()
