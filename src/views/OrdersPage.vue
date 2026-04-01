@@ -34,6 +34,7 @@ const plans = ref([])
 const paymentMap = ref({})
 const paymentOptions = ref([])
 const paymentFilter = ref('')
+const userIdFilter = ref('')
 
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -84,6 +85,9 @@ async function loadOrders() {
     }
     if (paymentFilter.value !== '') {
       filter.push({ id: 'payment_id', value: `eq:${paymentFilter.value}` })
+    }
+    if (userIdFilter.value !== '') {
+      filter.push({ id: 'user_id', value: `eq:${userIdFilter.value}` })
     }
     const result = await fetchManagedOrders({
       page: pagination.value.page,
@@ -211,6 +215,12 @@ onMounted(function onMount() {
   if (route.query.commission_status) {
     commissionStatusFilter.value = String(route.query.commission_status)
   }
+  if (route.query.user_id) {
+    userIdFilter.value = String(route.query.user_id)
+  }
+  if (route.query.user_email) {
+    searchKeyword.value = String(route.query.user_email)
+  }
   loadOrders()
   fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
   fetchPayments().then(list => {
@@ -246,9 +256,9 @@ onMounted(function onMount() {
       <div class="order-filter-bar">
         <el-space wrap :size="6">
           <el-tag
-            :effect="statusFilter === '' && !isCommission ? 'dark' : 'plain'"
+            :effect="statusFilter === '' && !isCommission && !userIdFilter ? 'dark' : 'plain'"
             class="order-filter-tag"
-            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; handleSearch()"
+            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; userIdFilter = ''; searchKeyword = ''; handleSearch()"
           >全部</el-tag>
           <el-tag
             v-for="opt in statusOptions.slice(1)"

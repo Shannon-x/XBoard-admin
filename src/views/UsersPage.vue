@@ -425,7 +425,7 @@ function copyLoginUrl(user) {
 }
 
 function navigateToUserOrders(user) {
-  router.push({ path: 'orders', query: { user_email: user.email } })
+  router.push({ path: 'orders', query: { user_id: user.id, user_email: user.email } })
 }
 
 function navigateToUserInvites(user) {
