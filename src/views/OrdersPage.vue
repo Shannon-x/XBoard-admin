@@ -35,6 +35,7 @@ const paymentMap = ref({})
 const paymentOptions = ref([])
 const paymentFilter = ref('')
 const userIdFilter = ref('')
+const userEmailDisplay = ref('')
 
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
@@ -74,7 +75,7 @@ async function loadOrders() {
   errorMsg.value = ''
   try {
     const filter = []
-    if (searchKeyword.value.trim()) {
+    if (searchKeyword.value.trim() && !userIdFilter.value) {
       filter.push({ id: 'trade_no', value: searchKeyword.value.trim() })
     }
     if (statusFilter.value !== '') {
@@ -219,7 +220,7 @@ onMounted(function onMount() {
     userIdFilter.value = String(route.query.user_id)
   }
   if (route.query.user_email) {
-    searchKeyword.value = String(route.query.user_email)
+    userEmailDisplay.value = String(route.query.user_email)
   }
   loadOrders()
   fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
@@ -258,7 +259,7 @@ onMounted(function onMount() {
           <el-tag
             :effect="statusFilter === '' && !isCommission && !userIdFilter ? 'dark' : 'plain'"
             class="order-filter-tag"
-            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; userIdFilter = ''; searchKeyword = ''; handleSearch()"
+            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; userIdFilter = ''; userEmailDisplay = ''; handleSearch()"
           >全部</el-tag>
           <el-tag
             v-for="opt in statusOptions.slice(1)"
@@ -303,6 +304,16 @@ onMounted(function onMount() {
           </el-select>
         </el-space>
       </div>
+
+      <el-alert
+        v-if="userEmailDisplay"
+        :title="`当前筛选用户: ${userEmailDisplay}`"
+        type="info"
+        show-icon
+        closable
+        style="margin-bottom: 12px"
+        @close="userIdFilter = ''; userEmailDisplay = ''; handleSearch()"
+      />
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
