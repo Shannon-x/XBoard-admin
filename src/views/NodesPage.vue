@@ -196,7 +196,7 @@ async function handleSortSave(ids) {
         await sortManagedNodes(ids);
         ElMessage.success("排序已保存");
         sortDialogVisible.value = false;
-        adminStore.fetchManagedNodes();
+        adminStore.loadManagedNodes();
     } catch (err) {
         ElMessage.error(err.message || "排序保存失败");
     }
