@@ -192,12 +192,12 @@ async function submitAssign() {
 }
 
 async function handleCommissionConfirm(row, newStatus) {
-  const actionText = newStatus === 2 ? '确认' : '取消'
+  const actionText = newStatus === 1 ? '确认' : '取消'
   try {
     await ElMessageBox.confirm(
       `确定要${actionText}订单 ${row.tradeNo} 的佣金吗？`,
       `${actionText}佣金`,
-      { type: newStatus === 2 ? 'info' : 'warning' },
+      { type: newStatus === 1 ? 'info' : 'warning' },
     )
     await updateOrder({ tradeNo: row.tradeNo, commissionStatus: newStatus })
     ElMessage.success(`佣金已${actionText}`)
@@ -355,7 +355,7 @@ onMounted(function onMount() {
                 <el-dropdown-menu>
                   <el-dropdown-item @click="openDetail(row)">详情</el-dropdown-item>
                   <el-dropdown-item v-if="row.status === 0" @click="handleMarkPaid(row)">确认付款</el-dropdown-item>
-                  <el-dropdown-item v-if="row.commissionStatus === 0" @click="handleCommissionConfirm(row, 2)">确认佣金</el-dropdown-item>
+                  <el-dropdown-item v-if="row.commissionStatus === 0" @click="handleCommissionConfirm(row, 1)">确认佣金</el-dropdown-item>
                   <el-dropdown-item v-if="row.commissionStatus === 0" @click="handleCommissionConfirm(row, 3)" style="color:var(--el-color-warning)">取消佣金</el-dropdown-item>
                   <el-dropdown-item v-if="row.status === 0" divided @click="handleCancel(row)" style="color:var(--el-color-danger)">取消</el-dropdown-item>
                 </el-dropdown-menu>
