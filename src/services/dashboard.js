@@ -559,28 +559,77 @@ export async function fetchIncomeOverview(range = {}) {
 export async function fetchTrafficRank(options = {}) {
   const fallbackRange = createUnixTimeRange(options.rangeKey || 'today');
   const rankType = options.type || "node";
+  
+  const currentStartTime = options.startTime || fallbackRange.startTime;
+  const currentEndTime = options.endTime || fallbackRange.endTime;
+
+  let prevStartTime, prevEndTime;
+  if (options.rangeKey === 'today' || !options.rangeKey) {
+    prevStartTime = currentStartTime - 86400;
+    prevEndTime = currentStartTime;
+  } else if (options.rangeKey === '7d') {
+    prevStartTime = currentStartTime - 7 * 86400;
+    prevEndTime = currentStartTime;
+  } else if (options.rangeKey === '30d') {
+    prevStartTime = currentStartTime - 30 * 86400;
+    prevEndTime = currentStartTime;
+  } else {
+    // Fallback: previous period of same duration
+    const diff = currentEndTime - currentStartTime;
+    prevStartTime = currentStartTime - diff;
+    prevEndTime = currentStartTime;
+  }
+
   const apiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
     ["type", rankType],
-    ["start_time", options.startTime || fallbackRange.startTime],
-    ["end_time", options.endTime || fallbackRange.endTime],
+    ["start_time", currentStartTime],
+    ["end_time", currentEndTime],
   ]);
-  const payload = await requestDashboardApi(apiUrl);
+
+  const prevApiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
+    ["type", rankType],
+    ["start_time", prevStartTime],
+    ["end_time", prevEndTime],
+  ]);
+
+  const [payload, prevPayload] = await Promise.all([
+    requestDashboardApi(apiUrl),
+    requestDashboardApi(prevApiUrl).catch(() => ({ data: [] }))
+  ]);
+
   const list = Array.isArray(payload?.data) ? payload.data : [];
+  const prevList = Array.isArray(prevPayload?.data) ? prevPayload.data : [];
+  
+  const prevMap = new Map();
+  for (const item of prevList) {
+    prevMap.set(String(item.id), Number(item.value || 0));
+  }
 
   return {
     type: rankType,
     updatedAt: list[0]?.timestamp || "",
     list: list.map(function mapRankItem(item, index) {
+      const idStr = String(item.id || index + 1);
+      const value = Number(item.value || 0);
+      const previousValue = prevMap.get(idStr) || 0;
+      
+      let change = 0;
+      if (previousValue > 0) {
+        change = ((value - previousValue) / previousValue) * 100;
+      } else if (value > 0) {
+        change = 100; // If previous was 0 and now has value, consider it 100% growth
+      }
+
       return {
-        id: String(item.id || index + 1),
+        id: idStr,
         rank: index + 1,
         name: normalizeRankName(item.name),
-        value: Number(item.value || 0),
-        previousValue: Number(item.previousValue || 0),
-        trafficText: formatTrafficValue(item.value),
-        previousTrafficText: formatTrafficValue(item.previousValue),
-        change: Number(item.change || 0),
-        changeText: formatChangeText(item.change),
+        value: value,
+        previousValue: previousValue,
+        trafficText: formatTrafficValue(value),
+        previousTrafficText: formatTrafficValue(previousValue),
+        change: change,
+        changeText: formatChangeText(change),
         timestamp: item.timestamp || "",
       };
     }),
