@@ -1,5 +1,4 @@
 import {
-  buildDashboardApiUrl,
   buildSecureV2ApiUrl,
   requestDashboardApi,
   requestDashboardMutation,
@@ -164,7 +163,7 @@ export async function installPlugin(code) {
     throw new Error('缺少插件标识')
   }
 
-  const apiUrl = buildDashboardApiUrl('plugin/install')
+  const apiUrl = buildSecureV2ApiUrl('plugin/install')
   return requestDashboardMutation(apiUrl, {
     code,
   })
@@ -175,7 +174,7 @@ export async function uninstallPlugin(code) {
     throw new Error('缺少插件标识')
   }
 
-  const apiUrl = buildDashboardApiUrl('plugin/uninstall')
+  const apiUrl = buildSecureV2ApiUrl('plugin/uninstall')
   return requestDashboardMutation(apiUrl, {
     code,
   })
