@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X } from 'lucide-vue-next'
+import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X, HelpCircle } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -429,11 +429,15 @@ function navigateToUserOrders(user) {
 }
 
 function navigateToUserInvites(user) {
+  // Clear keyword search to avoid it being combined with the new invite filter
+  searchKeyword.value = ''
   filterConditions.value = [{
     field: 'invite_user_id',
     operator: '等于',
     value: String(user.id)
   }]
+  // Show the filter panel so the user can see the active condition
+  showFilters.value = true
   handleSearch()
 }
 
@@ -775,11 +779,23 @@ onMounted(function onMount() {
           </el-select>
         </el-form-item>
 
-        <el-form-item label="佣金类型">
+        <el-form-item>
+          <template #label>
+            <el-tooltip placement="top" effect="dark">
+              <template #content>
+                <div style="max-width: 260px; line-height: 1.6">
+                  <b>跟随系统设置（0）</b>：由后台「仅首次支付返佣」开关决定，开启则仅首单返佣，关闭则每单返佣。<br />
+                  <b>每单均返佣（1）</b>：无论首单还是续费，每次付款均产生佣金（循环佣金）。<br />
+                  <b>仅首单返佣（2）</b>：该用户名下无任何有效历史订单时才触发佣金，之后续费不再返。
+                </div>
+              </template>
+              佣金类型 <HelpCircle :size="14" style="vertical-align: middle; cursor: help; display: inline-block; margin-left: 2px" />
+            </el-tooltip>
+          </template>
           <el-select v-model="editForm.commission_type" style="width:100%">
-            <el-option label="跟随系统设置" :value="0" />
-            <el-option label="按周期发放" :value="1" />
-            <el-option label="一次性发放" :value="2" />
+            <el-option label="跟随系统设置（由全局开关决定）" :value="0" />
+            <el-option label="每单均返佣（循环佣金）" :value="1" />
+            <el-option label="仅首单返佣（一次性佣金）" :value="2" />
           </el-select>
         </el-form-item>
 
