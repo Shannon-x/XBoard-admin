@@ -434,6 +434,8 @@ function createDefaultForm() {
         transportConfig: "",
         sni: "",
         allowInsecure: false,
+        echType: "",
+        echServerName: "",
         parentId: "",
         routeIds: [],
     };
@@ -612,6 +614,8 @@ function createFormFromNode(node) {
         transportConfig: node.transportConfig || "",
         sni: node.sni || "",
         allowInsecure: Boolean(node.allowInsecure),
+        echType: node.echType || "",
+        echServerName: node.echServerName || "",
         parentId: node.parentId ? String(node.parentId) : "",
         routeIds: Array.isArray(node.routeIds) ? node.routeIds : [],
     };
@@ -1258,6 +1262,35 @@ function handleSubmit() {
                     <el-switch v-model="form.allowInsecure" />
                 </el-form-item>
             </div>
+
+            <el-form-item
+                v-if="isTuicProtocol || isTrojanProtocol || (isVmessProtocol && form.tls === 'tls') || (isVlessProtocol && form.vlessSecurity === 'tls') || (isAnytlsProtocol && form.anytlsSecurity === 'tls')"
+                label="ECH (Encrypted Client Hello)"
+                class="node-config-form__item"
+            >
+                <el-select v-model="form.echType" placeholder="请选择 ECH 类型" clearable>
+                    <el-option label="无" value="" />
+                    <el-option label="Cloudflare" value="cloudflare" />
+                    <el-option label="自定义 SNI" value="custom" />
+                </el-select>
+                <el-alert
+                    v-if="form.echType === 'cloudflare'"
+                    type="success"
+                    :closable="false"
+                    class="node-config-form__hint-alert"
+                    style="margin-top: 8px;"
+                >
+                    <template #title>
+                        ✓ Cloudflare 托管 ECH，密钥由 Cloudflare 自动管理，客户端从 DNS 自动获取配置，服务端无需配置
+                    </template>
+                </el-alert>
+                <el-input
+                    v-if="form.echType === 'custom'"
+                    v-model="form.echServerName"
+                    placeholder="请输入外部 SNI (例如: cover.example.com)"
+                    style="margin-top: 8px;"
+                />
+            </el-form-item>
 
             <el-form-item v-if="isTuicProtocol" label="ALPN" class="node-config-form__item">
                 <el-select
