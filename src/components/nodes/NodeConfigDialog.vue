@@ -436,6 +436,8 @@ function createDefaultForm() {
         allowInsecure: false,
         echType: "",
         echServerName: "",
+        echConfig: "",
+        echKey: "",
         parentId: "",
         routeIds: [],
     };
@@ -616,6 +618,8 @@ function createFormFromNode(node) {
         allowInsecure: Boolean(node.allowInsecure),
         echType: node.echType || "",
         echServerName: node.echServerName || "",
+        echConfig: node.echConfig || "",
+        echKey: node.echKey || "",
         parentId: node.parentId ? String(node.parentId) : "",
         routeIds: Array.isArray(node.routeIds) ? node.routeIds : [],
     };
@@ -885,6 +889,10 @@ function handleSubmit() {
         transportConfig: form.transportConfig,
         sni: String(form.sni || "").trim(),
         allowInsecure: Boolean(form.allowInsecure),
+        echType: String(form.echType || ""),
+        echServerName: String(form.echServerName || "").trim(),
+        echConfig: String(form.echConfig || ""),
+        echKey: String(form.echKey || ""),
         parentId: form.parentId,
         routeIds: Array.isArray(form.routeIds) ? form.routeIds : [],
     });
