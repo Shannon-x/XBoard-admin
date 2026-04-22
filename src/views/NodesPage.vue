@@ -706,6 +706,7 @@ async function handleNodeDialogSubmit(payload) {
                                 server_name: String(payload.sni || "").trim(),
                                 allow_insecure: payload.allowInsecure ? 1 : 0,
                                 ech: payload.echType ? {
+                                    enabled: true,
                                     type: payload.echType,
                                     query_server_name: payload.echServerName
                                 } : null
@@ -718,6 +719,7 @@ async function handleNodeDialogSubmit(payload) {
                     allow_insecure: payload.allowInsecure ? 1 : 0,
                     tls_settings: payload.echType ? {
                         ech: {
+                            enabled: true,
                             type: payload.echType,
                             query_server_name: payload.echServerName
                         }
@@ -796,6 +798,7 @@ async function handleNodeDialogSubmit(payload) {
                                       server_name: String(payload.sni || "").trim(),
                                       allow_insecure: payload.allowInsecure ? 1 : 0,
                                       ech: payload.echType ? {
+                                          enabled: true,
                                           type: payload.echType,
                                           query_server_name: payload.echServerName
                                       } : null
@@ -851,6 +854,7 @@ async function handleNodeDialogSubmit(payload) {
                               server_name: String(payload.sni || "").trim(),
                               allow_insecure: payload.allowInsecure ? 1 : 0,
                               ech: payload.echType ? {
+                                  enabled: true,
                                   type: payload.echType,
                                   query_server_name: payload.echServerName
                               } : null
@@ -893,6 +897,7 @@ async function handleNodeDialogSubmit(payload) {
                                       server_name: String(payload.sni || "").trim(),
                                       allow_insecure: Boolean(payload.allowInsecure),
                                       ech: payload.echType ? {
+                                          enabled: true,
                                           type: payload.echType,
                                           query_server_name: payload.echServerName
                                       } : null
