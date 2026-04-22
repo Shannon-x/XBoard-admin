@@ -202,6 +202,10 @@ function normalizeManagedNode(node, index) {
     protocolSettings && typeof protocolSettings.reality_settings === "object"
       ? protocolSettings.reality_settings
       : {};
+  const echSettings =
+    tlsSettings && typeof tlsSettings.ech === "object"
+      ? tlsSettings.ech
+      : {};
   const hysteriaTls =
     protocolSettings && typeof protocolSettings.tls === "object"
       ? protocolSettings.tls
@@ -300,6 +304,8 @@ function normalizeManagedNode(node, index) {
       ? protocolSettings.padding_scheme.join("\n")
       : "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
     anytlsAlpn: String(protocolSettings?.alpn || ""),
+    echType: String(echSettings?.type || ""),
+    echServerName: String(echSettings?.query_server_name || ""),
     vlessSecurity: String(
       protocolSettings?.security ||
         (realityEnabled ? "reality" : tlsEnabled ? "tls" : "none"),

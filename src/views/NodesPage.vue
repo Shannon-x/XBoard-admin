@@ -705,6 +705,10 @@ async function handleNodeDialogSubmit(payload) {
                           ? {
                                 server_name: String(payload.sni || "").trim(),
                                 allow_insecure: payload.allowInsecure ? 1 : 0,
+                                ech: payload.echType ? {
+                                    type: payload.echType,
+                                    query_server_name: payload.echServerName
+                                } : null
                             }
                           : null,
               }
@@ -712,6 +716,10 @@ async function handleNodeDialogSubmit(payload) {
               ? {
                     server_name: String(payload.sni || "").trim(),
                     allow_insecure: payload.allowInsecure ? 1 : 0,
+                    ech: payload.echType ? {
+                        type: payload.echType,
+                        query_server_name: payload.echServerName
+                    } : null,
                     network: String(payload.transportProtocol || "tcp"),
                     network_settings: (function() {
                         try {
@@ -785,6 +793,10 @@ async function handleNodeDialogSubmit(payload) {
                                 ? {
                                       server_name: String(payload.sni || "").trim(),
                                       allow_insecure: payload.allowInsecure ? 1 : 0,
+                                      ech: payload.echType ? {
+                                          type: payload.echType,
+                                          query_server_name: payload.echServerName
+                                      } : null
                                   }
                                 : null,
                         reality_settings:
@@ -836,6 +848,10 @@ async function handleNodeDialogSubmit(payload) {
                           tls: {
                               server_name: String(payload.sni || "").trim(),
                               allow_insecure: payload.allowInsecure ? 1 : 0,
+                              ech: payload.echType ? {
+                                  type: payload.echType,
+                                  query_server_name: payload.echServerName
+                              } : null
                           },
                       }
                     : protocolType === "mieru"
@@ -874,6 +890,10 @@ async function handleNodeDialogSubmit(payload) {
                                   settings.tls_settings = {
                                       server_name: String(payload.sni || "").trim(),
                                       allow_insecure: Boolean(payload.allowInsecure),
+                                      ech: payload.echType ? {
+                                          type: payload.echType,
+                                          query_server_name: payload.echServerName
+                                      } : null
                                   };
                               }
                               return settings;
