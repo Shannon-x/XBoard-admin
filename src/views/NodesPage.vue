@@ -716,9 +716,11 @@ async function handleNodeDialogSubmit(payload) {
               ? {
                     server_name: String(payload.sni || "").trim(),
                     allow_insecure: payload.allowInsecure ? 1 : 0,
-                    ech: payload.echType ? {
-                        type: payload.echType,
-                        query_server_name: payload.echServerName
+                    tls_settings: payload.echType ? {
+                        ech: {
+                            type: payload.echType,
+                            query_server_name: payload.echServerName
+                        }
                     } : null,
                     network: String(payload.transportProtocol || "tcp"),
                     network_settings: (function() {
