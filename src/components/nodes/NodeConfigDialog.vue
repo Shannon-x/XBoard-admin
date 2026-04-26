@@ -438,6 +438,8 @@ function createDefaultForm() {
         echServerName: "",
         echConfig: "",
         echKey: "",
+        echKeyPath: "",
+        echConfigPath: "",
         parentId: "",
         routeIds: [],
     };
@@ -620,6 +622,8 @@ function createFormFromNode(node) {
         echServerName: node.echServerName || "",
         echConfig: node.echConfig || "",
         echKey: node.echKey || "",
+        echKeyPath: node.echKeyPath || "",
+        echConfigPath: node.echConfigPath || "",
         parentId: node.parentId ? String(node.parentId) : "",
         routeIds: Array.isArray(node.routeIds) ? node.routeIds : [],
     };
@@ -893,6 +897,8 @@ function handleSubmit() {
         echServerName: String(form.echServerName || "").trim(),
         echConfig: String(form.echConfig || ""),
         echKey: String(form.echKey || ""),
+        echKeyPath: String(form.echKeyPath || "").trim(),
+        echConfigPath: String(form.echConfigPath || "").trim(),
         parentId: form.parentId,
         routeIds: Array.isArray(form.routeIds) ? form.routeIds : [],
     });
@@ -1298,6 +1304,32 @@ function handleSubmit() {
                     placeholder="请输入外部 SNI (例如: cover.example.com)"
                     style="margin-top: 8px;"
                 />
+                <template v-if="form.echType === 'custom'">
+                    <el-input
+                        v-model="form.echConfig"
+                        type="textarea"
+                        :rows="3"
+                        placeholder="ECH Config，留空时后端自动生成或保留旧值"
+                        style="margin-top: 8px;"
+                    />
+                    <el-input
+                        v-model="form.echKey"
+                        type="textarea"
+                        :rows="3"
+                        placeholder="ECH Key，留空时后端自动生成或保留旧值"
+                        style="margin-top: 8px;"
+                    />
+                    <el-input
+                        v-model="form.echKeyPath"
+                        placeholder="ECH Key Path，可选"
+                        style="margin-top: 8px;"
+                    />
+                    <el-input
+                        v-model="form.echConfigPath"
+                        placeholder="ECH Config Path，可选"
+                        style="margin-top: 8px;"
+                    />
+                </template>
             </el-form-item>
 
             <el-form-item v-if="isTuicProtocol" label="ALPN" class="node-config-form__item">
