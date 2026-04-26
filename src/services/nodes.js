@@ -159,6 +159,35 @@ function resolveNodeShow(node) {
   return false;
 }
 
+function normalizeEchSettings(tlsSettings, tlsConfig) {
+  const ech =
+    tlsSettings?.ech && typeof tlsSettings.ech === "object"
+      ? tlsSettings.ech
+      : tlsConfig?.ech && typeof tlsConfig.ech === "object"
+        ? tlsConfig.ech
+        : null;
+
+  if (!ech || !ech.enabled) {
+    return {
+      echType: "",
+      echServerName: "",
+      echConfig: "",
+      echKey: "",
+      echKeyPath: "",
+      echConfigPath: "",
+    };
+  }
+
+  return {
+    echType: String(ech.type || ""),
+    echServerName: String(ech.query_server_name || ""),
+    echConfig: String(ech.config || ""),
+    echKey: String(ech.key || ""),
+    echKeyPath: String(ech.key_path || ""),
+    echConfigPath: String(ech.config_path || ""),
+  };
+}
+
 function normalizeManagedNode(node, index) {
   const status = resolveNodeStatus(node);
   const onlineUsers = Boolean(node.online || node.is_online) ? node.online : 0;
@@ -202,14 +231,11 @@ function normalizeManagedNode(node, index) {
     protocolSettings && typeof protocolSettings.reality_settings === "object"
       ? protocolSettings.reality_settings
       : {};
-  const echSettings =
-    tlsSettings && typeof tlsSettings.ech === "object"
-      ? tlsSettings.ech
-      : {};
   const hysteriaTls =
     protocolSettings && typeof protocolSettings.tls === "object"
       ? protocolSettings.tls
       : {};
+  const echSettings = normalizeEchSettings(tlsSettings, hysteriaTls);
   const hysteriaBandwidth =
     protocolSettings && typeof protocolSettings.bandwidth === "object"
       ? protocolSettings.bandwidth
@@ -304,8 +330,7 @@ function normalizeManagedNode(node, index) {
       ? protocolSettings.padding_scheme.join("\n")
       : "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
     anytlsAlpn: String(protocolSettings?.alpn || ""),
-    echType: String(echSettings?.type || ""),
-    echServerName: String(echSettings?.query_server_name || ""),
+    ...echSettings,
     vlessSecurity: String(
       protocolSettings?.security ||
         (realityEnabled ? "reality" : tlsEnabled ? "tls" : "none"),
