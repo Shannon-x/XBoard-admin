@@ -1,10 +1,16 @@
 import { buildDashboardApiUrl, getDashboardApiHeaders, requestDashboardApi } from './api'
 
 function normalizeArticle(raw) {
+  const category = raw.category ?? raw.category_id ?? ''
+  const categoryName =
+    typeof category === 'object'
+      ? String(category?.title || category?.name || '').trim()
+      : String(category || '').trim()
+
   return {
     id: raw.id,
-    categoryId: raw.category_id ?? null,
-    categoryName: raw.category?.title || '',
+    categoryId: categoryName,
+    categoryName,
     title: raw.title || '',
     body: raw.body || '',
     show: Boolean(raw.show),
@@ -15,12 +21,25 @@ function normalizeArticle(raw) {
   }
 }
 
-function normalizeCategory(raw) {
+function normalizeCategory(raw, index) {
+  if (typeof raw === 'string' || typeof raw === 'number') {
+    const title = String(raw).trim()
+
+    return {
+      id: title,
+      title,
+      description: '',
+      sort: index,
+    }
+  }
+
+  const title = String(raw?.title || raw?.name || raw?.category || '').trim()
+
   return {
-    id: raw.id,
-    title: raw.title || raw.name || '',
-    description: raw.description || '',
-    sort: raw.sort ?? 0,
+    id: String(raw?.id ?? title).trim(),
+    title,
+    description: raw?.description || '',
+    sort: raw?.sort ?? index,
   }
 }
 
@@ -35,7 +54,18 @@ export async function fetchKnowledgeCategories() {
   const apiUrl = buildDashboardApiUrl('knowledge/getCategory')
   const payload = await requestDashboardApi(apiUrl)
   const list = Array.isArray(payload?.data) ? payload.data : []
-  return list.map(normalizeCategory)
+  const seen = new Set()
+
+  return list
+    .map(normalizeCategory)
+    .filter(function filterCategory(category) {
+      if (!category.id || !category.title || seen.has(category.id)) {
+        return false
+      }
+
+      seen.add(category.id)
+      return true
+    })
 }
 
 export async function saveKnowledgeArticle(formData) {
@@ -48,7 +78,7 @@ export async function saveKnowledgeArticle(formData) {
     },
     body: JSON.stringify({
       id: formData.id || null,
-      category_id: formData.categoryId,
+      category: formData.categoryId,
       title: formData.title,
       body: formData.body,
       language: formData.language || '',

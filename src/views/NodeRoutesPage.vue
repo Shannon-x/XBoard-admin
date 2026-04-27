@@ -13,6 +13,10 @@ const routes = ref([])
 const loading = ref(false)
 const error = ref('')
 const searchWord = ref('')
+const pagination = ref({
+  page: 1,
+  pageSize: 20,
+})
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
@@ -102,9 +106,33 @@ async function loadRoutes() {
 }
 
 const displayRoutes = computed(() => {
+  const start = (pagination.value.page - 1) * pagination.value.pageSize
+  const end = start + pagination.value.pageSize
+
+  return filteredRoutes.value.slice(start, end)
+})
+
+const filteredRoutes = computed(() => {
   if (!searchWord.value.trim()) return routes.value
   const kw = searchWord.value.trim().toLowerCase()
-  return routes.value.filter(r => r.remarks.toLowerCase().includes(kw) || String(r.id).includes(kw))
+  return routes.value.filter(r => (
+    r.remarks.toLowerCase().includes(kw) ||
+    String(r.id).includes(kw) ||
+    r.actionLabel.toLowerCase().includes(kw)
+  ))
+})
+
+const totalRoutes = computed(() => filteredRoutes.value.length)
+
+watch(searchWord, () => {
+  pagination.value.page = 1
+})
+
+watch(totalRoutes, (total) => {
+  const maxPage = Math.max(Math.ceil(total / pagination.value.pageSize), 1)
+  if (pagination.value.page > maxPage) {
+    pagination.value.page = maxPage
+  }
 })
 
 function openCreateDialog() {
@@ -180,6 +208,15 @@ function actionTagType(action) {
   return 'info'
 }
 
+function handlePageChange(page) {
+  pagination.value.page = page
+}
+
+function handlePageSizeChange(size) {
+  pagination.value.pageSize = size
+  pagination.value.page = 1
+}
+
 onMounted(loadRoutes)
 </script>
 
@@ -222,6 +259,19 @@ onMounted(loadRoutes)
           </template>
         </el-table-column>
       </el-table>
+
+      <el-pagination
+        v-if="totalRoutes"
+        :current-page="pagination.page"
+        :page-size="pagination.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="totalRoutes"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        class="route-pagination"
+        @current-change="handlePageChange"
+        @size-change="handlePageSizeChange"
+      />
     </SectionCard>
 
     <!-- 创建/编辑路由对话框 -->
@@ -313,5 +363,10 @@ onMounted(loadRoutes)
 .route-form__hint {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.route-pagination {
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>

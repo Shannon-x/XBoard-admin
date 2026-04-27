@@ -7,7 +7,11 @@ import {
 
 const DEFAULT_OVERVIEW_RANGE_DAYS = 30;
 const DEFAULT_RANK_RANGE_DAYS = 1;
-
+const TRAFFIC_RANK_PERIOD_DAYS = {
+  today: 1,
+  "7d": 7,
+  "30d": 30,
+};
 
 function createDateRange(days) {
   const endDate = new Date();
@@ -20,6 +24,10 @@ function createDateRange(days) {
   };
 }
 
+function getTrafficRankPeriodDays(rangeKey) {
+  return TRAFFIC_RANK_PERIOD_DAYS[rangeKey] || DEFAULT_RANK_RANGE_DAYS;
+}
+
 function createUnixTimeRange(rangeKey) {
   const now = new Date();
   const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -29,18 +37,15 @@ function createUnixTimeRange(rangeKey) {
   const bjMidnight = new Date(bjNow);
   bjMidnight.setHours(0, 0, 0, 0);
 
-  let daysBack = 0;
-  if (rangeKey === '7d') {
-    daysBack = 7;
-  } else if (rangeKey === '30d') {
-    daysBack = 30;
-  }
+  const periodDays = getTrafficRankPeriodDays(rangeKey);
+  const daysBack = Math.max(periodDays - 1, 0);
 
   if (daysBack > 0) {
     bjMidnight.setDate(bjMidnight.getDate() - daysBack);
   }
 
-  const startUtcMs = bjMidnight.getTime() - 8 * 3600000 - now.getTimezoneOffset() * 60000;
+  const startUtcMs =
+    bjMidnight.getTime() - 8 * 3600000 - now.getTimezoneOffset() * 60000;
 
   return {
     startTime: Math.floor(startUtcMs / 1000),
@@ -557,28 +562,12 @@ export async function fetchIncomeOverview(range = {}) {
 }
 
 export async function fetchTrafficRank(options = {}) {
-  const fallbackRange = createUnixTimeRange(options.rangeKey || 'today');
+  const rangeKey = options.rangeKey || "today";
+  const fallbackRange = createUnixTimeRange(rangeKey);
   const rankType = options.type || "node";
-  
+
   const currentStartTime = options.startTime || fallbackRange.startTime;
   const currentEndTime = options.endTime || fallbackRange.endTime;
-
-  let prevStartTime, prevEndTime;
-  if (options.rangeKey === 'today' || !options.rangeKey) {
-    prevStartTime = currentStartTime - 86400;
-    prevEndTime = currentStartTime;
-  } else if (options.rangeKey === '7d') {
-    prevStartTime = currentStartTime - 7 * 86400;
-    prevEndTime = currentStartTime;
-  } else if (options.rangeKey === '30d') {
-    prevStartTime = currentStartTime - 30 * 86400;
-    prevEndTime = currentStartTime;
-  } else {
-    // Fallback: previous period of same duration
-    const diff = currentEndTime - currentStartTime;
-    prevStartTime = currentStartTime - diff;
-    prevEndTime = currentStartTime;
-  }
 
   const apiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
     ["type", rankType],
@@ -586,23 +575,30 @@ export async function fetchTrafficRank(options = {}) {
     ["end_time", currentEndTime],
   ]);
 
-  const prevApiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
-    ["type", rankType],
-    ["start_time", prevStartTime],
-    ["end_time", prevEndTime],
-  ]);
-
-  const [payload, prevPayload] = await Promise.all([
-    requestDashboardApi(apiUrl),
-    requestDashboardApi(prevApiUrl).catch(() => ({ data: [] }))
-  ]);
-
+  const payload = await requestDashboardApi(apiUrl);
   const list = Array.isArray(payload?.data) ? payload.data : [];
-  const prevList = Array.isArray(prevPayload?.data) ? prevPayload.data : [];
-  
+  const hasPreviousValue = list.some(function hasPreviousValueField(item) {
+    return Object.prototype.hasOwnProperty.call(item, "previousValue");
+  });
+
   const prevMap = new Map();
-  for (const item of prevList) {
-    prevMap.set(String(item.id), Number(item.value || 0));
+  if (!hasPreviousValue) {
+    const periodDays = getTrafficRankPeriodDays(rangeKey);
+    const prevStartTime = currentStartTime - periodDays * 86400;
+    const prevEndTime = currentStartTime;
+    const prevApiUrl = buildDashboardApiUrl("stat/getTrafficRank", [
+      ["type", rankType],
+      ["start_time", prevStartTime],
+      ["end_time", prevEndTime],
+    ]);
+    const prevPayload = await requestDashboardApi(prevApiUrl).catch(() => ({
+      data: [],
+    }));
+    const prevList = Array.isArray(prevPayload?.data) ? prevPayload.data : [];
+
+    for (const item of prevList) {
+      prevMap.set(String(item.id), Number(item.value || 0));
+    }
   }
 
   return {
@@ -611,8 +607,10 @@ export async function fetchTrafficRank(options = {}) {
     list: list.map(function mapRankItem(item, index) {
       const idStr = String(item.id || index + 1);
       const value = Number(item.value || 0);
-      const previousValue = prevMap.get(idStr) || 0;
-      
+      const previousValue = hasPreviousValue
+        ? Number(item.previousValue || 0)
+        : prevMap.get(idStr) || 0;
+
       let change = 0;
       if (previousValue > 0) {
         change = ((value - previousValue) / previousValue) * 100;
@@ -656,5 +654,3 @@ export async function fetchSystemStatus() {
 
   return normalizeSystemStatus(payload);
 }
-
-
