@@ -206,7 +206,14 @@ onMounted(loadData)
 
         <div class="knowledge-form__field">
           <label>分类</label>
-          <el-select v-model="form.categoryId" style="width: 100%" placeholder="请选择分类，分类将会自动归类">
+          <el-select
+            v-model="form.categoryId"
+            allow-create
+            default-first-option
+            filterable
+            style="width: 100%"
+            placeholder="请选择或输入分类"
+          >
             <el-option v-for="cat in categories" :key="cat.id" :value="cat.id" :label="cat.title" />
           </el-select>
         </div>
