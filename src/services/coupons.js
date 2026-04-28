@@ -1,5 +1,7 @@
 import { buildDashboardApiUrl, getDashboardApiHeaders, requestDashboardApi } from './api'
 
+const AMOUNT_COUPON_TYPE = 1
+
 export function createEmptyCouponsPagination() {
   return { page: 1, pageSize: 15, total: 0 }
 }
@@ -29,26 +31,21 @@ function normalizeCoupon(raw) {
 
 export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {} } = {}) {
   const queryEntries = [
-    ['page', page],
-    ['page_size', pageSize],
+    ['current', page],
+    ['pageSize', pageSize],
   ]
   if (filters.keyword) {
-    queryEntries.push(['filter[0][key]', 'keyword'])
+    queryEntries.push(['filter[0][id]', 'name'])
     queryEntries.push(['filter[0][value]', filters.keyword])
   }
   const apiUrl = buildDashboardApiUrl('coupon/fetch', queryEntries)
   const payload = await requestDashboardApi(apiUrl)
-  console.log('[Coupons] API response structure:', JSON.stringify({
-    dataKeys: payload?.data ? Object.keys(payload.data) : [],
-    dataTotal: payload?.data?.total,
-  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
   const total = Number(rawData?.total || payload?.total || listSource.length)
   const currentPage = Number(rawData?.current_page || payload?.current_page || page)
   const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
-  console.log('[Coupons] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(normalizeCoupon),
@@ -60,13 +57,38 @@ export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {
   }
 }
 
+function normalizeCouponValueForApi(type, value) {
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue)) {
+    return 0
+  }
+
+  if (Number(type) === AMOUNT_COUPON_TYPE) {
+    return Math.round(numberValue * 100)
+  }
+
+  return Math.round(numberValue)
+}
+
+function getResponseErrorMessage(result, fallback) {
+  if (typeof result?.message === 'string' && result.message) {
+    return result.message
+  }
+
+  const firstError = Object.values(result?.errors || {})
+    .flat()
+    .find(Boolean)
+
+  return firstError || fallback
+}
+
 export async function generateCoupons(formData) {
-  const endpoint = formData.id ? 'coupon/save' : 'coupon/generate'
-  const apiUrl = buildDashboardApiUrl(endpoint)
+  const apiUrl = buildDashboardApiUrl('coupon/generate')
   const body = {
     name: formData.name,
     type: formData.type,
-    value: formData.value,
+    value: normalizeCouponValueForApi(formData.type, formData.value),
     limit_use: formData.limitUse || null,
     limit_use_with_user: formData.limitUseWithUser || null,
     limit_plan_ids: formData.limitPlanIds || [],
@@ -77,7 +99,7 @@ export async function generateCoupons(formData) {
   if (formData.id) {
     body.id = formData.id
   }
-  if (formData.code) {
+  if (formData.code && !formData.generateCount) {
     body.code = formData.code
   }
   if (!formData.id && formData.generateCount) {
@@ -92,11 +114,18 @@ export async function generateCoupons(formData) {
     body: JSON.stringify(body),
   })
 
+  const result = await response.json().catch(() => null)
+
   if (!response.ok) {
-    throw new Error(`${formData.id ? '保存' : '生成'}优惠券失败 (${response.status})`)
+    const actionText = formData.id ? '保存' : '生成'
+    throw new Error(getResponseErrorMessage(result, `${actionText}优惠券失败 (${response.status})`))
   }
 
-  return response.json()
+  if (result?.code !== undefined && Number(result.code) !== 0) {
+    throw new Error(result.message || `${formData.id ? '保存' : '生成'}优惠券失败`)
+  }
+
+  return result
 }
 
 export async function deleteCoupon(id) {
