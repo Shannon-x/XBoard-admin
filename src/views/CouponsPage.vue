@@ -25,8 +25,15 @@ const PERIOD_OPTIONS = Object.entries(PERIOD_LABELS).map(([value, label]) => ({ 
 const couponTypeOptions = [
   { value: 1, label: '按金额优惠' },
   { value: 2, label: '按比例优惠' },
-  { value: 3, label: '重置流量' },
 ]
+
+const couponTypeLabels = {
+  1: '按金额优惠',
+  2: '按比例优惠',
+  3: '重置流量',
+}
+
+const supportedCouponTypes = couponTypeOptions.map(option => option.value)
 
 const defaultForm = () => ({
   id: null,
@@ -48,6 +55,16 @@ function valueSuffix() {
   if (form.type === 1) return '¥'
   if (form.type === 2) return '%'
   return ''
+}
+
+function valuePlaceholder() {
+  if (form.type === 1) return '请输入金额，如 8.88'
+  if (form.type === 2) return '请输入整数比例，如 10'
+  return '0'
+}
+
+function valueStep() {
+  return form.type === 1 ? '0.01' : '1'
 }
 
 async function loadAll() {
@@ -89,12 +106,17 @@ function openCreateDialog() {
 }
 
 function openEditDialog(coupon) {
+  if (!supportedCouponTypes.includes(Number(coupon.type))) {
+    ElMessage.warning('当前后端不支持编辑该优惠券类型')
+    return
+  }
+
   dialogMode.value = 'edit'
   form.id = coupon.id
   form.name = coupon.name
   form.code = coupon.code
   form.type = coupon.type
-  form.value = coupon.value
+  form.value = coupon.type === 1 ? Number((coupon.value / 100).toFixed(2)) : coupon.value
   form.generateCount = 1
   form.limitUse = coupon.limitUse
   form.limitUseWithUser = coupon.limitUseWithUser
@@ -108,14 +130,83 @@ function openEditDialog(coupon) {
   dialogVisible.value = true
 }
 
+function validateCouponForm() {
+  const name = String(form.name || '').trim()
+  const code = String(form.code || '').trim()
+  const value = Number(form.value)
+  const generateCount = Number(form.generateCount || 1)
+  const limitUse = form.limitUse === null || form.limitUse === '' ? null : Number(form.limitUse)
+  const limitUseWithUser = form.limitUseWithUser === null || form.limitUseWithUser === '' ? null : Number(form.limitUseWithUser)
+
+  if (!name) {
+    ElMessage.warning('请输入优惠券名称')
+    return false
+  }
+
+  if (!supportedCouponTypes.includes(Number(form.type))) {
+    ElMessage.warning('请选择后端支持的优惠券类型')
+    return false
+  }
+
+  if (!Number.isFinite(value) || value <= 0) {
+    ElMessage.warning('请输入有效的优惠金额或比例')
+    return false
+  }
+
+  if (form.type === 2 && !Number.isInteger(value)) {
+    ElMessage.warning('比例优惠必须填写整数')
+    return false
+  }
+
+  if (!Array.isArray(form.dateRange) || !form.dateRange[0] || !form.dateRange[1]) {
+    ElMessage.warning('请选择优惠券有效期')
+    return false
+  }
+
+  const startedAt = new Date(form.dateRange[0]).getTime()
+  const endedAt = new Date(form.dateRange[1]).getTime()
+  if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt <= startedAt) {
+    ElMessage.warning('优惠券结束时间必须晚于开始时间')
+    return false
+  }
+
+  if (dialogMode.value === 'create') {
+    if (!Number.isInteger(generateCount) || generateCount < 1 || generateCount > 500) {
+      ElMessage.warning('批量生成数量必须是 1 到 500 的整数')
+      return false
+    }
+
+    if (generateCount > 1 && code) {
+      ElMessage.warning('批量生成时不能填写自定义优惠码')
+      return false
+    }
+  }
+
+  if (limitUse !== null && (!Number.isInteger(limitUse) || limitUse < 1)) {
+    ElMessage.warning('最大使用次数必须是正整数')
+    return false
+  }
+
+  if (limitUseWithUser !== null && (!Number.isInteger(limitUseWithUser) || limitUseWithUser < 1)) {
+    ElMessage.warning('每个用户可使用次数必须是正整数')
+    return false
+  }
+
+  return true
+}
+
 async function handleSave() {
+  if (!validateCouponForm()) {
+    return
+  }
+
   const payload = {
     id: form.id || undefined,
-    name: form.name,
+    name: form.name.trim(),
     type: form.type,
     value: form.value,
     generateCount: (!form.id && form.generateCount > 1) ? form.generateCount : undefined,
-    code: form.code || undefined,
+    code: form.code.trim() || undefined,
     limitUse: form.limitUse || null,
     limitUseWithUser: form.limitUseWithUser || null,
     limitPlanIds: Array.isArray(form.limitPlanIds) ? form.limitPlanIds : [],
@@ -167,7 +258,7 @@ function handleSearch() {
 }
 
 function formatCouponType(type) {
-  return couponTypeOptions.find(o => o.value === type)?.label || '未知'
+  return couponTypeLabels[type] || '未知'
 }
 
 function formatCouponValue(coupon) {
@@ -200,7 +291,7 @@ onMounted(loadAll)
         <el-input
           v-model="filters.keyword"
           clearable
-          placeholder="搜索优惠券名称或代码"
+          placeholder="搜索优惠券名称"
           style="max-width: 320px;"
           @keyup.enter="handleSearch"
           @clear="handleSearch"
@@ -246,10 +337,10 @@ onMounted(loadAll)
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="openEditDialog(row)">
-              <el-icon><Edit /></el-icon>
+              <el-icon><Pencil /></el-icon>
             </el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>
+              <el-icon><Trash2 /></el-icon>
             </el-button>
           </template>
         </el-table-column>
@@ -279,8 +370,12 @@ onMounted(loadAll)
         </el-form-item>
 
         <el-form-item label="自定义优惠码">
-          <el-input v-model="form.code" placeholder="自定义优惠码，留空则自动生成" />
-          <div class="form-help-text">可以自定义优惠码，留空系统自动生成</div>
+          <el-input
+            v-model="form.code"
+            :disabled="dialogMode === 'create' && form.generateCount > 1"
+            placeholder="自定义优惠码，留空则自动生成"
+          />
+          <div class="form-help-text">批量生成多个优惠码时由系统自动生成券码</div>
         </el-form-item>
 
         <el-form-item label="优惠券类型和值">
@@ -288,7 +383,13 @@ onMounted(loadAll)
             <el-select v-model="form.type" style="width: 160px;">
               <el-option v-for="opt in couponTypeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
             </el-select>
-            <el-input v-model.number="form.value" placeholder="0" style="flex: 1;">
+            <el-input
+              v-model.number="form.value"
+              type="number"
+              :placeholder="valuePlaceholder()"
+              :step="valueStep()"
+              style="flex: 1;"
+            >
               <template #suffix>{{ valueSuffix() }}</template>
             </el-input>
           </div>
@@ -303,6 +404,7 @@ onMounted(loadAll)
             end-placeholder="结束时间"
             style="width: 100%;"
           />
+          <div class="form-help-text">后端要求开始和结束时间必填</div>
         </el-form-item>
 
         <el-form-item label="最大使用次数">
