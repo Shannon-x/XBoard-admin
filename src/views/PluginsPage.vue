@@ -717,7 +717,7 @@ onMounted(function initializePluginsPage() {
     border-radius: 16px;
     border: 1px solid var(--el-border-color-lighter);
     background: var(--el-bg-color);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 10px 24px rgba(42, 37, 32, 0.06);
     display: grid;
     gap: 12px;
 }
