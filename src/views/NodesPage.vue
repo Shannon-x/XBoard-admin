@@ -1598,12 +1598,12 @@ onUnmounted(function clearDebounceOnUnmount() {
 
 .node-table :deep(.el-table__body-wrapper td) {
     background: #ffffff;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    border-bottom: 1px solid rgba(42, 37, 32, 0.06);
     transition: background 0.2s ease;
 }
 
 .node-table :deep(.el-table__row:hover > td) {
-    background: rgba(15, 23, 42, 0.04) !important;
+    background: rgba(42, 37, 32, 0.04) !important;
 }
 
 .node-table :deep(.el-table__body tr.current-row > td) {
@@ -1653,9 +1653,9 @@ onUnmounted(function clearDebounceOnUnmount() {
     --el-pagination-text-color: var(--muted);
     --el-pagination-button-color: var(--text);
     --el-pagination-button-bg-color: #ffffff;
-    --el-pagination-button-disabled-bg-color: rgba(15, 23, 42, 0.06);
+    --el-pagination-button-disabled-bg-color: rgba(42, 37, 32, 0.06);
     --el-pagination-button-disabled-color: rgba(148, 163, 184, 0.7);
-    --el-pagination-hover-color: #2563eb;
+    --el-pagination-hover-color: #c94f2e;
     --el-pagination-font-size: 13px;
 }
 
@@ -1686,7 +1686,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 .node-pagination :deep(.number.is-active) {
     background: rgba(37, 99, 235, 0.12);
     border-color: rgba(37, 99, 235, 0.28);
-    color: #1d4ed8;
+    color: #a83d20;
 }
 
 .node-pagination :deep(.el-pagination__total),
@@ -1735,7 +1735,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 .node-type-tag.node-type-tag--trojan {
     background: #f6b24a;
     border-color: #e39a2f;
-    color: #1f2937;
+    color: #3a342f;
 }
 
 .node-type-tag.node-type-tag--vmess {
@@ -1752,13 +1752,13 @@ onUnmounted(function clearDebounceOnUnmount() {
 
 .node-type-tag.node-type-tag--vless {
     background: #111827;
-    border-color: #0f172a;
+    border-color: #2a2520;
     color: #ffffff;
 }
 
 .node-type-tag.node-type-tag--fbnode {
-    background: #2563eb;
-    border-color: #1d4ed8;
+    background: #c94f2e;
+    border-color: #a83d20;
     color: #ffffff;
 }
 
@@ -1813,7 +1813,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 .node-tags :deep(.el-tag) {
     border-color: rgba(37, 99, 235, 0.2);
     background: rgba(37, 99, 235, 0.12);
-    color: #1d4ed8;
+    color: #a83d20;
 }
 
 .node-table :deep(.el-tag--dark.el-tag--success) {
@@ -1841,7 +1841,7 @@ onUnmounted(function clearDebounceOnUnmount() {
     padding: 6px 8px;
     min-height: 32px;
     border-radius: 10px;
-    color: #1f2937;
+    color: #3a342f;
 }
 
 :global(.node-action-menu .node-protocol-item) {
@@ -1870,7 +1870,7 @@ onUnmounted(function clearDebounceOnUnmount() {
 }
 
 :global(.node-action-menu .el-dropdown-menu__item:hover .el-icon) {
-    color: #1d4ed8;
+    color: #a83d20;
 }
 
 :global(.node-action-menu .el-dropdown-menu__item.is-disabled) {
@@ -1939,7 +1939,7 @@ onUnmounted(function clearDebounceOnUnmount() {
     border-radius: 10px;
     border: 1px solid rgba(37, 99, 235, 0.28);
     background: rgba(37, 99, 235, 0.08);
-    color: #1d4ed8;
+    color: #a83d20;
     font-weight: 600;
     letter-spacing: 1px;
 }
