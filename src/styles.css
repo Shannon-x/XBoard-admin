@@ -86,7 +86,6 @@ h1, h2, h3,
 .topbar h1,
 .hero-copy h2,
 .section-head h3,
-.metric-value,
 .page-title,
 .editorial-title {
     font-family: var(--serif-family);
@@ -3619,10 +3618,11 @@ button {
 /* Data numbers — prominent display */
 .metric-value,
 .metric-split-value__number {
-    font-family: "Inter", "Fira Code", monospace;
+    font-family: "Inter", "Noto Sans SC", "Fira Code", -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 700;
     font-size: 28px;
     letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Table cell tightening */
@@ -3725,13 +3725,22 @@ html {
 
 .el-tag {
     border-radius: var(--radius-pill) !important;
-    padding: 0 12px;
+    padding: 0 10px;
     font-weight: 500;
     border-color: transparent;
     background: var(--primary-tag);
     color: var(--primary-strong);
 }
 
+.el-tag--small {
+    padding: 0 8px;
+}
+
+.el-tag--large {
+    padding: 0 14px;
+}
+
+/* light effect (default) — soft tinted chip */
 .el-tag--info {
     background: rgba(42, 37, 32, 0.06);
     color: #5a544f;
@@ -3750,6 +3759,69 @@ html {
 .el-tag--danger {
     background: rgba(201, 79, 46, 0.14);
     color: var(--primary-strong);
+}
+
+/* plain effect — outlined, used for inactive filter chips */
+.el-tag.el-tag--plain {
+    background: transparent;
+    border-color: var(--line-strong);
+    color: var(--muted);
+}
+
+.el-tag.el-tag--plain:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.el-tag.el-tag--plain.el-tag--info {
+    border-color: rgba(42, 37, 32, 0.2);
+    color: #7a7470;
+}
+
+.el-tag.el-tag--plain.el-tag--success {
+    border-color: rgba(107, 143, 94, 0.45);
+    color: #4f6f44;
+}
+
+.el-tag.el-tag--plain.el-tag--warning {
+    border-color: rgba(217, 156, 92, 0.5);
+    color: #8c5e2d;
+}
+
+.el-tag.el-tag--plain.el-tag--danger {
+    border-color: rgba(201, 79, 46, 0.45);
+    color: var(--primary-strong);
+}
+
+/* dark effect — solid filled, used for active filter chips and status badges */
+.el-tag.el-tag--dark {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.el-tag.el-tag--dark.el-tag--info {
+    background: #5a544f;
+    border-color: #5a544f;
+    color: #ffffff;
+}
+
+.el-tag.el-tag--dark.el-tag--success {
+    background: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+}
+
+.el-tag.el-tag--dark.el-tag--warning {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: #ffffff;
+}
+
+.el-tag.el-tag--dark.el-tag--danger {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
 }
 
 .el-card {
