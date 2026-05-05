@@ -6,6 +6,7 @@ import SectionCard from '../components/common/SectionCard.vue'
 import SortDialog from '../components/common/SortDialog.vue'
 import {
   fetchKnowledgeArticles,
+  fetchKnowledgeArticle,
   fetchKnowledgeCategories,
   saveKnowledgeArticle,
   toggleKnowledgeShow,
@@ -76,7 +77,7 @@ function openCreateDialog() {
   dialogVisible.value = true
 }
 
-function openEditDialog(article) {
+async function openEditDialog(article) {
   dialogMode.value = 'edit'
   Object.assign(form, {
     id: article.id,
@@ -88,6 +89,20 @@ function openEditDialog(article) {
     sort: article.sort,
   })
   dialogVisible.value = true
+
+  try {
+    const detail = await fetchKnowledgeArticle(article.id)
+    if (detail && form.id === article.id) {
+      form.title = detail.title || form.title
+      form.categoryId = detail.categoryId || form.categoryId
+      form.body = detail.body ?? form.body
+      form.language = detail.language || form.language
+      form.show = typeof detail.show === 'boolean' ? detail.show : form.show
+      form.sort = detail.sort ?? form.sort
+    }
+  } catch (err) {
+    ElMessage.error(err.message || '加载文章详情失败')
+  }
 }
 
 async function handleSave() {
