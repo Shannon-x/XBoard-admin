@@ -50,6 +50,14 @@ export async function fetchKnowledgeArticles() {
   return list.map(normalizeArticle)
 }
 
+export async function fetchKnowledgeArticle(id) {
+  const apiUrl = buildDashboardApiUrl('knowledge/fetch', [['id', id]])
+  const payload = await requestDashboardApi(apiUrl)
+  const data = payload?.data
+  const raw = Array.isArray(data) ? data[0] : data
+  return raw ? normalizeArticle(raw) : null
+}
+
 export async function fetchKnowledgeCategories() {
   const apiUrl = buildDashboardApiUrl('knowledge/getCategory')
   const payload = await requestDashboardApi(apiUrl)
