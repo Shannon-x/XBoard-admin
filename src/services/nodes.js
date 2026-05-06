@@ -264,6 +264,7 @@ function normalizeManagedNode(node, index) {
     type: String(node.type || "--").toUpperCase(),
     show: resolveNodeShow(node),
     host: node.host,
+    listen: node.listen || "0.0.0.0",
     port: node.port,
     serverPort: node.server_port,
     encryption: cipher || "aes-128-gcm",
@@ -623,6 +624,7 @@ export async function saveManagedNode(payload = {}) {
         })
       : [],
     host: String(payload.host || "").trim(),
+    listen: String(payload.listen || "").trim() || "0.0.0.0",
     port: String(payload.port || "").trim(),
     server_port: String(payload.serverPort || "").trim(),
     parent_id: String(payload.parentId || "0"),

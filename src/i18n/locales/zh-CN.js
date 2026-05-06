@@ -45,6 +45,14 @@ export default {
       title: '节点管理',
       eyebrow: '系统管理',
     },
+    nodeGroups: {
+      title: '权限组管理',
+      eyebrow: '节点管理',
+    },
+    nodeRoutes: {
+      title: '路由管理',
+      eyebrow: '节点管理',
+    },
     plugins: {
       title: '插件管理',
       eyebrow: '系统管理',
