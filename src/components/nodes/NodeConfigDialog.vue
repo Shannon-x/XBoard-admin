@@ -1041,7 +1041,7 @@ function handleSubmit() {
                 </el-select>
             </el-form-item>
 
-            <div class="node-config-form__row">
+            <div class="node-config-form__row node-config-form__row--half">
                 <el-form-item label="连接地址" class="node-config-form__item">
                     <el-input
                         v-model="form.host"
