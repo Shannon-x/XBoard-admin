@@ -47,12 +47,12 @@ const ROUTE_META_KEYS = {
     eyebrow: 'routes.nodes.eyebrow',
   },
   nodeGroups: {
-    title: '权限组管理',
-    eyebrow: '节点管理',
+    title: 'routes.nodeGroups.title',
+    eyebrow: 'routes.nodeGroups.eyebrow',
   },
   nodeRoutes: {
-    title: '路由管理',
-    eyebrow: '节点管理',
+    title: 'routes.nodeRoutes.title',
+    eyebrow: 'routes.nodeRoutes.eyebrow',
   },
   plugins: {
     title: 'routes.plugins.title',

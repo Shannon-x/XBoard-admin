@@ -954,12 +954,13 @@ async function handleNodeDialogSubmit(payload) {
                       ips: [],
                       groupIds: Array.isArray(payload.groupIds) ? payload.groupIds : [],
                       host: payload.host,
+                      listen: payload.listen || "0.0.0.0",
                       port: payload.port,
                       serverPort: payload.serverPort,
                       parentId: payload.parentId || "0",
                       routeIds: selectedRouteIds,
                       protocolSettings,
-                      certConfig: (protocolType === "hysteria" || (protocolType === "anytls" && String(payload.anytlsSecurity || "tls") === "tls"))
+                      certConfig: (protocolType === "hysteria" || (protocolType === "anytls" && String(payload.anytlsSecurity || "tls") === "tls") || (protocolType === "vless" && String(payload.vlessSecurity || "") === "tls"))
                           ? {
                                 cert_mode: String(payload.certMode || "selfSign"),
                                 fingerprint: String(payload.certFingerprint || "chrome"),

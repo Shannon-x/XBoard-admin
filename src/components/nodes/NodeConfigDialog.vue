@@ -385,6 +385,7 @@ function createDefaultForm() {
         tags: [],
         groupIds: [],
         host: "",
+        listen: "0.0.0.0",
         port: "",
         serverPort: "",
         vlessSecurity: "none",
@@ -561,6 +562,7 @@ function createFormFromNode(node) {
               })
             : [],
         host: node.host || "",
+        listen: node.listen || "0.0.0.0",
         port: normalizePortOrRangeValue(node.port),
         serverPort: normalizePortValue(node.serverPort),
         vlessSecurity: node.vlessSecurity || "none",
@@ -828,6 +830,7 @@ function handleSubmit() {
         tags: [...form.tags],
         groupIds: [...form.groupIds],
         host: String(form.host || "").trim(),
+        listen: String(form.listen || "").trim() || "0.0.0.0",
         port: String(form.port || "").trim(),
         serverPort: String(form.serverPort || "").trim(),
         encryption: form.encryption,
@@ -1038,12 +1041,20 @@ function handleSubmit() {
                 </el-select>
             </el-form-item>
 
-            <el-form-item label="节点地址" class="node-config-form__item">
-                <el-input
-                    v-model="form.host"
-                    placeholder="请输入节点域名或者 IP"
-                />
-            </el-form-item>
+            <div class="node-config-form__row">
+                <el-form-item label="连接地址" class="node-config-form__item">
+                    <el-input
+                        v-model="form.host"
+                        placeholder="地址或 IP"
+                    />
+                </el-form-item>
+                <el-form-item label="监听地址" class="node-config-form__item">
+                    <el-input
+                        v-model="form.listen"
+                        placeholder="地址或 IP，默认为 0.0.0.0"
+                    />
+                </el-form-item>
+            </div>
 
             <div class="node-config-form__row">
                 <el-form-item label="连接端口" class="node-config-form__item">
@@ -1145,15 +1156,35 @@ function handleSubmit() {
                 </el-select>
             </el-form-item>
 
-            <el-form-item v-if="isVlessProtocol" label="安全性" class="node-config-form__item">
-                <el-select v-model="form.vlessSecurity" placeholder="选择安全性">
-                    <el-option
-                        v-for="option in vlessSecurityOptions"
-                        :key="option.value"
-                        :label="option.label"
-                        :value="option.value"
-                    />
-                </el-select>
+            <el-form-item v-if="isVlessProtocol" label="" class="node-config-form__item node-config-form__item--no-label">
+                <div class="node-config-form__inline-field-group">
+                    <div class="node-config-form__inline-field-labels">
+                        <span>节点协议</span>
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            安全性
+                            <el-button
+                                v-if="form.vlessSecurity === 'tls'"
+                                link
+                                type="primary"
+                                size="small"
+                                @click="certConfigDialogVisible = true"
+                            >编辑配置</el-button>
+                        </span>
+                    </div>
+                    <div class="node-config-form__inline-fields">
+                        <el-select model-value="VLESS" disabled>
+                            <el-option label="VLESS" value="VLESS" />
+                        </el-select>
+                        <el-select v-model="form.vlessSecurity" placeholder="选择安全性">
+                            <el-option
+                                v-for="option in vlessSecurityOptions"
+                                :key="option.value"
+                                :label="option.label"
+                                :value="option.value"
+                            />
+                        </el-select>
+                    </div>
+                </div>
             </el-form-item>
 
             <el-form-item v-if="isAnytlsProtocol" label="" class="node-config-form__item node-config-form__item--no-label">

@@ -223,13 +223,15 @@ onMounted(function onMount() {
     userEmailDisplay.value = String(route.query.user_email)
   }
   loadOrders()
-  fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
+  fetchManagedPlans()
+    .then(list => { plans.value = list })
+    .catch(err => { console.warn('[OrdersPage] 加载订阅计划失败', err) })
   fetchPayments().then(list => {
     const map = {}
     list.forEach(p => { map[p.id] = p.name })
     paymentMap.value = map
     paymentOptions.value = list.map(p => ({ label: p.name, value: String(p.id) }))
-  }).catch(() => {})
+  }).catch(err => { console.warn('[OrdersPage] 加载支付方式失败', err) })
 })
 </script>
 

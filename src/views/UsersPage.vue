@@ -363,14 +363,14 @@ function handleAssignOrder(user) {
   assignForm.value = {
     email: user.email,
     planId: null,
-    period: '',
+    period: 'month_price',
     totalAmount: 0,
   }
   assignDialogVisible.value = true
 }
 
 function onAssignPlanChange() {
-  assignForm.value.period = ''
+  assignForm.value.period = 'month_price'
   assignForm.value.totalAmount = 0
 }
 
@@ -388,7 +388,10 @@ async function submitAssignOrder() {
   }
   assignSaving.value = true
   try {
-    await assignOrder(assignForm.value)
+    await assignOrder({
+      ...assignForm.value,
+      totalAmount: Math.round(Number(assignForm.value.totalAmount) * 100),
+    })
     ElMessage.success('订单已分配')
     assignDialogVisible.value = false
   } catch (err) {
@@ -546,7 +549,9 @@ async function submitSendMail() {
 
 onMounted(function onMount() {
   loadUsers()
-  fetchManagedPlans().then(list => { plans.value = list }).catch(() => {})
+  fetchManagedPlans()
+    .then(list => { plans.value = list })
+    .catch(err => { console.warn('[UsersPage] 加载订阅计划失败', err) })
 })
 </script>
 
