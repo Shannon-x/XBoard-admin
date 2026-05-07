@@ -378,6 +378,7 @@ button {
     padding: 22px;
     position: relative;
     z-index: 1;
+    min-width: 0;
 }
 
 .app-shell {
@@ -511,6 +512,12 @@ button {
 
 .main-panel.el-main {
     --el-main-padding: 20px;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.main-panel.el-main .page-stack {
+    min-width: 0;
 }
 
 .plugin-overview {
