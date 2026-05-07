@@ -1288,7 +1288,7 @@ function handleSubmit() {
             </el-form-item>
 
             <div
-                v-if="isTuicProtocol || isTrojanProtocol || (isVmessProtocol && form.tls === 'tls') || (isVlessProtocol && form.vlessSecurity === 'tls') || (isAnytlsProtocol && form.anytlsSecurity === 'tls')"
+                v-if="isTuicProtocol || isTrojanProtocol || (isVmessProtocol && form.tls === 'tls')"
                 class="node-config-form__row node-config-form__row--narrow"
             >
                 <el-form-item
