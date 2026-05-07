@@ -1733,82 +1733,84 @@ onUnmounted(function clearDebounceOnUnmount() {
         border-color 0.2s ease;
 }
 
+/* Protocol colors – use !important to win over the global
+   .el-tag.el-tag--dark.el-tag--info humanism override (3 classes). */
 .node-type-tag.node-type-tag--shadowsocks {
-    background: #37b24d;
-    border-color: #2f9e44;
-    color: #ffffff;
+    background: #37b24d !important;
+    border-color: #2f9e44 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--trojan {
-    background: #f6b24a;
-    border-color: #e39a2f;
-    color: #3a342f;
+    background: #f6b24a !important;
+    border-color: #e39a2f !important;
+    color: #3a342f !important;
 }
 
 .node-type-tag.node-type-tag--vmess {
-    background: #d94884;
-    border-color: #c63d77;
-    color: #ffffff;
+    background: #d94884 !important;
+    border-color: #c63d77 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--hysteria {
-    background: #5d77f3;
-    border-color: #4c67e6;
-    color: #ffffff;
+    background: #5d77f3 !important;
+    border-color: #4c67e6 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--vless {
-    background: #111827;
-    border-color: #2a2520;
-    color: #ffffff;
+    background: #111827 !important;
+    border-color: #2a2520 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--fbnode {
-    background: #c94f2e;
-    border-color: #a83d20;
-    color: #ffffff;
+    background: #c94f2e !important;
+    border-color: #a83d20 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--socks {
-    background: #2f8cff;
-    border-color: #2677e6;
-    color: #ffffff;
+    background: #2f8cff !important;
+    border-color: #2677e6 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--naive {
-    background: #8b3fd1;
-    border-color: #7a36ba;
-    color: #ffffff;
+    background: #8b3fd1 !important;
+    border-color: #7a36ba !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--http {
-    background: #ff6b2c;
-    border-color: #e35c26;
-    color: #ffffff;
+    background: #ff6b2c !important;
+    border-color: #e35c26 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--anytls {
-    background: #7b5bd6;
-    border-color: #6d4fc4;
-    color: #ffffff;
+    background: #7b5bd6 !important;
+    border-color: #6d4fc4 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--mieru {
-    background: #69b34c;
-    border-color: #5aa142;
-    color: #ffffff;
+    background: #69b34c !important;
+    border-color: #5aa142 !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--tuic {
-    background: #18c964;
-    border-color: #14b35a;
-    color: #ffffff;
+    background: #18c964 !important;
+    border-color: #14b35a !important;
+    color: #ffffff !important;
 }
 
 .node-type-tag.node-type-tag--default {
-    background: rgba(71, 85, 105, 0.12);
-    border-color: rgba(100, 116, 139, 0.22);
-    color: #334155;
+    background: rgba(71, 85, 105, 0.12) !important;
+    border-color: rgba(100, 116, 139, 0.22) !important;
+    color: #334155 !important;
 }
 
 .node-tags {
