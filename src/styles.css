@@ -3044,9 +3044,9 @@ body.is-sidebar-resizing * {
         padding: 14px;
     }
 
-    .metric-value,
-    .metric-split-value__number {
+    .metric-value {
         font-size: 22px;
+        margin-top: 12px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -3056,10 +3056,8 @@ body.is-sidebar-resizing * {
         font-size: 18px;
     }
 
-    .metric-value {
-        margin-top: 12px;
-    }
-
+    /* Split-value cards have ~half a card-width per number, so the value font
+       must be smaller than .metric-value to fit strings like "112.9 TB". */
     .metric-split-value {
         gap: 10px;
         margin-top: 10px;
@@ -3067,6 +3065,13 @@ body.is-sidebar-resizing * {
 
     .metric-split-value__item:first-child {
         padding-right: 8px;
+    }
+
+    .metric-split-value__number {
+        font-size: 18px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .metric-split-value__label {
@@ -3086,6 +3091,26 @@ body.is-sidebar-resizing * {
 
     .metric-label {
         font-size: 12px;
+    }
+}
+
+/* Narrower laptops / split metric cards still cramped: stack the two halves
+   vertically so each number gets the full card width. */
+@media (max-width: 1380px) {
+    .metric-split-value {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .metric-split-value__item:first-child {
+        padding-right: 0;
+        padding-bottom: 6px;
+        border-right: 0;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .metric-split-value__number {
+        font-size: 20px;
     }
 }
 
@@ -3699,10 +3724,16 @@ body.is-sidebar-resizing * {
    PHASE 4: Typography Enhancements
    ====================================================================== */
 
-/* Data numbers — prominent display */
+/* Data numbers — prominent display.
+   System fonts come first so numbers render consistently even when the
+   Google Fonts Inter / Noto Sans SC stylesheets fail to load (e.g. behind
+   a restrictive network). On macOS this resolves to SF Pro Display, which
+   ships with the OS and provides stable tabular numerals. */
 .metric-value,
 .metric-split-value__number {
-    font-family: "Inter", "Noto Sans SC", "Fira Code", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+        "Helvetica Neue", "Inter", "Noto Sans SC", "Segoe UI", Arial,
+        sans-serif;
     font-weight: 700;
     font-size: 28px;
     letter-spacing: -0.02em;
