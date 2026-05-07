@@ -4025,6 +4025,44 @@ html {
     background: transparent;
 }
 
+/* ── el-table sticky (fixed="left"/"right") column overlay fix ──
+   In Element Plus 2.11 the fixed columns use position: sticky and depend
+   on an opaque cell background to mask the scrolling cells underneath.
+   The humanism overrides set the table background to transparent, so the
+   sticky cells were see-through during horizontal scroll, which made the
+   action column overlap with the cells beside it on the Plans page.
+   Force an opaque background on the sticky cells in every row state and
+   raise their z-index so the underlying cells stay hidden. */
+.el-table .el-table-fixed-column--right,
+.el-table .el-table-fixed-column--left {
+    background-color: var(--panel-raised, #ffffff);
+    z-index: 2;
+}
+
+.el-table--striped
+    .el-table__body
+    tr.el-table__row--striped
+    td.el-table-fixed-column--right,
+.el-table--striped
+    .el-table__body
+    tr.el-table__row--striped
+    td.el-table-fixed-column--left {
+    background-color: #fbf5ef;
+}
+
+.el-table .el-table__body tr:hover > td.el-table-fixed-column--right,
+.el-table .el-table__body tr:hover > td.el-table-fixed-column--left {
+    background-color: #f6e6db;
+}
+
+.el-table .el-table__header-wrapper th.el-table-fixed-column--right,
+.el-table .el-table__header-wrapper th.el-table-fixed-column--left,
+.el-table thead th.el-table-fixed-column--right,
+.el-table thead th.el-table-fixed-column--left {
+    background-color: #f1eae3;
+    z-index: 3;
+}
+
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
