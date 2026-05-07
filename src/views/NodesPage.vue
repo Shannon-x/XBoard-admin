@@ -1523,15 +1523,21 @@ onUnmounted(function clearDebounceOnUnmount() {
 
 .node-toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 14px;
 }
 .node-toolbar > * {
-    flex: 1;
+    flex: 1 1 180px;
+    min-width: 0;
 }
 .node-toolbar > .toolbar__btn-sort,
 .node-toolbar > .toolbar__btn-add {
     flex: none;
+}
+
+.node-toolbar > .node-id-search {
+    flex: 0 0 120px;
 }
 
 .node-online {
@@ -1809,12 +1815,30 @@ onUnmounted(function clearDebounceOnUnmount() {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    max-height: 96px;
+    overflow-y: auto;
+    padding-right: 2px;
+    align-content: flex-start;
+}
+
+.node-tags::-webkit-scrollbar {
+    width: 6px;
+}
+
+.node-tags::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: rgba(148, 163, 184, 0.4);
 }
 
 .node-tags :deep(.el-tag) {
+    flex: 0 0 auto;
+    max-width: 100%;
     border-color: rgba(37, 99, 235, 0.2);
     background: rgba(37, 99, 235, 0.12);
     color: #a83d20;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .node-table :deep(.el-tag--dark.el-tag--success) {
@@ -1972,26 +1996,37 @@ onUnmounted(function clearDebounceOnUnmount() {
         align-items: flex-start;
     }
 
-    .node-toolbar {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .node-toolbar > * {
+        flex: 1 1 calc(50% - 6px);
     }
 
-    .node-toolbar--sub {
-        grid-template-columns: 1fr;
+    .node-toolbar > .node-id-search {
+        flex: 0 0 120px;
     }
 }
 
 @media (max-width: 900px) {
-    .node-toolbar {
-        grid-template-columns: 1fr;
+    .nodes-header__actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .nodes-header__actions > * {
+        flex: 1 1 auto;
+    }
+
+    .node-toolbar > * {
+        flex: 1 1 100%;
+    }
+
+    .node-toolbar > .node-id-search {
+        flex: 1 1 100%;
+        max-width: none;
     }
 
     .node-pagination {
-        grid-template-columns: 1fr;
         display: grid;
-    }
-
-    .node-pagination {
+        grid-template-columns: 1fr;
         justify-content: stretch;
     }
 
@@ -2003,6 +2038,25 @@ onUnmounted(function clearDebounceOnUnmount() {
 
     .node-pagination__summary strong {
         line-height: 1.5;
+    }
+
+    .node-tags {
+        max-height: 72px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nodes-page {
+        gap: 12px;
+    }
+
+    .node-toolbar {
+        gap: 8px;
+    }
+
+    .node-tags {
+        max-height: 64px;
+        gap: 4px;
     }
 }
 </style>
