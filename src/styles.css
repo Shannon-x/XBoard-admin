@@ -187,7 +187,7 @@ button {
 
 .app-shell {
     display: grid;
-    grid-template-columns: 288px 1fr;
+    grid-template-columns: var(--sidebar-width, 240px) 1fr;
     min-height: 100vh;
     position: relative;
     overflow: visible;
@@ -205,9 +205,32 @@ button {
     background: #f9fafb;
     overflow: visible;
     z-index: 10;
-    transition:
-        width 0.2s ease,
-        padding 0.2s ease;
+    transition: padding 0.2s ease;
+}
+
+.sidebar-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 11;
+    background: transparent;
+    transition: background 0.15s ease;
+    user-select: none;
+    touch-action: none;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.is-dragging {
+    background: rgba(37, 99, 235, 0.18);
+}
+
+body.is-sidebar-resizing,
+body.is-sidebar-resizing * {
+    cursor: col-resize !important;
+    user-select: none !important;
 }
 
 .sidebar.el-aside {
@@ -3010,6 +3033,60 @@ button {
 .switch-row .el-switch {
     --el-switch-on-color: var(--primary);
     --el-switch-off-color: rgba(42, 37, 32, 0.12);
+}
+
+@media (max-width: 1600px) {
+    .metric-grid {
+        gap: 14px;
+    }
+
+    .metric-card {
+        padding: 14px;
+    }
+
+    .metric-value,
+    .metric-split-value__number {
+        font-size: 22px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .metric-card--compact .metric-value {
+        font-size: 18px;
+    }
+
+    .metric-value {
+        margin-top: 12px;
+    }
+
+    .metric-split-value {
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .metric-split-value__item:first-child {
+        padding-right: 8px;
+    }
+
+    .metric-split-value__label {
+        font-size: 9px;
+        letter-spacing: 0.06em;
+    }
+
+    .metric-change {
+        margin-top: 6px;
+        font-size: 11px;
+    }
+
+    .metric-icon {
+        width: 22px;
+        height: 22px;
+    }
+
+    .metric-label {
+        font-size: 12px;
+    }
 }
 
 @media (max-width: 1180px) {

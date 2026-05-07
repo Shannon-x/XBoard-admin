@@ -27,6 +27,86 @@ const isMobile = ref(false);
 const isMobileNavOpen = ref(false);
 const isSidebarCollapsed = ref(false);
 
+const SIDEBAR_WIDTH_KEY = "xboard.sidebarWidth";
+const SIDEBAR_WIDTH_MIN = 200;
+const SIDEBAR_WIDTH_MAX = 360;
+const SIDEBAR_WIDTH_DEFAULT = 240;
+
+function readStoredSidebarWidth() {
+    try {
+        const stored = Number(window.localStorage.getItem(SIDEBAR_WIDTH_KEY));
+        if (Number.isFinite(stored) && stored >= SIDEBAR_WIDTH_MIN && stored <= SIDEBAR_WIDTH_MAX) {
+            return stored;
+        }
+    } catch (error) {
+        // ignore storage errors
+    }
+    return SIDEBAR_WIDTH_DEFAULT;
+}
+
+const sidebarWidth = ref(SIDEBAR_WIDTH_DEFAULT);
+const isResizingSidebar = ref(false);
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+
+const sidebarStyle = computed(function sidebarStyle() {
+    if (isMobile.value) {
+        return {};
+    }
+    return { "--sidebar-width": `${sidebarWidth.value}px` };
+});
+
+const sidebarPxWidth = computed(function sidebarPxWidth() {
+    if (isMobile.value) {
+        return undefined;
+    }
+    return `${sidebarWidth.value}px`;
+});
+
+function persistSidebarWidth(value) {
+    try {
+        window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(value));
+    } catch (error) {
+        // ignore storage errors
+    }
+}
+
+function clampSidebarWidth(value) {
+    return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(value)));
+}
+
+function handleSidebarResizeMove(event) {
+    if (!isResizingSidebar.value) {
+        return;
+    }
+    const delta = event.clientX - resizeStartX;
+    sidebarWidth.value = clampSidebarWidth(resizeStartWidth + delta);
+}
+
+function handleSidebarResizeEnd() {
+    if (!isResizingSidebar.value) {
+        return;
+    }
+    isResizingSidebar.value = false;
+    document.body.classList.remove("is-sidebar-resizing");
+    window.removeEventListener("pointermove", handleSidebarResizeMove);
+    window.removeEventListener("pointerup", handleSidebarResizeEnd);
+    persistSidebarWidth(sidebarWidth.value);
+}
+
+function startSidebarResize(event) {
+    if (isMobile.value || isSidebarCollapsed.value) {
+        return;
+    }
+    event.preventDefault();
+    isResizingSidebar.value = true;
+    resizeStartX = event.clientX;
+    resizeStartWidth = sidebarWidth.value;
+    document.body.classList.add("is-sidebar-resizing");
+    window.addEventListener("pointermove", handleSidebarResizeMove);
+    window.addEventListener("pointerup", handleSidebarResizeEnd);
+}
+
 function updateViewportMode() {
     const nextIsMobile = window.innerWidth <= 980;
 
@@ -165,6 +245,7 @@ function handleAccountCommand(command) {
 }
 
 onMounted(function attachResizeListener() {
+    sidebarWidth.value = readStoredSidebarWidth();
     updateViewportMode();
     adminStore.loadUserInfo();
     adminStore.loadSiteSettings("site");
@@ -173,6 +254,9 @@ onMounted(function attachResizeListener() {
 
 onUnmounted(function detachResizeListener() {
     window.removeEventListener("resize", updateViewportMode);
+    window.removeEventListener("pointermove", handleSidebarResizeMove);
+    window.removeEventListener("pointerup", handleSidebarResizeEnd);
+    document.body.classList.remove("is-sidebar-resizing");
 });
 </script>
 
@@ -183,9 +267,10 @@ onUnmounted(function detachResizeListener() {
             'is-mobile-nav-open': isMobileNavOpen,
             'is-sidebar-collapsed': isSidebarCollapsed,
         }"
+        :style="sidebarStyle"
     >
         <div class="sidebar-backdrop" @click="closeMobileNav"></div>
-        <el-aside class="sidebar" width="288px">
+        <el-aside class="sidebar" :width="sidebarPxWidth">
             <el-button
                 v-if="!isMobile"
                 class="sidebar-toggle"
@@ -246,6 +331,18 @@ onUnmounted(function detachResizeListener() {
                     </el-menu-item-group>
                 </el-menu>
             </el-scrollbar>
+
+            <div
+                v-if="!isMobile && !isSidebarCollapsed"
+                class="sidebar-resize-handle"
+                :class="{ 'is-dragging': isResizingSidebar }"
+                role="separator"
+                aria-orientation="vertical"
+                :aria-valuenow="sidebarWidth"
+                :aria-valuemin="200"
+                :aria-valuemax="360"
+                @pointerdown="startSidebarResize"
+            ></div>
         </el-aside>
 
         <el-main class="main-panel">

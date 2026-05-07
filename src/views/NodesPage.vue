@@ -1815,7 +1815,7 @@ onUnmounted(function clearDebounceOnUnmount() {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    max-height: 96px;
+    max-height: 168px;
     overflow-y: auto;
     padding-right: 2px;
     align-content: flex-start;
@@ -2041,7 +2041,7 @@ onUnmounted(function clearDebounceOnUnmount() {
     }
 
     .node-tags {
-        max-height: 72px;
+        max-height: 132px;
     }
 }
 
@@ -2055,7 +2055,7 @@ onUnmounted(function clearDebounceOnUnmount() {
     }
 
     .node-tags {
-        max-height: 64px;
+        max-height: 108px;
         gap: 4px;
     }
 }
