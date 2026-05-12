@@ -1,7 +1,8 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { RefreshCw, Eye } from 'lucide-vue-next'
+import { RefreshCw, Eye, Copy } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
 import SectionCard from '../components/common/SectionCard.vue'
 import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
 
@@ -144,15 +145,63 @@ function showJobDetail(job) {
   failedDetailVisible.value = true
 }
 
+async function copyToClipboard(text, successMessage = '已复制到剪贴板') {
+  if (!text) {
+    ElMessage.warning('没有可复制的内容')
+    return
+  }
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    ElMessage.success(successMessage)
+  } catch {
+    ElMessage.error('复制失败')
+  }
+}
+
+function buildJobDetailText(job) {
+  if (!job) return ''
+  const lines = [
+    `任务 ID: ${job.id || '--'}`,
+    `任务名称: ${getJobDisplayName(job)}`,
+    `队列: ${job.queue || '--'}`,
+    `连接: ${job.connection || '--'}`,
+    `失败时间: ${formatTime(job.failed_at)}`,
+    '',
+    '异常堆栈:',
+    job.exception || '无异常信息',
+  ]
+  return lines.join('\n')
+}
+
 // ===================== Helpers =====================
 
 function formatTime(ts) {
-  if (!ts) return '--'
-  if (typeof ts === 'string' && ts.includes('/')) return ts
-  if (typeof ts === 'string' && ts.includes('-')) return ts
-  const d = new Date(typeof ts === 'number' ? ts * 1000 : ts)
+  if (ts === null || ts === undefined || ts === '') return '--'
+  if (typeof ts === 'string') {
+    if (ts.includes('/') || ts.includes('-')) return ts
+    const num = Number(ts)
+    if (!Number.isNaN(num)) ts = num
+  }
+  if (typeof ts === 'number') {
+    const ms = ts < 1e12 ? ts * 1000 : ts
+    const d = new Date(ms)
+    if (Number.isNaN(d.getTime())) return String(ts)
+    return d.toLocaleString('zh-CN', { hour12: false })
+  }
+  const d = new Date(ts)
   if (Number.isNaN(d.getTime())) return String(ts)
-  return d.toLocaleString('zh-CN')
+  return d.toLocaleString('zh-CN', { hour12: false })
 }
 
 function actionTagType(action) {
@@ -241,7 +290,13 @@ onMounted(() => {
                       <tr><td class="detail-label">管理员</td><td class="detail-value">{{ row.adminEmail }} (ID: {{ row.adminId }})</td></tr>
                     </table>
                     <template v-if="row.requestData">
-                      <h4 style="margin:12px 0 8px;">请求数据</h4>
+                      <div class="stack-header" style="margin-top:12px;">
+                        <h4 style="margin:0;">请求数据</h4>
+                        <el-button
+                          :icon="Copy" link size="small" type="primary"
+                          @click="copyToClipboard(typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2), '已复制请求数据')"
+                        >复制</el-button>
+                      </div>
                       <pre class="log-stack-trace">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
                     </template>
                   </div>
@@ -272,7 +327,7 @@ onMounted(() => {
           <el-table :data="failedJobs" v-loading="failedLoading" class="dashboard-table" max-height="580">
             <el-table-column label="时间" width="170">
               <template #default="{ row }">
-                <span style="font-size:12px;">{{ row.failed_at || '--' }}</span>
+                <span style="font-size:12px;">{{ formatTime(row.failed_at) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="队列" width="140">
@@ -328,18 +383,28 @@ onMounted(() => {
             <el-tag size="small" type="info">{{ failedDetailJob.queue || '--' }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="失败时间">
-            {{ failedDetailJob.failed_at || '--' }}
+            {{ formatTime(failedDetailJob.failed_at) }}
           </el-descriptions-item>
           <el-descriptions-item label="连接">
             {{ failedDetailJob.connection || '--' }}
           </el-descriptions-item>
         </el-descriptions>
 
-        <h4 style="margin:0 0 8px;font-size:14px;">异常堆栈</h4>
+        <div class="stack-header">
+          <h4 style="margin:0;font-size:14px;">异常堆栈</h4>
+          <el-button
+            :icon="Copy" link size="small" type="primary"
+            @click="copyToClipboard(failedDetailJob.exception, '已复制异常堆栈')"
+          >复制堆栈</el-button>
+        </div>
         <pre class="log-stack-trace">{{ failedDetailJob.exception || '无异常信息' }}</pre>
       </template>
 
       <template #footer>
+        <el-button
+          :icon="Copy"
+          @click="copyToClipboard(buildJobDetailText(failedDetailJob), '已复制完整详情')"
+        >复制全部</el-button>
         <el-button :icon="RefreshCw" @click="loadFailedJobs">刷新</el-button>
         <el-button type="primary" @click="failedDetailVisible = false">关闭</el-button>
       </template>
@@ -374,6 +439,13 @@ onMounted(() => {
 
 .detail-value {
   padding: 4px 8px;
+}
+
+.stack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 8px;
 }
 
 .log-stack-trace {
