@@ -1330,21 +1330,24 @@ onUnmounted(function clearDebounceOnUnmount() {
 
                 <el-table-column
                     :label="t('nodes.table.address')"
-                    min-width="220"
+                    min-width="280"
                 >
                     <template #default="{ row }">
-                        <div class="node-name-cell">
-                            <strong
+                        <div class="node-address-cell">
+                            <strong class="node-address-text"
                                 >{{ row.host }}:{{ row.port }}({{
                                     row.serverPort
-                                }})<el-button
-                                    type="text"
-                                    @click="copyAddress(row)"
-                                >
-                                    <el-icon
-                                        ><Copy
-                                    /></el-icon> </el-button
-                            ></strong>
+                                }})</strong
+                            >
+                            <el-button
+                                class="node-address-copy"
+                                link
+                                type="primary"
+                                title="复制地址"
+                                @click="copyAddress(row)"
+                            >
+                                <el-icon><Copy /></el-icon>
+                            </el-button>
                         </div>
                     </template>
                 </el-table-column>
@@ -1709,6 +1712,27 @@ onUnmounted(function clearDebounceOnUnmount() {
 .node-name-cell strong {
     font-family: "Fira Code", monospace;
     color: var(--text);
+}
+
+.node-address-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.node-address-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: "Fira Code", monospace;
+    color: var(--text);
+    word-break: break-all;
+    line-height: 1.4;
+}
+
+.node-address-copy {
+    flex: 0 0 auto;
+    padding: 2px;
 }
 
 .node-name-cell span {
