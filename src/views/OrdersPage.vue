@@ -328,12 +328,33 @@ onMounted(function onMount() {
         <el-table-column label="类型" width="80" prop="typeText" />
         <el-table-column label="订阅计划" min-width="140" prop="planName" show-overflow-tooltip />
         <el-table-column label="周期" width="80" prop="periodText" />
-        <el-table-column label="支付金额" width="90">
-          <template #default="{ row }">{{ row.totalAmountText }}</template>
+        <el-table-column label="支付金额" width="110">
+          <template #default="{ row }">
+            <div class="order-amount-cell">
+              <span>{{ row.totalAmountText }}</span>
+              <span v-if="row.status === 4 && row.surplusAmount > 0" class="order-amount-note">
+                已折抵 ¥{{ row.surplusAmount.toFixed(2) }}
+              </span>
+              <span v-else-if="row.status === 4" class="order-amount-note">
+                已折抵
+              </span>
+              <span v-else-if="row.balanceAmount > 0" class="order-amount-note">
+                含余额 ¥{{ row.balanceAmount.toFixed(2) }}
+              </span>
+            </div>
+          </template>
         </el-table-column>
         <el-table-column label="订单状态" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
+            <el-tooltip
+              v-if="row.status === 4"
+              effect="dark"
+              placement="top"
+              :content="`该订单剩余价值${row.surplusAmount > 0 ? `（¥${row.surplusAmount.toFixed(2)}）` : ''}已被用户用于换购/升级新订单，订单不再参与计费。`"
+            >
+              <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
+            </el-tooltip>
+            <el-tag v-else :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="佣金金额" width="90">
@@ -397,9 +418,27 @@ onMounted(function onMount() {
             <el-descriptions-item label="套餐" :span="2">{{ detailData.planName }}</el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
             <el-descriptions-item label="优惠">{{ detailData.discountAmount ? '¥' + detailData.discountAmount.toFixed(2) : '--' }}</el-descriptions-item>
+            <el-descriptions-item v-if="detailData.balanceAmount > 0" label="余额抵扣">
+              ¥{{ detailData.balanceAmount.toFixed(2) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.surplusAmount > 0 || detailData.status === 4" label="剩余价值">
+              ¥{{ detailData.surplusAmount.toFixed(2) }}
+              <span style="color: var(--el-text-color-secondary); font-size: 12px; margin-left: 6px;">已折抵给新单</span>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.refundAmount > 0" label="退款金额">
+              ¥{{ detailData.refundAmount.toFixed(2) }}
+            </el-descriptions-item>
             <el-descriptions-item label="支付方式">{{ paymentMap[detailData.paymentId] || '--' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
+              <el-tooltip
+                v-if="detailData.status === 4"
+                effect="dark"
+                placement="top"
+                :content="`该订单剩余价值${detailData.surplusAmount > 0 ? `（¥${detailData.surplusAmount.toFixed(2)}）` : ''}已被用户用于换购/升级新订单，订单不再参与计费。`"
+              >
+                <el-tag :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
+              </el-tooltip>
+              <el-tag v-else :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="佣金">¥{{ detailData.commissionBalance.toFixed(2) }}</el-descriptions-item>
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>
@@ -414,6 +453,31 @@ onMounted(function onMount() {
             <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>
             <el-descriptions-item label="回调单号" :span="2">
               <span style="word-break: break-all; font-size: 12px;">{{ detailData.callbackNo || '--' }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="detailData.surplusOrderIds && detailData.surplusOrderIds.length > 0"
+              label="折抵自旧订单"
+              :span="2"
+            >
+              <div class="order-surplus-list">
+                <span class="order-surplus-tip">本单使用了以下旧订单的剩余价值折抵：</span>
+                <el-tag
+                  v-for="oid in detailData.surplusOrderIds"
+                  :key="`from-${oid}`"
+                  size="small"
+                  type="info"
+                  style="margin-right: 6px; font-family: monospace;"
+                >#{{ oid }}</el-tag>
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="detailData.status === 4"
+              label="折抵说明"
+              :span="2"
+            >
+              <div class="order-surplus-note">
+                该订单剩余价值已被用户用于换购/升级新订单，订单不再参与计费。
+              </div>
             </el-descriptions-item>
           </el-descriptions>
         </template>
@@ -457,3 +521,37 @@ onMounted(function onMount() {
     </el-dialog>
   </section>
 </template>
+
+<style scoped>
+.order-amount-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.order-amount-note {
+  font-size: 11px;
+  color: var(--el-color-info);
+  white-space: nowrap;
+}
+
+.order-surplus-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.order-surplus-tip {
+  color: var(--el-text-color-secondary);
+  margin-right: 4px;
+}
+
+.order-surplus-note {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+</style>

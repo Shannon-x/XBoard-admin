@@ -106,6 +106,19 @@ function normalizeOrder(order) {
     totalAmount: Number(order?.total_amount || 0) / 100,
     totalAmountText: `¥${(Number(order?.total_amount || 0) / 100).toFixed(2)}`,
     discountAmount: order?.discount_amount ? Number(order.discount_amount) / 100 : null,
+    balanceAmount: order?.balance_amount ? Number(order.balance_amount) / 100 : 0,
+    surplusAmount: order?.surplus_amount ? Number(order.surplus_amount) / 100 : 0,
+    refundAmount: order?.refund_amount ? Number(order.refund_amount) / 100 : 0,
+    surplusOrders: Array.isArray(order?.surplus_orders)
+      ? order.surplus_orders.map(function mapSurplusOrder(o) {
+          return {
+            id: Number(o?.id || 0),
+            tradeNo: String(o?.trade_no || ''),
+            totalAmount: Number(o?.total_amount || 0) / 100,
+            status: Number(o?.status || 0),
+          }
+        })
+      : [],
     status,
     statusText: statusInfo.text,
     statusType: statusInfo.type,
