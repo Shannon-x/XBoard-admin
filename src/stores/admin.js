@@ -537,6 +537,46 @@ export const useAdminStore = defineStore("admin", () => {
           },
         },
         {
+          key: "googleLoginEnable",
+          labelKey: "systemSettings.fields.googleLoginEnable.label",
+          descriptionKey: "systemSettings.fields.googleLoginEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "googleClientId",
+          labelKey: "systemSettings.fields.googleClientId.label",
+          descriptionKey: "systemSettings.fields.googleClientId.description",
+          placeholderKey: "systemSettings.fields.googleClientId.placeholder",
+          type: "text",
+          visibleWhen: {
+            key: "googleLoginEnable",
+            equals: true,
+          },
+        },
+        {
+          key: "googleClientSecret",
+          labelKey: "systemSettings.fields.googleClientSecret.label",
+          descriptionKey: "systemSettings.fields.googleClientSecret.description",
+          placeholderKey: "systemSettings.fields.googleClientSecret.placeholder",
+          type: "password",
+          visibleWhen: {
+            key: "googleLoginEnable",
+            equals: true,
+          },
+        },
+        {
+          key: "googleRedirectUri",
+          labelKey: "systemSettings.fields.googleRedirectUri.label",
+          descriptionKey: "systemSettings.fields.googleRedirectUri.description",
+          placeholderKey: "systemSettings.fields.googleRedirectUri.placeholder",
+          type: "text",
+          visibleWhen: {
+            key: "googleLoginEnable",
+            equals: true,
+          },
+        },
+        {
           key: "ipRegisterLimit",
           labelKey: "systemSettings.fields.ipRegisterLimit.label",
           descriptionKey: "systemSettings.fields.ipRegisterLimit.description",

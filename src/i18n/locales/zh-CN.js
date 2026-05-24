@@ -393,6 +393,25 @@ export default {
         description: '输入分配给 Cloudflare Turnstile 的服务端密钥。',
         placeholder: '请输入 Turnstile 密钥',
       },
+      googleLoginEnable: {
+        label: '启用 Google 登录',
+        description: '开启后用户可以通过 Google 账号注册或登录站点。',
+      },
+      googleClientId: {
+        label: 'Google Client ID',
+        description: 'Google Cloud OAuth 2.0 客户端 ID。',
+        placeholder: '请输入 Google OAuth Client ID',
+      },
+      googleClientSecret: {
+        label: 'Google Client Secret',
+        description: 'Google Cloud OAuth 2.0 客户端密钥，仅服务端使用。',
+        placeholder: '请输入 Google OAuth Client Secret',
+      },
+      googleRedirectUri: {
+        label: 'Google 回调地址',
+        description: '留空时默认使用 站点网址 + /api/v1/passport/auth/google/callback；该地址必须添加到 Google OAuth 授权回调 URI。',
+        placeholder: 'https://example.com/api/v1/passport/auth/google/callback',
+      },
       ipRegisterLimit: {
         label: 'IP 注册限制',
         description: '开启后将限制同一 IP 的注册次数。',

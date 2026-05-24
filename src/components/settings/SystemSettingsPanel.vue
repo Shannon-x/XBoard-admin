@@ -334,7 +334,8 @@ function resolveSelectOptions(field) {
                 :model-value="resolveFieldValue(field)"
                 :autosize="field.autosize"
                 :placeholder="field.placeholderKey ? t(field.placeholderKey) : ''"
-                :type="field.type === 'textarea' ? 'textarea' : 'text'"
+                :show-password="field.type === 'password'"
+                :type="field.type === 'textarea' ? 'textarea' : field.type === 'password' ? 'password' : 'text'"
                 @update:model-value="updateFieldValue(field, $event)"
               />
             </div>
