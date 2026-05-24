@@ -673,8 +673,14 @@ function formatFullDate(timestamp) {
 }
 
 export async function fetchUserRegisterRecords({ days = 30 } = {}) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const endAt = Math.floor(todayStart.getTime() / 1000) + 86400;
+  const startAt = endAt - Math.max(days, 1) * 86400;
   const apiUrl = buildDashboardApiUrl("stat/getStatRecord", [
     ["type", "register_count"],
+    ["start_at", String(startAt)],
+    ["end_at", String(endAt)],
   ]);
   const payload = await requestDashboardApi(apiUrl);
   const list = Array.isArray(payload?.data) ? payload.data : [];
