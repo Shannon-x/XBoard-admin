@@ -181,6 +181,41 @@ const sortOptions = [
   { label: '在线设备', value: 'online_count' },
 ]
 
+const USERS_PAGE_STATE_KEY = 'xboard-admin:users-page-state'
+
+function saveUsersPageState() {
+  try {
+    sessionStorage.setItem(USERS_PAGE_STATE_KEY, JSON.stringify({
+      searchKeyword: searchKeyword.value,
+      filterConditions: filterConditions.value,
+      showFilters: showFilters.value,
+      sortField: sortField.value,
+      sortOrder: sortOrder.value,
+      page: pagination.value.page,
+      pageSize: pagination.value.pageSize,
+    }))
+  } catch (_) {
+    // sessionStorage 不可用时静默忽略
+  }
+}
+
+function restoreUsersPageState() {
+  try {
+    const raw = sessionStorage.getItem(USERS_PAGE_STATE_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (typeof data.searchKeyword === 'string') searchKeyword.value = data.searchKeyword
+    if (Array.isArray(data.filterConditions)) filterConditions.value = data.filterConditions
+    if (typeof data.showFilters === 'boolean') showFilters.value = data.showFilters
+    if (typeof data.sortField === 'string') sortField.value = data.sortField
+    if (typeof data.sortOrder === 'string') sortOrder.value = data.sortOrder
+    if (Number.isFinite(data.page)) pagination.value.page = data.page
+    if (Number.isFinite(data.pageSize)) pagination.value.pageSize = data.pageSize
+  } catch (_) {
+    // 反序列化失败时忽略，使用默认状态
+  }
+}
+
 async function loadUsers() {
   loading.value = true
   errorMsg.value = ''
@@ -198,6 +233,7 @@ async function loadUsers() {
     })
     users.value = result.list
     pagination.value = result.pagination
+    saveUsersPageState()
   } catch (err) {
     errorMsg.value = err.message || '加载用户列表失败'
   } finally {
@@ -550,6 +586,7 @@ async function submitSendMail() {
 }
 
 onMounted(function onMount() {
+  restoreUsersPageState()
   loadUsers()
   fetchManagedPlans()
     .then(list => { plans.value = list })
