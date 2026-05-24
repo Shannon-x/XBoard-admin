@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
+import DailyNewUsersDialog from "../components/dashboard/DailyNewUsersDialog.vue";
 import IncomeOverviewCard from "../components/dashboard/IncomeOverviewCard.vue";
 import JobDetailCard from "../components/dashboard/JobDetailCard.vue";
 import MetricsGrid from "../components/dashboard/MetricsGrid.vue";
@@ -14,6 +15,8 @@ import { useAdminStore } from "../stores/admin";
 const adminStore = useAdminStore();
 const { t } = useI18n();
 const router = useRouter();
+
+const dailyUsersDialogVisible = ref(false);
 
 function handleIncomeRangeChange(rangeSelection) {
     if (typeof rangeSelection === "string") {
@@ -29,6 +32,8 @@ function handleMetricClick(label) {
         router.push({ path: 'tickets' });
     } else if (label === '待处理佣金') {
         router.push({ path: 'orders', query: { commission: '1' } });
+    } else if (label === '月新增用户') {
+        dailyUsersDialogVisible.value = true;
     }
 }
 
@@ -202,5 +207,7 @@ onMounted(function loadStatsOnMount() {
                 @refresh="refreshSystemStatus"
             />
         </section>
+
+        <DailyNewUsersDialog v-model="dailyUsersDialogVisible" />
     </section>
 </template>

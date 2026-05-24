@@ -654,3 +654,56 @@ export async function fetchSystemStatus() {
 
   return normalizeSystemStatus(payload);
 }
+
+function formatDayLabel(timestamp) {
+  const date = new Date(Number(timestamp || 0) * 1000);
+  if (Number.isNaN(date.getTime())) return "--";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${month}-${day}`;
+}
+
+function formatFullDate(timestamp) {
+  const date = new Date(Number(timestamp || 0) * 1000);
+  if (Number.isNaN(date.getTime())) return "--";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export async function fetchUserRegisterRecords({ days = 30 } = {}) {
+  const apiUrl = buildDashboardApiUrl("stat/getStatRecord", [
+    ["type", "register_count"],
+  ]);
+  const payload = await requestDashboardApi(apiUrl);
+  const list = Array.isArray(payload?.data) ? payload.data : [];
+
+  const normalized = list
+    .map(function mapRecord(item) {
+      return {
+        recordAt: Number(item?.record_at || 0),
+        count: Number(item?.register_count || 0),
+      };
+    })
+    .filter(function dropEmpty(item) {
+      return item.recordAt > 0;
+    })
+    .sort(function ascByTime(a, b) {
+      return a.recordAt - b.recordAt;
+    });
+
+  const tail = days > 0 ? normalized.slice(-days) : normalized;
+
+  return {
+    days,
+    list: tail.map(function shapeRow(item) {
+      return {
+        recordAt: item.recordAt,
+        dateLabel: formatDayLabel(item.recordAt),
+        fullDate: formatFullDate(item.recordAt),
+        count: item.count,
+      };
+    }),
+  };
+}

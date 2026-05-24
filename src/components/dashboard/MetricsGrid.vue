@@ -116,7 +116,7 @@ function resolveMetricSegments(metric) {
             :class="[
                 'metric-card--unified',
                 { 'metric-card--compact': metric.compact },
-                { 'metric-card--clickable': metric.label === '待处理工单' || metric.label === '待处理佣金' },
+                { 'metric-card--clickable': metric.label === '待处理工单' || metric.label === '待处理佣金' || metric.label === '月新增用户' },
             ]"
             shadow="never"
             @click="emit('metric-click', metric.label)"
