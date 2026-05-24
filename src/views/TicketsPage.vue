@@ -307,12 +307,18 @@ onMounted(function onMount() {
         <div v-if="detailData && detailData.status === 0" class="ticket-reply-bar">
           <el-input
             v-model="replyMessage"
-            placeholder="输入回复内容..."
-            @keyup.enter.ctrl="handleReply"
+            class="ticket-reply-input"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 8 }"
+            resize="none"
+            placeholder="输入回复内容，按 Enter 换行，Ctrl/⌘ + Enter 发送"
+            @keydown.enter.ctrl.exact.prevent="handleReply"
+            @keydown.enter.meta.exact.prevent="handleReply"
           />
           <el-button
             :loading="replySending"
             type="primary"
+            class="ticket-reply-send"
             @click="handleReply"
           >发送</el-button>
         </div>
@@ -430,9 +436,18 @@ onMounted(function onMount() {
 
 .ticket-reply-bar {
   display: flex;
+  align-items: flex-end;
   gap: 8px;
   padding: 12px 0 0;
   border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.ticket-reply-input {
+  flex: 1;
+}
+
+.ticket-reply-send {
+  flex: 0 0 auto;
 }
 
 .ticket-closed-bar {
