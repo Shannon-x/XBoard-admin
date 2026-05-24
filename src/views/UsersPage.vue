@@ -329,11 +329,13 @@ async function handleBan(user) {
 
 async function handleResetSecret(user) {
   try {
-    await ElMessageBox.confirm(`确定要重置用户 ${user.email} 的订阅密钥吗？`, '重置密钥', {
-      type: 'warning',
-    })
+    await ElMessageBox.confirm(
+      `确定要重置用户 ${user.email} 的订阅链接和 UUID 吗？重置后该用户旧的订阅地址和客户端 UUID 将立即失效，需要重新导入订阅。`,
+      '重置订阅链接/UUID',
+      { type: 'warning' },
+    )
     await resetManagedUserSecret(user.id)
-    ElMessage.success('密钥已重置')
+    ElMessage.success('订阅链接和 UUID 已重置')
     loadUsers()
   } catch (err) {
     if (err !== 'cancel') {
@@ -688,6 +690,7 @@ onMounted(function onMount() {
                   <el-dropdown-item @click="navigateToUserInvites(row)">TA的邀请</el-dropdown-item>
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item @click="handleViewTraffic(row)">流量详情</el-dropdown-item>
+                  <el-dropdown-item @click="handleResetSecret(row)">重置订阅链接/UUID</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
