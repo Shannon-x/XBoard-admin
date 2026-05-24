@@ -831,11 +831,14 @@ async function handleNodeDialogSubmit(payload) {
                                       short_id: String(
                                           payload.vlessRealityShortId || "",
                                       ).trim(),
+                                      fingerprint: String(
+                                          payload.vlessRealityFingerprint || "chrome",
+                                      ),
                                       allow_insecure: payload.allowInsecure ? 1 : 0,
                                   }
                                 : null,
                         utls:
-                            payload.vlessRealityFingerprint
+                            payload.vlessSecurity === "reality"
                                 ? {
                                       enabled: true,
                                       fingerprint: String(

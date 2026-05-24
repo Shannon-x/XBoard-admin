@@ -365,7 +365,9 @@ function normalizeManagedNode(node, index) {
     vlessRealityPrivateKey: String(realitySettings?.private_key || ""),
     vlessRealityPublicKey: String(realitySettings?.public_key || ""),
     vlessRealityShortId: String(realitySettings?.short_id || ""),
-    vlessRealityFingerprint: String(protocolSettings?.utls?.fingerprint || ""),
+    vlessRealityFingerprint: String(
+      realitySettings?.fingerprint || protocolSettings?.utls?.fingerprint || "",
+    ),
     certMode: String(certConfig?.cert_mode || ""),
     certFingerprint: String(certConfig?.fingerprint || ""),
     certRejectUnknownSni: Boolean(certConfig?.reject_unknown_sni),
