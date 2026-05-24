@@ -4100,3 +4100,14 @@ a:hover {
     background: rgba(201, 79, 46, 0.22);
     color: var(--primary-strong);
 }
+
+.traffic-rank-name-popper.el-popper {
+    max-width: 320px;
+    word-break: break-all;
+    line-height: 1.5;
+    font-size: 12px;
+}
+
+.traffic-rank-copy strong {
+    cursor: default;
+}

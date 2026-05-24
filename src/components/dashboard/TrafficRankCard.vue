@@ -99,7 +99,15 @@ function changeClass(change) {
                         String(item.rank).padStart(2, "0")
                     }}</span>
                     <div class="traffic-rank-copy">
-                        <strong>{{ item.name }}</strong>
+                        <el-tooltip
+                            :content="item.name"
+                            placement="top"
+                            :show-after="300"
+                            :offset="6"
+                            popper-class="traffic-rank-name-popper"
+                        >
+                            <strong>{{ item.name }}</strong>
+                        </el-tooltip>
                         <small>{{
                             t(`traffic.previousLabel_${activeRange}`, {
                                 value: item.previousTrafficText,
