@@ -493,7 +493,7 @@ export default {
       },
       ticketActiveSubscriptionRequired: {
         label: '仅购买用户可开工单',
-        description: '开启后，仅允许有活跃套餐或近期已提交支付订单的用户新建普通工单。',
+        description: '开启后，仅允许有活跃套餐、有余额或佣金余额、或历史上下过订单的用户新建普通工单。',
       },
       defaultRemindExpire: {
         label: '默认到期提醒',
