@@ -492,8 +492,8 @@ export default {
         description: '开启后，用户在管理员回复前无法在同一工单内连续发送消息。',
       },
       ticketActiveSubscriptionRequired: {
-        label: '仅活跃订阅可开工单',
-        description: '开启后，无套餐、已过期或被封禁的用户无法新建普通工单。',
+        label: '仅购买用户可开工单',
+        description: '开启后，仅允许有活跃套餐或近期已提交支付订单的用户新建普通工单。',
       },
       defaultRemindExpire: {
         label: '默认到期提醒',
