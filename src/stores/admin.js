@@ -721,6 +721,13 @@ export const useAdminStore = defineStore("admin", () => {
           type: "switch",
           tone: "compact",
         },
+        {
+          key: "ticketActiveSubscriptionRequired",
+          labelKey: "systemSettings.fields.ticketActiveSubscriptionRequired.label",
+          descriptionKey: "systemSettings.fields.ticketActiveSubscriptionRequired.description",
+          type: "switch",
+          tone: "compact",
+        },
       ],
       badgeKey: "systemSettings.badges.live",
     },
