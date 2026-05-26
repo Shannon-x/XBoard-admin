@@ -91,8 +91,8 @@ const ROUTE_META_KEYS = {
     eyebrow: 'routes.logs.eyebrow',
   },
   themeConfig: {
-    title: '主题配置',
-    eyebrow: '系统管理',
+    title: 'routes.themeConfig.title',
+    eyebrow: 'routes.themeConfig.eyebrow',
   },
 }
 
@@ -164,8 +164,8 @@ const routes = [
         name: 'nodeGroups',
         component: NodeGroupsPage,
         meta: {
-          title: ROUTE_META_KEYS.nodeGroups.title,
-          eyebrow: ROUTE_META_KEYS.nodeGroups.eyebrow,
+          titleKey: ROUTE_META_KEYS.nodeGroups.title,
+          eyebrowKey: ROUTE_META_KEYS.nodeGroups.eyebrow,
         },
       },
       {
@@ -173,8 +173,8 @@ const routes = [
         name: 'nodeRoutes',
         component: NodeRoutesPage,
         meta: {
-          title: ROUTE_META_KEYS.nodeRoutes.title,
-          eyebrow: ROUTE_META_KEYS.nodeRoutes.eyebrow,
+          titleKey: ROUTE_META_KEYS.nodeRoutes.title,
+          eyebrowKey: ROUTE_META_KEYS.nodeRoutes.eyebrow,
         },
       },
       {
@@ -263,8 +263,8 @@ const routes = [
         name: 'themeConfig',
         component: ThemeConfigPage,
         meta: {
-          title: ROUTE_META_KEYS.themeConfig.title,
-          eyebrow: ROUTE_META_KEYS.themeConfig.eyebrow,
+          titleKey: ROUTE_META_KEYS.themeConfig.title,
+          eyebrowKey: ROUTE_META_KEYS.themeConfig.eyebrow,
         },
       },
     ],

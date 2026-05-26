@@ -89,6 +89,10 @@ export default {
       title: '系统日志',
       eyebrow: '系统管理',
     },
+    themeConfig: {
+      title: '主题配置',
+      eyebrow: '系统管理',
+    },
   },
   nav: {
     overview: '总览',
