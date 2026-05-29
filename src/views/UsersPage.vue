@@ -45,6 +45,18 @@ const assignForm = ref({
   totalAmount: 0,
 })
 
+function formatResetCountdown(timestamp) {
+  if (!timestamp) return ''
+  const diffMs = timestamp * 1000 - Date.now()
+  if (diffMs <= 0) return '待重置'
+  const totalMinutes = Math.floor(diffMs / 60000)
+  const days = Math.floor(totalMinutes / (60 * 24))
+  if (days >= 1) return `${days} 天后`
+  const hours = Math.floor(totalMinutes / 60)
+  if (hours >= 1) return `${hours} 小时后`
+  return `${totalMinutes} 分钟后`
+}
+
 const trafficDialogVisible = ref(false)
 const trafficLoading = ref(false)
 const trafficData = ref([])
@@ -101,6 +113,8 @@ const filterFieldOptions = computed(() => [
   { id: 'd', label: '已用流量', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'online_count', label: '在线设备', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'expired_at', label: '到期时间', type: 'date', operators: ['早于', '晚于'] },
+  { id: 'next_reset_at', label: '下次重置', type: 'date', operators: ['早于', '晚于'] },
+  { id: 'last_reset_at', label: '上次重置', type: 'date', operators: ['早于', '晚于'] },
   { id: 'uuid', label: 'UUID', type: 'text', operators: ['精确'] },
   { id: 'token', label: 'Token', type: 'text', operators: ['精确'] },
   { id: 'banned', label: '账号状态', type: 'select', operators: ['等于'], selectOptions: [{ label: '正常', value: '0' }, { label: '已封禁', value: '1' }] },
@@ -176,6 +190,7 @@ const sortOptions = [
   { label: '默认', value: '' },
   { label: '已用流量', value: 'd' },
   { label: '到期时间', value: 'expired_at' },
+  { label: '下次重置', value: 'next_reset_at' },
   { label: '余额', value: 'balance' },
   { label: '佣金', value: 'commission_balance' },
   { label: '在线设备', value: 'online_count' },
@@ -261,6 +276,7 @@ function handleSortChange({ prop, order }) {
   const fieldMap = {
     totalUsedRaw: 'd',
     expiredAtRaw: 'expired_at',
+    nextResetAtRaw: 'next_reset_at',
     balance: 'balance',
     commissionBalance: 'commission_balance',
     onlineCount: 'online_count',
@@ -289,6 +305,9 @@ function openEditDialog(user) {
     speed_limit: user.speedLimit,
     device_limit: user.deviceLimit,
     expired_at: user.expiredAtRaw,
+    next_reset_at_raw: user.nextResetAtRaw,
+    next_reset_at_display: user.nextResetAt,
+    last_reset_at_display: user.lastResetAt,
     plan_id: user.planId,
     banned: user.banned,
     is_admin: user.isAdmin ? 1 : 0,
@@ -698,6 +717,19 @@ onMounted(function onMount() {
             </span>
           </template>
         </el-table-column>
+        <el-table-column label="下次重置" prop="nextResetAtRaw" width="160" sortable="custom">
+          <template #default="{ row }">
+            <template v-if="row.nextResetAtRaw">
+              <div :style="{ color: row.nextResetAtRaw * 1000 < Date.now() ? 'var(--el-color-danger)' : '', fontWeight: row.nextResetAtRaw * 1000 < Date.now() ? '600' : '' }">
+                {{ row.nextResetAt }}
+              </div>
+              <div style="font-size: 12px; color: var(--el-text-color-secondary)">
+                {{ formatResetCountdown(row.nextResetAtRaw) }}
+              </div>
+            </template>
+            <span v-else style="color: var(--el-text-color-secondary)">不重置</span>
+          </template>
+        </el-table-column>
         <el-table-column label="余额" width="100" prop="balance" sortable="custom">
           <template #default="{ row }">¥{{ row.balance }}</template>
         </el-table-column>
@@ -808,6 +840,25 @@ onMounted(function onMount() {
             style="width:100%"
             clearable
           />
+        </el-form-item>
+
+        <el-form-item label="流量重置">
+          <div style="width:100%; font-size: 13px; color: var(--el-text-color-regular); line-height: 1.7">
+            <div>
+              <span style="color: var(--el-text-color-secondary)">下次重置：</span>
+              <span v-if="editForm.next_reset_at_display && editForm.next_reset_at_display !== '--'">
+                {{ editForm.next_reset_at_display }}
+                <span style="color: var(--el-text-color-secondary); margin-left: 6px">
+                  ({{ formatResetCountdown(editForm.next_reset_at_raw) }})
+                </span>
+              </span>
+              <span v-else style="color: var(--el-text-color-secondary)">不重置（一次性套餐或未设置）</span>
+            </div>
+            <div>
+              <span style="color: var(--el-text-color-secondary)">上次重置：</span>
+              <span>{{ editForm.last_reset_at_display || '--' }}</span>
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item label="订阅计划">
