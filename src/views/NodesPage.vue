@@ -396,13 +396,24 @@ const routeGroupOptions = computed(function routeGroupOptions() {
 });
 
 const filteredNodes = computed(function filteredNodes() {
+    // 后端 server/manage/getNodes 接口忽略 word/type/status 参数，直接返回全部节点。
+    // 因此关键词、协议、状态都必须在前端做模糊匹配，否则筛选条件等于失效。
+    const keywordTokens = String(filters.keyword || "")
+        .toLowerCase()
+        .split(/\s+/)
+        .map(function trimToken(token) {
+            return token.trim();
+        })
+        .filter(Boolean);
+    const protocolFilter = String(filters.protocol || "all").toLowerCase();
+
     return nodeList.value.filter(function filterNode(node) {
-        const shouldFilterStatus = adminStore.managedNodes.length === 0;
         const expectedStatus = resolveStatusLabel(filters.status);
         const matchesStatus =
-            !shouldFilterStatus ||
-            filters.status === "all" ||
-            node.status === expectedStatus;
+            filters.status === "all" || node.status === expectedStatus;
+        const matchesProtocol =
+            protocolFilter === "all" ||
+            String(node.type || "").toLowerCase() === protocolFilter;
         const normalizedGroup = String(filters.group || "all").trim();
         const nodeGroupIds = Array.isArray(node.groupIds)
             ? node.groupIds.map(String)
@@ -426,7 +437,36 @@ const filteredNodes = computed(function filteredNodes() {
             String(node.id) === nodeIdFilter ||
             String(node.code || '') === nodeIdFilter;
 
-        return matchesStatus && matchesGroup && matchesAbnormal && matchesNodeId;
+        let matchesKeyword = true;
+        if (keywordTokens.length > 0) {
+            const haystackParts = [
+                node.name,
+                node.host,
+                node.code,
+                node.sni,
+                String(node.id || ""),
+                ...(Array.isArray(node.groupNames) ? node.groupNames : []),
+            ];
+            const haystack = haystackParts
+                .filter(Boolean)
+                .map(function toLower(text) {
+                    return String(text).toLowerCase();
+                })
+                .join("  ");
+            // 多个关键字（空格分隔）必须全部命中，单关键字即子串匹配。
+            matchesKeyword = keywordTokens.every(function matchToken(token) {
+                return haystack.includes(token);
+            });
+        }
+
+        return (
+            matchesStatus &&
+            matchesProtocol &&
+            matchesGroup &&
+            matchesAbnormal &&
+            matchesNodeId &&
+            matchesKeyword
+        );
     });
 });
 
@@ -1055,6 +1095,9 @@ function handleKeywordSearch() {
         keywordDebounceTimer = null;
     }
 
+    // 后端忽略 word 参数，关键字筛选实际在 filteredNodes 里完成。
+    // 这里仍同步一次 store 的 filters，便于其它分支（如刷新、自动轮询）
+    // 携带相同条件，silent:true 避免 loading 闪烁。
     adminStore.loadManagedNodes({
         page: 1,
         limit: pagination.value.limit,
@@ -1063,6 +1106,7 @@ function handleKeywordSearch() {
             word: filters.keyword,
             status: filters.status,
         },
+        silent: true,
     });
 }
 
