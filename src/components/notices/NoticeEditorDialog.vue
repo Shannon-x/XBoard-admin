@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { MdEditor } from 'md-editor-v3'
 
 import 'md-editor-v3/lib/style.css'
@@ -26,6 +26,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit'])
 
 const form = reactive(createEmptyForm())
+const previewVisible = ref(true)
 
 const dialogTitle = computed(function dialogTitle() {
   return props.mode === 'edit' ? '编辑公告' : '新增公告'
@@ -125,50 +126,68 @@ watch(
   <el-dialog
     :model-value="modelValue"
     :title="dialogTitle"
-    width="min(1100px, calc(100vw - 32px))"
-    top="16px"
+    width="min(1180px, calc(100vw - 32px))"
+    top="5vh"
     class="notice-editor-dialog"
     destroy-on-close
+    append-to-body
     @closed="handleClosed"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <el-form label-position="top" class="notice-editor-form notice-editor-form--target">
       <el-form-item label="标题" required>
-        <el-input v-model="form.title" maxlength="120" show-word-limit />
+        <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="请输入公告标题" />
       </el-form-item>
 
-      <el-form-item label="公告内容" required>
+      <el-form-item required>
+        <template #label>
+          <div class="notice-editor-form__label-row">
+            <span>公告内容</span>
+            <el-switch
+              v-model="previewVisible"
+              size="small"
+              active-text="实时预览"
+              inactive-text="仅编辑"
+              inline-prompt
+            />
+          </div>
+        </template>
         <div class="notice-editor-form__markdown notice-editor-form__markdown--wide">
           <MdEditor
             v-model="form.content"
             language="zh-CN"
             :toolbars="editorToolbars"
-            :preview="false"
+            :preview="previewVisible"
             preview-theme="default"
             code-theme="github"
-            style="height: min(440px, 42vh)"
             placeholder="支持 Markdown / HTML 内容"
+            no-upload-img
           />
         </div>
       </el-form-item>
 
-      <el-form-item label="公告背景">
-        <el-input v-model="form.imgUrl" placeholder="请输入公告背景图片URL" />
-      </el-form-item>
+      <div class="notice-editor-form__grid">
+        <el-form-item label="公告背景">
+          <el-input v-model="form.imgUrl" placeholder="请输入公告背景图片 URL" clearable />
+        </el-form-item>
 
-      <el-form-item label="显示">
-        <div class="notice-editor-form__switch-row">
-          <el-switch v-model="form.show" />
-        </div>
-      </el-form-item>
+        <el-form-item label="公告标签">
+          <el-input v-model="form.tagsText" placeholder="使用英文逗号分隔多个标签，例如：活动, 维护" clearable />
+        </el-form-item>
+      </div>
 
-      <el-form-item label="节点标签">
-        <el-input v-model="form.tagsText" placeholder="输入后回车添加标签" />
-      </el-form-item>
+      <div class="notice-editor-form__grid">
+        <el-form-item label="显示">
+          <div class="notice-editor-form__switch-row">
+            <el-switch v-model="form.show" />
+            <span class="notice-editor-form__hint">关闭后用户端将不再展示该公告</span>
+          </div>
+        </el-form-item>
 
-      <el-form-item v-if="props.mode === 'edit'" label="排序">
-        <el-input-number v-model="form.sort" :min="0" :step="1" />
-      </el-form-item>
+        <el-form-item v-if="props.mode === 'edit'" label="排序">
+          <el-input-number v-model="form.sort" :min="0" :step="1" controls-position="right" />
+        </el-form-item>
+      </div>
     </el-form>
 
     <template #footer>

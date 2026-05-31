@@ -2272,17 +2272,22 @@ body.is-sidebar-resizing * {
 }
 
 .notice-editor-dialog .el-dialog {
-    max-width: 1280px;
-    max-height: calc(100vh - 32px);
+    max-width: min(1180px, calc(100vw - 32px));
+    /* Safari 旧版不支持 dvh，先以 vh 兜底，再用 dvh 覆盖。 */
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
     margin: 0 auto;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .notice-editor-dialog .el-dialog__body {
-    flex: 1;
-    padding-top: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 12px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     display: flex;
     flex-direction: column;
 }
@@ -2296,6 +2301,14 @@ body.is-sidebar-resizing * {
     margin-bottom: 18px;
 }
 
+.notice-editor-form__label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
 .notice-editor-form__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2306,18 +2319,38 @@ body.is-sidebar-resizing * {
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 14px;
-}
-
-.notice-editor-form__markdown--wide .md-editor {
-    min-height: min(520px, 52vh);
+    background: #ffffff;
+    /* Safari 下 flex 子项需要明确 min-height 才不会塌陷 */
+    min-height: 0;
 }
 
 .notice-editor-form__markdown .md-editor {
     background: #ffffff;
+    height: clamp(360px, 52vh, 560px);
+    /* 让 md-editor 自身的 flex 在 Safari 下生效 */
+    display: flex;
+    flex-direction: column;
 }
 
+.notice-editor-form__markdown--wide .md-editor {
+    height: clamp(380px, 56vh, 600px);
+}
+
+.notice-editor-form__markdown .md-editor-toolbar-wrapper,
 .notice-editor-form__markdown .md-editor-toolbar {
+    background: #ffffff;
     border-bottom-color: var(--line);
+}
+
+.notice-editor-form__markdown .md-editor-content {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.notice-editor-form__markdown .md-editor-content-wrapper,
+.notice-editor-form__markdown .md-editor-content-edit,
+.notice-editor-form__markdown .md-editor-content-preview {
+    height: 100%;
 }
 
 .notice-editor-form__markdown .md-editor-input,
@@ -2325,18 +2358,21 @@ body.is-sidebar-resizing * {
     font-size: 14px;
 }
 
-.notice-editor-form__markdown .md-editor-toolbar {
-    background: #ffffff;
-}
-
-.notice-editor-form__markdown .md-editor-content {
-    min-height: min(480px, 48vh);
+.notice-editor-form__markdown .md-editor-preview-wrapper {
+    background: #fafafa;
+    border-left: 1px solid var(--line);
 }
 
 .notice-editor-form__switch-row {
     display: flex;
     align-items: center;
+    gap: 10px;
     min-height: 34px;
+}
+
+.notice-editor-form__hint {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .notice-editor-dialog__footer {
@@ -3346,10 +3382,21 @@ body.is-sidebar-resizing * {
     .notice-editor-dialog .el-dialog {
         width: calc(100vw - 20px) !important;
         max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
     }
 
     .notice-editor-dialog .el-dialog__body {
         padding: 10px 14px 0;
+    }
+
+    .notice-editor-form__markdown .md-editor,
+    .notice-editor-form__markdown--wide .md-editor {
+        height: clamp(320px, 48vh, 480px);
+    }
+
+    /* 移动端默认隐藏 markdown 实时预览，避免双栏挤压 */
+    .notice-editor-form__markdown .md-editor-preview-wrapper {
+        display: none;
     }
 
     /* Tables: horizontal scroll + compact on narrow screens */
