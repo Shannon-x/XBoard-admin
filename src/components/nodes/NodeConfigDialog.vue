@@ -1,7 +1,8 @@
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { Trash2, RefreshCw, KeyRound } from "lucide-vue-next";
+import { Trash2, RefreshCw, KeyRound, GripVertical, ArrowUp, ArrowDown, X } from "lucide-vue-next";
+import Sortable from "sortablejs";
 import nacl from "tweetnacl";
 
 function toBase64Url(uint8Array) {
@@ -906,6 +907,140 @@ function handleSubmit() {
         routeIds: Array.isArray(form.routeIds) ? form.routeIds : [],
     });
 }
+
+// =============================================================================
+// 路由组优先级排序
+// 顺序 = 下发到 v2node 的 RouterConfig.RuleList 顺序 = first-match-wins 优先级。
+// 不要回退到 el-select multiple——它按 options 渲染顺序回写已选值，
+// 完全无法让管理员控制优先级。
+// =============================================================================
+const routeSortableList = ref(null);
+const routeAddPick = ref("");
+let routeSortableInstance = null;
+
+function routeIdToString(value) {
+    return String(value ?? "");
+}
+
+const unselectedRouteOptions = computed(function computeUnselected() {
+    const selected = new Set(
+        (form.routeIds || []).map(routeIdToString),
+    );
+    return (props.routeOptions || []).filter(function notSelected(opt) {
+        return !selected.has(routeIdToString(opt.value));
+    });
+});
+
+function routeLabelOf(routeId) {
+    const target = routeIdToString(routeId);
+    const hit = (props.routeOptions || []).find(function matchOpt(opt) {
+        return routeIdToString(opt.value) === target;
+    });
+    return hit ? hit.label : `路由 #${target}`;
+}
+
+function addRoutePick(value) {
+    if (!value) {
+        return;
+    }
+    const candidate = routeIdToString(value);
+    const list = Array.isArray(form.routeIds) ? form.routeIds : [];
+    if (list.map(routeIdToString).includes(candidate)) {
+        routeAddPick.value = "";
+        return;
+    }
+    form.routeIds = [...list, candidate];
+    routeAddPick.value = "";
+}
+
+function moveRoute(fromIdx, toIdx) {
+    const list = Array.isArray(form.routeIds) ? [...form.routeIds] : [];
+    if (
+        fromIdx < 0 ||
+        toIdx < 0 ||
+        fromIdx >= list.length ||
+        toIdx >= list.length ||
+        fromIdx === toIdx
+    ) {
+        return;
+    }
+    const [moved] = list.splice(fromIdx, 1);
+    list.splice(toIdx, 0, moved);
+    form.routeIds = list;
+}
+
+function moveRouteUp(idx) {
+    moveRoute(idx, idx - 1);
+}
+
+function moveRouteDown(idx) {
+    moveRoute(idx, idx + 1);
+}
+
+function removeRouteAt(idx) {
+    const list = Array.isArray(form.routeIds) ? [...form.routeIds] : [];
+    if (idx < 0 || idx >= list.length) {
+        return;
+    }
+    list.splice(idx, 1);
+    form.routeIds = list;
+}
+
+function destroyRouteSortable() {
+    if (routeSortableInstance) {
+        routeSortableInstance.destroy();
+        routeSortableInstance = null;
+    }
+}
+
+function mountRouteSortable() {
+    destroyRouteSortable();
+    const el = routeSortableList.value;
+    if (!el) {
+        return;
+    }
+    routeSortableInstance = Sortable.create(el, {
+        animation: 160,
+        handle: ".route-priority__handle",
+        ghostClass: "route-priority__item--ghost",
+        chosenClass: "route-priority__item--chosen",
+        onEnd(evt) {
+            if (
+                typeof evt.oldIndex !== "number" ||
+                typeof evt.newIndex !== "number" ||
+                evt.oldIndex === evt.newIndex
+            ) {
+                return;
+            }
+            moveRoute(evt.oldIndex, evt.newIndex);
+        },
+    });
+}
+
+// destroy-on-close 让弹窗每次重新挂载 DOM，必须 watch dialogVisible 重建 Sortable。
+watch(
+    () => props.modelValue,
+    function onDialogVisibleChange(visible) {
+        if (visible) {
+            nextTick(mountRouteSortable);
+        } else {
+            destroyRouteSortable();
+        }
+    },
+);
+
+// 列表长度变化（添加/移除/换组）后，Vue 重新渲染 li 节点；Sortable 持有的旧
+// children 引用还能跟上，但保险起见在结构性变更后再 attach 一次。
+watch(
+    () => (form.routeIds || []).length,
+    function onRouteCountChange() {
+        if (props.modelValue) {
+            nextTick(mountRouteSortable);
+        }
+    },
+);
+
+onBeforeUnmount(destroyRouteSortable);
 </script>
 
 <template>
@@ -1760,23 +1895,76 @@ function handleSubmit() {
             </el-form-item>
 
             <el-form-item label="路由组" class="node-config-form__item">
-                <el-select
-                    v-model="form.routeIds"
-                    multiple
-                    clearable
-                    filterable
-                    collapse-tags
-                    collapse-tags-tooltip
-                    :loading="false"
-                    placeholder="选择路由组（可多选）"
-                >
-                    <el-option
-                        v-for="route in routeOptions"
-                        :key="route.value"
-                        :label="route.label"
-                        :value="String(route.value)"
-                    />
-                </el-select>
+                <div class="route-priority">
+                    <el-select
+                        v-model="routeAddPick"
+                        filterable
+                        clearable
+                        placeholder="选择路由组加入到末尾..."
+                        :disabled="unselectedRouteOptions.length === 0"
+                        @change="addRoutePick"
+                    >
+                        <el-option
+                            v-for="opt in unselectedRouteOptions"
+                            :key="opt.value"
+                            :label="opt.label"
+                            :value="String(opt.value)"
+                        />
+                    </el-select>
+
+                    <ul
+                        v-if="form.routeIds.length"
+                        ref="routeSortableList"
+                        class="route-priority__list"
+                    >
+                        <li
+                            v-for="(routeId, idx) in form.routeIds"
+                            :key="routeId"
+                            :data-id="routeId"
+                            class="route-priority__item"
+                        >
+                            <span
+                                class="route-priority__handle"
+                                title="按住拖拽调整顺序"
+                            >
+                                <GripVertical :size="14" />
+                            </span>
+                            <span class="route-priority__seq">{{ idx + 1 }}</span>
+                            <span class="route-priority__name">{{ routeLabelOf(routeId) }}</span>
+                            <button
+                                type="button"
+                                class="route-priority__btn"
+                                title="上移一位"
+                                :disabled="idx === 0"
+                                @click="moveRouteUp(idx)"
+                            >
+                                <ArrowUp :size="14" />
+                            </button>
+                            <button
+                                type="button"
+                                class="route-priority__btn"
+                                title="下移一位"
+                                :disabled="idx === form.routeIds.length - 1"
+                                @click="moveRouteDown(idx)"
+                            >
+                                <ArrowDown :size="14" />
+                            </button>
+                            <button
+                                type="button"
+                                class="route-priority__btn route-priority__btn--remove"
+                                title="移除"
+                                @click="removeRouteAt(idx)"
+                            >
+                                <X :size="14" />
+                            </button>
+                        </li>
+                    </ul>
+                    <p v-else class="route-priority__empty">未选择任何路由组</p>
+
+                    <p class="route-priority__hint">
+                        列表顺序即生效优先级：序号 1 最先匹配（first-match-wins），下发到 v2node 后保持该顺序。可拖拽手柄或使用 ▲ ▼ 调整。
+                    </p>
+                </div>
             </el-form-item>
         </el-form>
 
@@ -2244,6 +2432,130 @@ function handleSubmit() {
     .node-config-form__equals {
         display: none;
     }
+}
+
+/* ---------- 路由组优先级排序 ---------- */
+.route-priority {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.route-priority__list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 8px;
+    background: var(--el-fill-color-blank);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.route-priority__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--el-fill-color-light);
+    border-radius: 6px;
+    cursor: default;
+    transition: background-color 120ms ease;
+}
+
+.route-priority__item--ghost {
+    opacity: 0.4;
+    background: var(--el-color-primary-light-9);
+}
+
+.route-priority__item--chosen {
+    background: var(--el-color-primary-light-8);
+}
+
+.route-priority__handle {
+    cursor: grab;
+    display: inline-flex;
+    align-items: center;
+    color: var(--el-text-color-secondary);
+}
+
+.route-priority__handle:active {
+    cursor: grabbing;
+}
+
+.route-priority__seq {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: var(--el-color-primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.route-priority__name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--el-text-color-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.route-priority__btn {
+    background: transparent;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--el-text-color-secondary);
+    transition: color 120ms, border-color 120ms, background-color 120ms;
+}
+
+.route-priority__btn:hover:not(:disabled) {
+    color: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+}
+
+.route-priority__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.route-priority__btn--remove:hover:not(:disabled) {
+    color: var(--el-color-danger);
+    border-color: var(--el-color-danger);
+}
+
+.route-priority__empty {
+    margin: 0;
+    padding: 10px;
+    text-align: center;
+    color: var(--el-text-color-placeholder);
+    font-size: 12px;
+    background: var(--el-fill-color-blank);
+    border: 1px dashed var(--el-border-color-lighter);
+    border-radius: 8px;
+}
+
+.route-priority__hint {
+    margin: 0;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    line-height: 1.5;
 }
 </style>
 
