@@ -2272,7 +2272,7 @@ body.is-sidebar-resizing * {
 }
 
 .notice-editor-dialog .el-dialog {
-    max-width: min(1180px, calc(100vw - 32px));
+    max-width: min(1380px, calc(100vw - 48px));
     /* Safari 旧版不支持 dvh，先以 vh 兜底，再用 dvh 覆盖。 */
     max-height: calc(100vh - 40px);
     max-height: calc(100dvh - 40px);
@@ -2313,6 +2313,20 @@ body.is-sidebar-resizing * {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
+}
+
+/* 元数据行：背景 | 标签 | 显示 | 排序 一行排开，避免单字段挂在半空 */
+.notice-editor-form__grid--meta {
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 2fr) minmax(180px, auto) minmax(120px, auto);
+    align-items: end;
+}
+
+.notice-editor-form__sort-input.el-input-number {
+    width: 120px;
+}
+
+.notice-editor-form__sort-input .el-input__inner {
+    text-align: left;
 }
 
 .notice-editor-form__markdown {
@@ -3375,8 +3389,13 @@ body.is-sidebar-resizing * {
         width: 100%;
     }
 
-    .notice-editor-form__grid {
+    .notice-editor-form__grid,
+    .notice-editor-form__grid--meta {
         grid-template-columns: 1fr;
+    }
+
+    .notice-editor-form__sort-input.el-input-number {
+        width: 100%;
     }
 
     .notice-editor-dialog .el-dialog {

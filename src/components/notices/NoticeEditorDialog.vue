@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { MdEditor } from 'md-editor-v3'
 
 import 'md-editor-v3/lib/style.css'
@@ -26,7 +26,6 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit'])
 
 const form = reactive(createEmptyForm())
-const previewVisible = ref(true)
 
 const dialogTitle = computed(function dialogTitle() {
   return props.mode === 'edit' ? '编辑公告' : '新增公告'
@@ -126,7 +125,7 @@ watch(
   <el-dialog
     :model-value="modelValue"
     :title="dialogTitle"
-    width="min(1180px, calc(100vw - 32px))"
+    width="min(1380px, calc(100vw - 48px))"
     top="5vh"
     class="notice-editor-dialog"
     destroy-on-close
@@ -143,13 +142,7 @@ watch(
         <template #label>
           <div class="notice-editor-form__label-row">
             <span>公告内容</span>
-            <el-switch
-              v-model="previewVisible"
-              size="small"
-              active-text="实时预览"
-              inactive-text="仅编辑"
-              inline-prompt
-            />
+            <span class="notice-editor-form__hint">使用工具栏 👁 按钮切换预览</span>
           </div>
         </template>
         <div class="notice-editor-form__markdown notice-editor-form__markdown--wide">
@@ -157,7 +150,6 @@ watch(
             v-model="form.content"
             language="zh-CN"
             :toolbars="editorToolbars"
-            :preview="previewVisible"
             preview-theme="default"
             code-theme="github"
             placeholder="支持 Markdown / HTML 内容"
@@ -166,26 +158,31 @@ watch(
         </div>
       </el-form-item>
 
-      <div class="notice-editor-form__grid">
+      <div class="notice-editor-form__grid notice-editor-form__grid--meta">
         <el-form-item label="公告背景">
-          <el-input v-model="form.imgUrl" placeholder="请输入公告背景图片 URL" clearable />
+          <el-input v-model="form.imgUrl" placeholder="背景图片 URL" clearable />
         </el-form-item>
 
         <el-form-item label="公告标签">
-          <el-input v-model="form.tagsText" placeholder="使用英文逗号分隔多个标签，例如：活动, 维护" clearable />
+          <el-input v-model="form.tagsText" placeholder="逗号分隔，如：活动, 维护" clearable />
         </el-form-item>
-      </div>
 
-      <div class="notice-editor-form__grid">
         <el-form-item label="显示">
           <div class="notice-editor-form__switch-row">
             <el-switch v-model="form.show" />
-            <span class="notice-editor-form__hint">关闭后用户端将不再展示该公告</span>
+            <span class="notice-editor-form__hint">关闭后不再展示</span>
           </div>
         </el-form-item>
 
         <el-form-item v-if="props.mode === 'edit'" label="排序">
-          <el-input-number v-model="form.sort" :min="0" :step="1" controls-position="right" />
+          <el-input-number
+            v-model="form.sort"
+            :min="0"
+            :step="1"
+            :controls="false"
+            class="notice-editor-form__sort-input"
+            placeholder="0"
+          />
         </el-form-item>
       </div>
     </el-form>
