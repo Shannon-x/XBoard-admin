@@ -26,8 +26,8 @@
 3. **与原版 Xboard 后端不适配**
    本后台是为我个人 fork 的后端 [Shannon-x/Xboard-sh](https://github.com/Shannon-x/Xboard-sh) 量身开发。直接接到原版 [cedar2025/Xboard](https://github.com/cedar2025/Xboard) 上**会出现接口字段缺失、404、行为不一致等问题**，请不要把这些当作 Bug 反馈给我或者上游。
 
-4. **配套节点端只支持 [v2node](https://github.com/wyx2685/V2bX/tree/v2node)**
-   后台的节点编辑、路由、权限组、协议字段等全部按 v2node 的契约设计。**完全不支持 xbnode**，也不保证兼容 XrayR / V2bX 主线分支。
+4. **配套节点端支持 [v2node](https://github.com/wyx2685/V2bX/tree/v2node) 与 [V2bX](https://github.com/wyx2685/V2bX) 主线**
+   后台的节点编辑、路由、权限组、协议字段等全部按 v2node / V2bX 契约设计（**全面适配 v2node**，V2bX 主线一并兼容）。**完全不支持 xbnode**，也不保证兼容 XrayR 等其他节点端。
 
 5. **没有维护承诺**
    纯个人按自己使用习惯调整，可能随时引入 Breaking Change，不会刻意为通用场景做兼容。
@@ -43,8 +43,8 @@
 | --- | --- | --- |
 | 技术栈 | React + Shadcn UI + TailwindCSS | **Vue 3 + Element Plus + Vite** |
 | 状态管理 | Zustand / React Query | **Pinia** |
-| 节点端兼容 | xbnode / V2bX / XrayR | **仅 v2node，xbnode 完全不支持** |
-| 字段定义 | 上游字段 | 按 v2node + Xboard-sh 重写 |
+| 节点端兼容 | xbnode / V2bX / XrayR | **全面适配 v2node，兼容 V2bX 主线；xbnode 完全不支持** |
+| 字段定义 | 上游字段 | 按 v2node / V2bX + Xboard-sh 重写 |
 | 节点路由 | 列表 | **支持拖拽排序、组内优先级** |
 | 公告编辑 | 简版 textarea | **Markdown 实时预览 + 双列布局 + 公告标签** |
 | 公告标签 | 无 | **支持自定义标签（v2_notice.tags）** |
@@ -63,7 +63,7 @@
 - 🌍 i18n 多语言基建（当前主推 zh-CN）
 - 🧩 拖拽排序：节点路由、节点权限组、公告排序
 - 📝 公告编辑：Markdown 实时预览（基于 md-editor-v3），公告自有标签
-- ⚙️ 节点编辑：完整适配 v2node 的协议字段、路由、tag、权限组
+- ⚙️ 节点编辑：完整适配 v2node 的协议字段、路由、tag、权限组（V2bX 主线一并兼容）
 - 🎁 礼品卡 / 优惠券 / 套餐 / 工单 / 用户管理一应俱全
 - 🛡️ 系统日志、插件管理、主题配置等运营向页面
 - 🖥️ 桌面端 & 平板自适应；Safari 兼容性逐项打磨
@@ -110,10 +110,10 @@ npm run preview     # 预览生产构建
 ## 📦 配套生态
 
 - **必须配套后端**：[Shannon-x/Xboard-sh](https://github.com/Shannon-x/Xboard-sh)
-- **节点端**：[V2bX v2node 分支](https://github.com/wyx2685/V2bX/tree/v2node)
+- **节点端**：[V2bX v2node 分支](https://github.com/wyx2685/V2bX/tree/v2node)（推荐，全面适配） / [V2bX 主线](https://github.com/wyx2685/V2bX)（兼容）
 - **后台前端（本仓库）**：[Shannon-x/XBoard-admin](https://github.com/Shannon-x/XBoard-admin)
 
-三件套绑定使用，混搭原版 Xboard / xbnode / XrayR 大概率跑不起来，作者不承诺兼容。
+三件套绑定使用；节点端可在 v2node（推荐）与 V2bX 主线之间二选一。混搭原版 Xboard / xbnode / XrayR 大概率跑不起来，作者不承诺兼容。
 
 ---
 
