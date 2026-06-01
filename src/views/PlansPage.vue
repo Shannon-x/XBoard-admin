@@ -116,6 +116,18 @@ async function saveForm() {
   editSaving.value = true
   try {
     await saveManagedPlan(editForm.value)
+
+    // 后端 plan/save 的 PlanSave 校验规则不包含 show / sell / renew，validated() 会
+    // 把这三个字段静默过滤掉。编辑模式下补一次 plan/update 同步开关，否则用户
+    // 在弹窗里的切换永远写不进 DB。
+    if (isEditing.value && editForm.value.id) {
+      await updateManagedPlan(editForm.value.id, {
+        show: editForm.value.show,
+        sell: editForm.value.sell,
+        renew: editForm.value.renew,
+      })
+    }
+
     ElMessage.success(isEditing.value ? '套餐已更新' : '套餐已创建')
     editDialogVisible.value = false
     loadPlans()

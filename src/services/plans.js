@@ -119,15 +119,14 @@ export async function saveManagedPlan(data) {
     }
   })
 
+  // 注意：后端 PlanSave::rules() 不包含 show / sell / renew，FormRequest::validated()
+  // 会把未声明字段过滤掉。三个开关必须改走 plan/update 接口（见 saveForm 编辑分支）。
   const requestBody = {
     name: String(data.name || '').trim(),
     group_id: data.groupId != null ? Number(data.groupId) : null,
     transfer_enable: Number(data.transferEnableGB || 0),
     speed_limit: data.speedLimit ? Number(data.speedLimit) : null,
     device_limit: data.deviceLimit ? Number(data.deviceLimit) : null,
-    show: data.show ? 1 : 0,
-    sell: data.sell ? 1 : 0,
-    renew: data.renew ? 1 : 0,
     content: data.content || null,
     reset_traffic_method: data.resetTrafficMethod === -1 ? null : (data.resetTrafficMethod ?? null),
     capacity_limit: data.capacityLimit ? Number(data.capacityLimit) : null,
