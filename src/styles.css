@@ -2265,6 +2265,7 @@ body.is-sidebar-resizing * {
     --el-input-border-color: var(--line);
     --el-input-hover-border-color: var(--line-strong);
     --el-input-focus-border-color: var(--primary);
+    width: 100%;
 }
 
 .notice-editor-dialog {
@@ -2330,6 +2331,9 @@ body.is-sidebar-resizing * {
 }
 
 .notice-editor-form__markdown {
+    width: 100%;
+    flex: 1 1 100%;
+    align-self: stretch;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -2339,6 +2343,7 @@ body.is-sidebar-resizing * {
 }
 
 .notice-editor-form__markdown .md-editor {
+    width: 100%;
     background: #ffffff;
     height: clamp(360px, 52vh, 560px);
     /* 让 md-editor 自身的 flex 在 Safari 下生效 */
