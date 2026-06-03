@@ -1,9 +1,10 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { RefreshCw, Eye, Copy } from 'lucide-vue-next'
+import { RefreshCw, Eye } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import SectionCard from '../components/common/SectionCard.vue'
+import CopyButton from '../components/common/CopyButton.vue'
 import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
 
 const route = useRoute()
@@ -145,30 +146,6 @@ function showJobDetail(job) {
   failedDetailVisible.value = true
 }
 
-async function copyToClipboard(text, successMessage = '已复制到剪贴板') {
-  if (!text) {
-    ElMessage.warning('没有可复制的内容')
-    return
-  }
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text)
-    } else {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.position = 'fixed'
-      ta.style.left = '-9999px'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
-    ElMessage.success(successMessage)
-  } catch {
-    ElMessage.error('复制失败')
-  }
-}
-
 function buildJobDetailText(job) {
   if (!job) return ''
   const lines = [
@@ -292,10 +269,11 @@ onMounted(() => {
                     <template v-if="row.requestData">
                       <div class="stack-header" style="margin-top:12px;">
                         <h4 style="margin:0;">请求数据</h4>
-                        <el-button
-                          :icon="Copy" link size="small" type="primary"
-                          @click="copyToClipboard(typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2), '已复制请求数据')"
-                        >复制</el-button>
+                        <CopyButton
+                          :value="typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2)"
+                          label="复制"
+                          success-message="已复制请求数据"
+                        />
                       </div>
                       <pre class="log-stack-trace">{{ typeof row.requestData === 'string' ? row.requestData : JSON.stringify(row.requestData, null, 2) }}</pre>
                     </template>
@@ -392,19 +370,23 @@ onMounted(() => {
 
         <div class="stack-header">
           <h4 style="margin:0;font-size:14px;">异常堆栈</h4>
-          <el-button
-            :icon="Copy" link size="small" type="primary"
-            @click="copyToClipboard(failedDetailJob.exception, '已复制异常堆栈')"
-          >复制堆栈</el-button>
+          <CopyButton
+            :value="failedDetailJob.exception"
+            label="复制堆栈"
+            success-message="已复制异常堆栈"
+          />
         </div>
         <pre class="log-stack-trace">{{ failedDetailJob.exception || '无异常信息' }}</pre>
       </template>
 
       <template #footer>
-        <el-button
-          :icon="Copy"
-          @click="copyToClipboard(buildJobDetailText(failedDetailJob), '已复制完整详情')"
-        >复制全部</el-button>
+        <CopyButton
+          :value="buildJobDetailText(failedDetailJob)"
+          label="复制全部"
+          variant="solid"
+          type="default"
+          success-message="已复制完整详情"
+        />
         <el-button :icon="RefreshCw" @click="loadFailedJobs">刷新</el-button>
         <el-button type="primary" @click="failedDetailVisible = false">关闭</el-button>
       </template>

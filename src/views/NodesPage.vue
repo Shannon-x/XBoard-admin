@@ -18,6 +18,7 @@ import {
 import { useAdminStore } from "../stores/admin";
 import NodeConfigDialog from "../components/nodes/NodeConfigDialog.vue";
 import SortDialog from "../components/common/SortDialog.vue";
+import CopyButton from "../components/common/CopyButton.vue";
 import { sortManagedNodes } from "../services/nodes";
 
 const adminStore = useAdminStore();
@@ -578,27 +579,6 @@ function resolveNodeTypeTagClass(type) {
 
     return "node-type-tag--default";
 }
-
-const copyAddress = async (node) => {
-    const address = `${node.host}:${node.port}`;
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(address);
-        } else {
-            const textArea = document.createElement('textarea');
-            textArea.value = address;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-9999px';
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-        }
-        ElMessage.success(t('nodes.messages.addressCopied', { address }));
-    } catch (err) {
-        ElMessage.error(t('nodes.messages.addressCopyFailed'));
-    }
-};
 
 function resolveNodeGroups(node) {
     if (Array.isArray(node.groupNames) && node.groupNames.length > 0) {
@@ -1386,15 +1366,13 @@ onUnmounted(function clearDebounceOnUnmount() {
                                     row.serverPort
                                 }})</strong
                             >
-                            <el-button
+                            <CopyButton
                                 class="node-address-copy"
-                                link
-                                type="primary"
-                                title="复制地址"
-                                @click="copyAddress(row)"
-                            >
-                                <el-icon><Copy /></el-icon>
-                            </el-button>
+                                :value="`${row.host}:${row.port}`"
+                                :success-message="t('nodes.messages.addressCopied', { address: `${row.host}:${row.port}` })"
+                                :error-message="t('nodes.messages.addressCopyFailed')"
+                                :tooltip-content="`复制 ${row.host}:${row.port}`"
+                            />
                         </div>
                     </template>
                 </el-table-column>

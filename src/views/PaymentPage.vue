@@ -1,8 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Pencil, Trash2, Copy } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, Search } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
+import CopyButton from '../components/common/CopyButton.vue'
 import {
   fetchPayments,
   fetchPaymentMethods,
@@ -154,14 +155,6 @@ async function handleToggleEnable(row) {
   }
 }
 
-function copyNotifyUrl(url) {
-  navigator.clipboard.writeText(url).then(() => {
-    ElMessage.success('通知地址已复制')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
-}
-
 async function handleSortSave(ids) {
   try {
     await sortPayments(ids)
@@ -220,15 +213,18 @@ onMounted(loadPayments)
             <el-tag size="small">{{ row.payment }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="通知地址" min-width="240">
+        <el-table-column label="通知地址" min-width="260">
           <template #default="{ row }">
-            <div v-if="row.notifyUrl" style="display:flex;align-items:center;gap:4px;">
-              <span style="font-size:12px;color:var(--el-text-color-regular);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <div v-if="row.notifyUrl" style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--el-text-color-regular);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">
                 {{ row.notifyUrl }}
               </span>
-              <el-button link size="small" type="primary" @click="copyNotifyUrl(row.notifyUrl)" style="flex-shrink:0;">
-                <el-icon :size="14"><CopyDocument /></el-icon>
-              </el-button>
+              <CopyButton
+                :value="row.notifyUrl"
+                label="复制"
+                success-message="通知地址已复制"
+                style="flex-shrink:0;"
+              />
             </div>
             <span v-else style="color:var(--el-text-color-placeholder);">--</span>
           </template>
