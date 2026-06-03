@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, MessageCircle, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -12,9 +12,16 @@ import {
   closeTicket,
   createEmptyManagedTicketsPagination,
 } from '../services/tickets'
+import {
+  getUserInfoById,
+  updateManagedUser,
+  resetManagedUserSecret,
+  banManagedUsers,
+} from '../services/users'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 
 const tickets = ref([])
 const pagination = ref(createEmptyManagedTicketsPagination())
@@ -28,6 +35,44 @@ const detailData = ref(null)
 const detailLoading = ref(false)
 const replyMessage = ref('')
 const replySending = ref(false)
+
+// 工单作者的用户信息：随 detailData 一起拉取，关 dialog 时清空。
+// 用 token 序列号防止快速切换工单时旧请求覆盖新数据。
+const ticketUser = ref(null)
+const ticketUserLoading = ref(false)
+const ticketUserError = ref('')
+const ticketUserActionLoading = ref(false)
+let ticketUserFetchToken = 0
+
+async function loadTicketUser(userId) {
+  ticketUser.value = null
+  ticketUserError.value = ''
+  if (!userId) {
+    return
+  }
+
+  const myToken = ++ticketUserFetchToken
+  ticketUserLoading.value = true
+  try {
+    const user = await getUserInfoById(Number(userId))
+    if (myToken !== ticketUserFetchToken) return
+    ticketUser.value = user
+  } catch (err) {
+    if (myToken !== ticketUserFetchToken) return
+    ticketUserError.value = err?.message || '加载用户信息失败'
+  } finally {
+    if (myToken === ticketUserFetchToken) {
+      ticketUserLoading.value = false
+    }
+  }
+}
+
+function clearTicketUser() {
+  ticketUserFetchToken += 1 // invalidate any in-flight fetch
+  ticketUser.value = null
+  ticketUserLoading.value = false
+  ticketUserError.value = ''
+}
 
 const statusOptions = [
   { label: '全部', value: '' },
@@ -86,16 +131,24 @@ async function openDetail(ticket) {
   detailLoading.value = true
   detailDialogVisible.value = true
   replyMessage.value = ''
+  clearTicketUser()
   try {
     detailData.value = await fetchTicketDetail(ticket.id)
     await nextTick()
     scrollToBottom()
+    // 并行（不等待）拉取作者信息；失败也不影响工单详情显示
+    loadTicketUser(detailData.value?.userId)
   } catch (err) {
     ElMessage.error(err.message || '获取工单详情失败')
     detailDialogVisible.value = false
   } finally {
     detailLoading.value = false
   }
+}
+
+function handleDetailDialogClosed() {
+  clearTicketUser()
+  detailData.value = null
 }
 
 async function handleReply() {
@@ -140,6 +193,131 @@ async function handleClose(ticket) {
     }
   }
 }
+
+// ===== 工单作者快捷操作 =====
+// 行为与 UsersPage 行内操作保持一致，确认文案、调用的 service、参数都对齐，
+// 这样后续若 UsersPage 改动只需同步这里即可。
+async function handleResetUserTraffic() {
+  const user = ticketUser.value
+  if (!user?.id) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要重置用户 ${user.email} 的已用流量吗？该操作不可恢复。`,
+      '重置流量',
+      { type: 'warning' },
+    )
+    ticketUserActionLoading.value = true
+    await updateManagedUser({ id: user.id, u: 0, d: 0 })
+    ElMessage.success('流量已重置')
+    await loadTicketUser(user.id)
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.message || '操作失败')
+    }
+  } finally {
+    ticketUserActionLoading.value = false
+  }
+}
+
+async function handleResetUserSecret() {
+  const user = ticketUser.value
+  if (!user?.id) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要重置用户 ${user.email} 的订阅链接和 UUID 吗？\n\n该操作不可恢复，老订阅链接将立即失效，用户需要重新导入。`,
+      '重置订阅链接 / UUID',
+      { type: 'warning', confirmButtonText: '确定重置', cancelButtonText: '取消' },
+    )
+    ticketUserActionLoading.value = true
+    await resetManagedUserSecret(user.id)
+    ElMessage.success('订阅链接和 UUID 已重置')
+    await loadTicketUser(user.id)
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.message || '操作失败')
+    }
+  } finally {
+    ticketUserActionLoading.value = false
+  }
+}
+
+async function handleToggleUserBan() {
+  const user = ticketUser.value
+  if (!user?.id) return
+  const willBan = !user.isBanned
+  const action = willBan ? '封禁' : '解封'
+  try {
+    await ElMessageBox.confirm(
+      `确定要${action}用户 ${user.email} 吗？`,
+      `${action}用户`,
+      { type: 'warning' },
+    )
+    ticketUserActionLoading.value = true
+    if (willBan) {
+      // 复用 UsersPage 的 banManagedUsers 参数格式
+      await banManagedUsers({ scope: 'selected', user_ids: [user.id] })
+    } else {
+      await updateManagedUser({ id: user.id, banned: 0 })
+    }
+    ElMessage.success(`已${action}`)
+    await loadTicketUser(user.id)
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.message || '操作失败')
+    }
+  } finally {
+    ticketUserActionLoading.value = false
+  }
+}
+
+async function handleCopyUserSubscribe() {
+  const url = ticketUser.value?.subscribeUrl
+  if (!url) {
+    ElMessage.warning('该用户暂无订阅链接')
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('订阅链接已复制')
+  } catch (err) {
+    ElMessage.error('复制失败：' + (err?.message || '浏览器拒绝访问剪贴板'))
+  }
+}
+
+function handleOpenUserOrders() {
+  const user = ticketUser.value
+  if (!user?.id) return
+  // 用 route name 解析，自动带上 frontendSecurePath 前缀
+  const href = router.resolve({
+    name: 'orders',
+    query: { user_id: user.id, user_email: user.email },
+  }).href
+  window.open(href, '_blank')
+}
+
+function handleOpenUserManage() {
+  const user = ticketUser.value
+  if (!user?.id) return
+  const href = router.resolve({
+    name: 'users',
+    query: { user_id: user.id, user_email: user.email },
+  }).href
+  window.open(href, '_blank')
+}
+
+const ticketUserSummary = computed(function ticketUserSummary() {
+  const user = ticketUser.value
+  if (!user) return null
+  return {
+    plan: user.planName,
+    balance: user.balance,
+    used: user.totalUsed,
+    total: user.transferEnable,
+    expire: user.expiredAt,
+    status: user.statusText,
+    statusType: user.statusType,
+  }
+})
 
 const sortedMessages = computed(function getSortedMessages() {
   if (!detailData.value?.messages) return []
@@ -258,9 +436,10 @@ onMounted(function onMount() {
     <el-dialog
       v-model="detailDialogVisible"
       :show-close="false"
-      width="720px"
+      width="780px"
       destroy-on-close
       class="ticket-detail-dialog"
+      @closed="handleDetailDialogClosed"
     >
       <template #header>
         <div v-if="detailData" class="ticket-dialog-header">
@@ -276,11 +455,122 @@ onMounted(function onMount() {
             >关闭工单</el-button>
           </div>
           <div class="ticket-dialog-meta">
-            <span>{{ detailData.userEmail }}</span>
-            <span>·</span>
+            <span class="ticket-dialog-meta__email">{{ detailData.userEmail }}</span>
+            <span class="ticket-dialog-meta__sep">·</span>
             <span>创建于 {{ detailData.createdAt }}</span>
-            <span>·</span>
+            <span class="ticket-dialog-meta__sep">·</span>
             <el-tag :type="getLevelInfo(detailData.level).type" size="small">{{ getLevelInfo(detailData.level).label }}</el-tag>
+
+            <!-- 用户摘要 + 操作（右对齐） -->
+            <span class="ticket-dialog-meta__spacer" />
+
+            <span v-if="ticketUserLoading" class="ticket-dialog-meta__loading">加载用户信息...</span>
+            <template v-else-if="ticketUserSummary">
+              <el-tag :type="ticketUserSummary.statusType" size="small" effect="plain">{{ ticketUserSummary.status }}</el-tag>
+              <span class="ticket-user-chip" :title="`套餐：${ticketUserSummary.plan}`">📋 {{ ticketUserSummary.plan }}</span>
+              <span class="ticket-user-chip" :title="`已用 ${ticketUserSummary.used} / 总 ${ticketUserSummary.total}`">📊 {{ ticketUserSummary.used }} / {{ ticketUserSummary.total }}</span>
+              <span class="ticket-user-chip" :title="`到期：${ticketUserSummary.expire}`">⏰ {{ ticketUserSummary.expire }}</span>
+            </template>
+            <span v-else-if="ticketUserError" class="ticket-user-chip ticket-user-chip--error" :title="ticketUserError">⚠ 用户信息加载失败</span>
+
+            <!-- 操作下拉 -->
+            <el-dropdown
+              v-if="ticketUser"
+              trigger="click"
+              :disabled="ticketUserActionLoading"
+              class="ticket-user-actions"
+              @command="(cmd) => {
+                if (cmd === 'detail') return // 详情走 popover
+                if (cmd === 'resetTraffic') return handleResetUserTraffic()
+                if (cmd === 'resetSecret') return handleResetUserSecret()
+                if (cmd === 'copySubscribe') return handleCopyUserSubscribe()
+                if (cmd === 'toggleBan') return handleToggleUserBan()
+                if (cmd === 'openOrders') return handleOpenUserOrders()
+                if (cmd === 'openManage') return handleOpenUserManage()
+              }"
+            >
+              <el-button size="small" type="primary" plain :loading="ticketUserActionLoading">
+                管理用户 ▾
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="resetTraffic">重置流量</el-dropdown-item>
+                  <el-dropdown-item command="resetSecret">重置订阅链接 / UUID</el-dropdown-item>
+                  <el-dropdown-item command="copySubscribe" :disabled="!ticketUser.subscribeUrl">复制订阅 URL</el-dropdown-item>
+                  <el-dropdown-item command="toggleBan" divided>
+                    {{ ticketUser.isBanned ? '解封用户' : '封禁用户' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item command="openOrders" divided>查看 TA 的订单（新页）</el-dropdown-item>
+                  <el-dropdown-item command="openManage">前往用户管理（新页）</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+
+            <!-- 详细信息浮层 -->
+            <el-popover
+              v-if="ticketUser"
+              :width="320"
+              placement="bottom-end"
+              trigger="click"
+            >
+              <template #reference>
+                <el-button size="small" text class="ticket-user-detail-btn">用户详情</el-button>
+              </template>
+              <div class="ticket-user-detail">
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">邮箱</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.email }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">套餐</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.planName }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">账户状态</span>
+                  <el-tag :type="ticketUser.statusType" size="small">{{ ticketUser.statusText }}</el-tag>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">余额 / 佣金</span>
+                  <span class="ticket-user-detail__val">¥{{ ticketUser.balance }} / ¥{{ ticketUser.commissionBalance }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">流量</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.totalUsed }} / {{ ticketUser.transferEnable }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">上行 / 下行</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.upload }} / {{ ticketUser.download }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">在线设备</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.onlineCount }}{{ ticketUser.deviceLimit ? ` / ${ticketUser.deviceLimit}` : '' }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">到期时间</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.expiredAt }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">下次重置</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.nextResetAt }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">注册时间</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.createdAt }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">上次登录</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.lastLoginAt }}</span>
+                </div>
+                <div class="ticket-user-detail__row">
+                  <span class="ticket-user-detail__label">邀请人</span>
+                  <span class="ticket-user-detail__val">{{ ticketUser.inviteUserEmail }}</span>
+                </div>
+                <div v-if="ticketUser.remarks" class="ticket-user-detail__row ticket-user-detail__row--full">
+                  <span class="ticket-user-detail__label">备注</span>
+                  <span class="ticket-user-detail__val ticket-user-detail__val--multiline">{{ ticketUser.remarks }}</span>
+                </div>
+              </div>
+            </el-popover>
           </div>
         </div>
         <el-button class="ticket-dialog-close" :icon="X" text @click="detailDialogVisible = false" />
@@ -357,10 +647,89 @@ onMounted(function onMount() {
 .ticket-dialog-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 8px;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+
+.ticket-dialog-meta__email {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.ticket-dialog-meta__sep {
+  color: var(--el-text-color-placeholder);
+}
+
+.ticket-dialog-meta__spacer {
+  flex: 1 1 auto;
+  min-width: 8px;
+}
+
+.ticket-dialog-meta__loading {
+  color: var(--el-text-color-placeholder);
+  font-size: 12px;
+}
+
+.ticket-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--el-fill-color-light);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-user-chip--error {
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
+}
+
+.ticket-user-actions {
+  margin-left: 4px;
+}
+
+.ticket-user-detail-btn {
+  padding: 0 6px;
+  height: 24px;
+}
+
+.ticket-user-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+
+.ticket-user-detail__row {
+  display: contents;
+}
+
+.ticket-user-detail__row--full > .ticket-user-detail__val {
+  white-space: pre-wrap;
+}
+
+.ticket-user-detail__label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ticket-user-detail__val {
+  color: var(--el-text-color-primary);
+  word-break: break-all;
+}
+
+.ticket-user-detail__val--multiline {
+  white-space: pre-wrap;
 }
 
 .ticket-dialog-close {
