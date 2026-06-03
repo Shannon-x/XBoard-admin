@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import Sortable from 'sortablejs'
+import { GripVertical, ArrowUp, ArrowDown } from 'lucide-vue-next'
 
 const props = defineProps({
   visible: Boolean,
@@ -56,23 +57,60 @@ function handleSave() {
   const ids = sortList.value.map(item => item.id)
   emit('save', ids)
 }
+
+// 键盘 / 触屏兜底：直接上移下移
+function moveUp(index) {
+  if (index <= 0) return
+  const item = sortList.value.splice(index, 1)[0]
+  sortList.value.splice(index - 1, 0, item)
+}
+
+function moveDown(index) {
+  if (index >= sortList.value.length - 1) return
+  const item = sortList.value.splice(index, 1)[0]
+  sortList.value.splice(index + 1, 0, item)
+}
 </script>
 
 <template>
   <el-dialog
     :model-value="visible"
     :title="title"
-    width="480px"
+    width="min(480px, calc(100vw - 32px))"
     @update:model-value="$emit('update:visible', $event)"
     destroy-on-close
   >
-    <p class="sort-hint">拖拽项目来调整顺序</p>
+    <p class="sort-hint">拖动左侧手柄或使用上下箭头按钮调整顺序</p>
     <div v-if="sortList.length === 0" style="text-align: center; color: var(--el-text-color-secondary); padding: 24px 0">暂无数据</div>
     <div v-else ref="listRef" class="sort-list">
       <div v-for="(item, index) in sortList" :key="item.id" class="sort-item">
-        <span class="sort-item__handle">⠿</span>
+        <span class="sort-item__handle" title="拖动调整顺序" aria-label="拖动手柄">
+          <el-icon><GripVertical /></el-icon>
+        </span>
         <span class="sort-item__index">{{ index + 1 }}</span>
         <span class="sort-item__name">{{ item.name }}</span>
+        <div class="sort-item__actions">
+          <el-button
+            link
+            size="small"
+            :disabled="index === 0"
+            aria-label="上移"
+            title="上移"
+            @click="moveUp(index)"
+          >
+            <el-icon><ArrowUp /></el-icon>
+          </el-button>
+          <el-button
+            link
+            size="small"
+            :disabled="index === sortList.length - 1"
+            aria-label="下移"
+            title="下移"
+            @click="moveDown(index)"
+          >
+            <el-icon><ArrowDown /></el-icon>
+          </el-button>
+        </div>
       </div>
     </div>
     <template #footer>
@@ -110,6 +148,8 @@ function handleSave() {
 }
 .sort-item__handle {
   cursor: grab;
+  display: inline-flex;
+  align-items: center;
   font-size: 18px;
   color: var(--el-text-color-placeholder);
   user-select: none;
@@ -138,6 +178,11 @@ function handleSave() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.sort-item__actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
 }
 .sort-item--ghost {
   opacity: 0.4;

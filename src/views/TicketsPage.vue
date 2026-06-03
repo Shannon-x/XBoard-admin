@@ -403,7 +403,14 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="tickets" stripe style="width: 100%" @row-click="openDetail">
+      <el-table
+        v-loading="loading"
+        :data="tickets"
+        stripe
+        style="width: 100%"
+        class="tickets-table--clickable"
+        @row-click="openDetail"
+      >
         <el-table-column label="工单号" prop="id" width="80" />
         <el-table-column label="主题" min-width="180" prop="subject" show-overflow-tooltip />
         <el-table-column label="优先级" width="90">
@@ -445,7 +452,7 @@ onMounted(function onMount() {
     <el-dialog
       v-model="detailDialogVisible"
       :show-close="false"
-      width="780px"
+      width="min(780px, calc(100vw - 32px))"
       destroy-on-close
       class="ticket-detail-dialog"
       @closed="handleDetailDialogClosed"
@@ -453,7 +460,9 @@ onMounted(function onMount() {
       <template #header>
         <div v-if="detailData" class="ticket-dialog-header">
           <div class="ticket-dialog-title">
-            <span class="ticket-subject">{{ detailData.subject }}</span>
+            <el-tooltip :content="detailData.subject" placement="bottom-start" :show-after="400">
+              <span class="ticket-subject">{{ detailData.subject }}</span>
+            </el-tooltip>
             <el-tag :type="detailData.statusType" size="small" effect="dark">{{ detailData.statusText }}</el-tag>
             <el-button
               v-if="detailData.status === 0"
@@ -834,5 +843,10 @@ onMounted(function onMount() {
   color: var(--el-text-color-secondary);
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 13px;
+}
+
+/* 整行可点击：让 cursor 提示 + hover 高亮 */
+.tickets-table--clickable :deep(.el-table__row) {
+  cursor: pointer;
 }
 </style>

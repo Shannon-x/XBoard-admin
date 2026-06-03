@@ -258,7 +258,7 @@ onMounted(loadPayments)
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? '添加支付方式' : '编辑支付方式'"
-      width="540px"
+      width="min(540px, calc(100vw - 32px))"
     >
       <el-form
         ref="formRef"

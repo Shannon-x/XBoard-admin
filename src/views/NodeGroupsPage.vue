@@ -136,7 +136,7 @@ onMounted(loadGroups)
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? t('nodeGroupsPage.createTitle') : t('nodeGroupsPage.editTitle')"
-      width="480px"
+      width="min(480px, calc(100vw - 32px))"
       destroy-on-close
     >
       <el-form

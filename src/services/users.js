@@ -141,24 +141,25 @@ export async function fetchManagedUsers(options = {}) {
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
-  // Xboard API can return pagination at different nesting levels
+  // Xboard API can return pagination at different nesting levels。
+  // 用 ?? 而不是 ||：当列表为空（total: 0）时不要把它当成 missing 而错当后备值。
   const total = Number(
     rawData?.total
-    || payload?.data?.total
-    || payload?.total
-    || 0
+    ?? payload?.data?.total
+    ?? payload?.total
+    ?? 0
   )
   const currentPage = Number(
     rawData?.current_page
-    || payload?.data?.current_page
-    || payload?.current_page
-    || current
+    ?? payload?.data?.current_page
+    ?? payload?.current_page
+    ?? current
   )
   const perPage = Number(
     rawData?.per_page
-    || payload?.data?.per_page
-    || payload?.per_page
-    || pageSize
+    ?? payload?.data?.per_page
+    ?? payload?.per_page
+    ?? pageSize
   )
 
 

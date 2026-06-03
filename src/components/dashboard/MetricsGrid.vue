@@ -104,6 +104,14 @@ function resolveMetricSegments(metric) {
         };
     });
 }
+
+// 之前 hard-coded 字符串散落两处：class 判断里和 @click 里。
+// 这里集中定义，class、role、tabindex、键盘绑定都用同一份判断，避免漂移。
+const CLICKABLE_METRIC_LABELS = new Set(['待处理工单', '待处理佣金', '月新增用户']);
+
+function isClickableMetric(metric) {
+    return CLICKABLE_METRIC_LABELS.has(metric?.label);
+}
 </script>
 
 <template>
@@ -116,10 +124,15 @@ function resolveMetricSegments(metric) {
             :class="[
                 'metric-card--unified',
                 { 'metric-card--compact': metric.compact },
-                { 'metric-card--clickable': metric.label === '待处理工单' || metric.label === '待处理佣金' || metric.label === '月新增用户' },
+                { 'metric-card--clickable': isClickableMetric(metric) },
             ]"
             shadow="never"
-            @click="emit('metric-click', metric.label)"
+            :role="isClickableMetric(metric) ? 'button' : undefined"
+            :tabindex="isClickableMetric(metric) ? 0 : undefined"
+            :aria-label="isClickableMetric(metric) ? `${metric.label} — 点击查看详情` : undefined"
+            @click="isClickableMetric(metric) && emit('metric-click', metric.label)"
+            @keyup.enter="isClickableMetric(metric) && emit('metric-click', metric.label)"
+            @keyup.space.prevent="isClickableMetric(metric) && emit('metric-click', metric.label)"
         >
             <div class="metric-head">
                 <span class="metric-label-wrap">

@@ -35,7 +35,7 @@ const TICKET_REPLY_STATUS = {
 }
 
 function formatTimestamp(value) {
-  const timestamp = Number(value || 0)
+  const timestamp = Number(value ?? 0)
 
   if (!timestamp) {
     return '--'
@@ -64,10 +64,10 @@ function normalizeTicket(ticket) {
   const level = Number(ticket?.level ?? 0)
 
   const rawMessages = Array.isArray(ticket?.messages) ? ticket.messages : []
-  const ticketUserId = Number(ticket?.user_id || 0)
+  const ticketUserId = Number(ticket?.user_id ?? 0)
 
   return {
-    id: Number(ticket?.id || 0),
+    id: Number(ticket?.id ?? 0),
     userId: ticketUserId,
     userEmail: ticket?.user?.email || '--',
     subject: String(ticket?.subject || '--'),
@@ -83,10 +83,10 @@ function normalizeTicket(ticket) {
     createdAt: formatTimestamp(ticket?.created_at),
     updatedAt: formatTimestamp(ticket?.updated_at),
     messages: rawMessages.map(function mapMessage(msg) {
-      const msgUserId = Number(msg?.user_id || 0)
+      const msgUserId = Number(msg?.user_id ?? 0)
       const isAdmin = Boolean(msg?.is_from_admin) || (ticketUserId > 0 && msgUserId !== ticketUserId)
       return {
-        id: Number(msg?.id || 0),
+        id: Number(msg?.id ?? 0),
         userId: msgUserId,
         message: String(msg?.message || ''),
         createdAt: formatTimestamp(msg?.created_at),
@@ -131,9 +131,9 @@ export async function fetchManagedTickets(options = {}) {
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
-  const total = Number(rawData?.total || payload?.total || 0)
-  const currentPage = Number(rawData?.current_page || payload?.current_page || current)
-  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  const total = Number(rawData?.total ?? payload?.total ?? 0)
+  const currentPage = Number(rawData?.current_page ?? payload?.current_page ?? current)
+  const perPage = Number(rawData?.per_page ?? payload?.per_page ?? pageSize)
 
   return {
     list: listSource.map(function mapTicket(ticket) {

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watchEffect } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
@@ -168,9 +168,15 @@ const pageTitle = computed(function pageTitle() {
     return route.meta.title ?? t("routes.dashboard.title");
 });
 
-watchEffect(function updateDocumentTitle() {
-    document.title = `${pageTitle.value} - ${siteName.value}`;
-});
+// 显式声明依赖比 watchEffect 自动追踪更安全 —— effect 内部会跟踪任何被访问的
+// reactive 字段，而我们只关心 pageTitle / siteName 两个。
+watch(
+    [pageTitle, siteName],
+    function applyTitle([title, name]) {
+        document.title = `${title} - ${name}`;
+    },
+    { immediate: true },
+);
 
 const pageEyebrow = computed(function pageEyebrow() {
     if (route.meta.eyebrowKey) {

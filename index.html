@@ -3,10 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>V2Board Admin Clone</title>
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!--
+      Content Security Policy（中等强度）：
+      - default-src 'self'：默认只允许同源资源
+      - script-src 'self'：禁第三方脚本 / 内联脚本
+      - style-src 'self' 'unsafe-inline'：Element Plus / md-editor 有大量内联 style，
+        移除 'unsafe-inline' 会破坏视觉，先保留；后续可改 nonce 形式
+      - img-src 'self' data: https:：允许 https 图床和 base64
+      - font-src 'self' data:
+      - connect-src 'self' https: ws:：允许 API 同源 / 任意 https 后端
+      - frame-ancestors 'none'：禁套 iframe，等价于 X-Frame-Options: DENY
+      - object-src 'none'：禁 plugin
+      - base-uri 'self'：防 <base href> 注入
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: ws: wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <title>XBoard Admin</title>
     <meta
       name="description"
-      content="A Vue recreation of a V2Board-style admin dashboard."
+      content="XBoard 管理后台"
     />
     <script type="module" src="/src/main.js"></script>
   </head>

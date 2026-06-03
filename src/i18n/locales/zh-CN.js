@@ -903,7 +903,9 @@ export default {
     actions: {
       create: '添加公告',
       refresh: '刷新列表',
+      sort: '排序',
     },
+    sortDialogTitle: '排序公告',
     columns: {
       id: 'ID',
       show: '显示状态',

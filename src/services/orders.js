@@ -58,7 +58,7 @@ const PERIOD_LABEL_MAP = {
 }
 
 function formatTimestamp(value) {
-  const timestamp = Number(value || 0)
+  const timestamp = Number(value ?? 0)
 
   if (!timestamp) {
     return '--'
@@ -92,9 +92,9 @@ function normalizeOrder(order) {
   const planName = order?.plan?.name || '--'
 
   return {
-    id: Number(order?.id || 0),
+    id: Number(order?.id ?? 0),
     tradeNo: String(order?.trade_no || '--'),
-    userId: Number(order?.user_id || 0),
+    userId: Number(order?.user_id ?? 0),
     userEmail: order?.user?.email || '--',
     planId: order?.plan_id || null,
     planName,
@@ -102,8 +102,8 @@ function normalizeOrder(order) {
     periodText: PERIOD_LABEL_MAP[order?.period] || String(order?.period || '--'),
     type,
     typeText: ORDER_TYPE_MAP[type] || '未知',
-    totalAmount: Number(order?.total_amount || 0) / 100,
-    totalAmountText: `¥${(Number(order?.total_amount || 0) / 100).toFixed(2)}`,
+    totalAmount: Number(order?.total_amount ?? 0) / 100,
+    totalAmountText: `¥${(Number(order?.total_amount ?? 0) / 100).toFixed(2)}`,
     discountAmount: order?.discount_amount ? Number(order.discount_amount) / 100 : null,
     balanceAmount: order?.balance_amount ? Number(order.balance_amount) / 100 : 0,
     surplusAmount: order?.surplus_amount ? Number(order.surplus_amount) / 100 : 0,
@@ -111,10 +111,10 @@ function normalizeOrder(order) {
     surplusOrders: Array.isArray(order?.surplus_orders)
       ? order.surplus_orders.map(function mapSurplusOrder(o) {
           return {
-            id: Number(o?.id || 0),
+            id: Number(o?.id ?? 0),
             tradeNo: String(o?.trade_no || ''),
-            totalAmount: Number(o?.total_amount || 0) / 100,
-            status: Number(o?.status || 0),
+            totalAmount: Number(o?.total_amount ?? 0) / 100,
+            status: Number(o?.status ?? 0),
           }
         })
       : [],
@@ -165,9 +165,9 @@ export async function fetchManagedOrders(options = {}) {
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
-  const total = Number(rawData?.total || payload?.total || 0)
-  const currentPage = Number(rawData?.current_page || payload?.current_page || current)
-  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  const total = Number(rawData?.total ?? payload?.total ?? 0)
+  const currentPage = Number(rawData?.current_page ?? payload?.current_page ?? current)
+  const perPage = Number(rawData?.per_page ?? payload?.per_page ?? pageSize)
 
   return {
     list: listSource.map(function mapOrder(order) {

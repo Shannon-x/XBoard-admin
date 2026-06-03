@@ -91,7 +91,7 @@ function handleRangeChange(value) {
   <el-dialog
     v-model="dialogVisible"
     title="每日新增用户"
-    width="720px"
+    width="min(720px, calc(100vw - 32px))"
     destroy-on-close
   >
     <div class="daily-users-toolbar">

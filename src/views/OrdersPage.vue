@@ -446,7 +446,7 @@ onMounted(function onMount() {
     </SectionCard>
 
     <!-- 订单详情对话框 -->
-    <el-dialog v-model="detailDialogVisible" title="订单详情" width="600px" destroy-on-close>
+    <el-dialog v-model="detailDialogVisible" title="订单详情" width="min(600px, calc(100vw - 32px))" destroy-on-close>
       <div v-loading="detailLoading">
         <template v-if="detailData">
           <el-descriptions :column="2" border size="small">
@@ -529,7 +529,7 @@ onMounted(function onMount() {
     </el-dialog>
 
     <!-- 订单分配对话框 -->
-    <el-dialog v-model="assignDialogVisible" title="订单分配" width="440px" destroy-on-close>
+    <el-dialog v-model="assignDialogVisible" title="订单分配" width="min(440px, calc(100vw - 32px))" destroy-on-close>
       <el-form
         ref="assignFormRef"
         :model="assignForm"

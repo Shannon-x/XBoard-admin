@@ -176,7 +176,7 @@ onMounted(function loadNoticesOnMount() {
             </template>
           </el-input>
 
-          <el-button @click="sortDialogVisible = true" :disabled="adminStore.managedNotices.length < 2">排序</el-button>
+          <el-button @click="sortDialogVisible = true" :disabled="adminStore.managedNotices.length < 2">{{ t('notices.actions.sort') }}</el-button>
 
           <el-button class="ghost-btn" :loading="refreshing" @click="loadNotices(true)">
             <el-icon><RefreshCw /></el-icon>
@@ -271,7 +271,7 @@ onMounted(function loadNoticesOnMount() {
     <SortDialog
       v-model:visible="sortDialogVisible"
       :items="adminStore.managedNotices.map(notice => ({ id: notice.id, name: notice.title }))"
-      title="排序公告"
+      :title="t('notices.sortDialogTitle')"
       @save="handleSortSave"
     />
   </section>

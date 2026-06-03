@@ -632,7 +632,9 @@ function createFormFromNode(node) {
         echKeyPath: node.echKeyPath || "",
         echConfigPath: node.echConfigPath || "",
         parentId: node.parentId ? String(node.parentId) : "",
-        routeIds: Array.isArray(node.routeIds) ? node.routeIds : [],
+        // 拷贝而不是按引用：原 prop 数组可能被父组件继续 reactive 持有，
+        // 如果 form 直接引用同一数组，弹窗里 push/splice 会污染外部状态。
+        routeIds: Array.isArray(node.routeIds) ? node.routeIds.map(String) : [],
     };
 }
 
@@ -1051,7 +1053,7 @@ onBeforeUnmount(destroyRouteSortable);
     <el-dialog
         v-model="dialogVisible"
         :title="mode === 'edit' ? `编辑 ${protocolDisplayName} 节点` : `添加 ${protocolDisplayName} 节点`"
-        width="560px"
+        width="min(560px, calc(100vw - 32px))"
         destroy-on-close
     >
         <el-form label-position="top" class="node-config-form">
@@ -1985,7 +1987,7 @@ onBeforeUnmount(destroyRouteSortable);
     <el-dialog
         v-model="transportConfigDialogVisible"
         title="编辑协议配置"
-        width="520px"
+        width="min(520px, calc(100vw - 32px))"
         destroy-on-close
     >
         <div class="node-protocol-config">
@@ -2061,7 +2063,7 @@ onBeforeUnmount(destroyRouteSortable);
     <el-dialog
         v-model="certConfigDialogVisible"
         title="编辑安全性配置"
-        width="480px"
+        width="min(480px, calc(100vw - 32px))"
         destroy-on-close
         append-to-body
     >

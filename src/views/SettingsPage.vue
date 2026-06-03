@@ -170,7 +170,7 @@ function handleCategoryChange(categoryKey) {
       v-model="mailTestDialogVisible"
       :title="t('systemSettings.testMail.title')"
       class="settings-mail-test-dialog"
-      width="460px"
+      width="min(460px, calc(100vw - 32px))"
     >
       <div class="settings-mail-test-result">
         <div class="settings-mail-test-result__status">

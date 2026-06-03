@@ -152,13 +152,23 @@ async function handleDelete(plan) {
 }
 
 async function handleToggle(plan, field) {
+  // per-row + per-field 锁：阻止用户在同一开关重复点击；
+  // 之前每次点击都触发一次 loadPlans 整页 reload，连续点会丢状态。
+  const lockKey = `${field}Updating`
+  if (plan[lockKey]) return
+  const previous = plan[field]
+  const newVal = !previous
+  plan[lockKey] = true
+  // 乐观更新：UI 先翻，失败再回滚
+  plan[field] = newVal
   try {
-    const newVal = !plan[field]
     await updateManagedPlan(plan.id, { [field]: newVal })
     ElMessage.success('已更新')
-    loadPlans()
   } catch (err) {
+    plan[field] = previous
     ElMessage.error(err.message || '更新失败')
+  } finally {
+    plan[lockKey] = false
   }
 }
 
@@ -314,7 +324,7 @@ onMounted(function onMount() {
     <el-dialog
       v-model="editDialogVisible"
       :title="isEditing ? '编辑套餐' : '创建套餐'"
-      width="640px"
+      width="min(640px, calc(100vw - 32px))"
       destroy-on-close
     >
       <el-form :model="editForm" label-position="top" style="padding: 0 8px">

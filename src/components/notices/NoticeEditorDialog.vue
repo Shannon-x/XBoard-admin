@@ -115,21 +115,15 @@ function handleSubmit() {
   })
 }
 
+// 只在 dialog 打开时同步 —— 之前用 [modelValue, mode, notice] 三元数组 + deep
+// 监听，等于"notice 任何属性变动也触发"。打开时跑一次足够；关闭由 handleClosed 重置。
 watch(
-  function watchDialogState() {
-    return [props.modelValue, props.mode, props.notice]
-  },
-  function syncWhenOpen([visible]) {
-    if (!visible) {
-      return
-    }
-
+  () => props.modelValue,
+  function syncWhenOpen(visible) {
+    if (!visible) return
     syncFormFromNotice(props.mode === 'edit' ? props.notice : null)
   },
-  {
-    immediate: true,
-    deep: true,
-  },
+  { immediate: true },
 )
 </script>
 

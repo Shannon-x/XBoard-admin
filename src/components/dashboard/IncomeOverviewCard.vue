@@ -25,7 +25,8 @@ const activeMetric = ref('amount')
 const dropdownRef = ref(null)
 const customRange = ref([])
 
-const metricOptions = [
+// 包 computed —— 之前 t() 只在 setup 时求值一次，切换语言后 label 不刷新。
+const metricOptions = computed(() => ([
   {
     label: t('income.metricAmount'),
     value: 'amount',
@@ -36,7 +37,7 @@ const metricOptions = [
     value: 'count',
     hint: t('income.metricCountHint'),
   },
-]
+]))
 
 const chartWidth = 1120
 const chartHeight = 320
@@ -47,14 +48,14 @@ const chartPadding = {
   left: 64,
 }
 
-const rangeOptions = [
+const rangeOptions = computed(() => ([
   { label: t('income.range.last7Days'), value: '7d' },
   { label: t('income.range.last30Days'), value: '30d' },
   { label: t('income.range.last90Days'), value: '90d' },
   { label: t('income.range.last180Days'), value: '180d' },
   { label: t('income.range.lastYear'), value: '365d' },
   { label: t('income.range.custom'), value: 'custom' },
-]
+]))
 
 const currentRangeLabel = computed(function currentRangeLabel() {
   if (props.range?.label) {
@@ -65,7 +66,7 @@ const currentRangeLabel = computed(function currentRangeLabel() {
     return t(props.range.labelKey)
   }
 
-  const matchedOption = rangeOptions.find(function findOption(option) {
+  const matchedOption = rangeOptions.value.find(function findOption(option) {
     return option.value === props.range?.key
   })
 

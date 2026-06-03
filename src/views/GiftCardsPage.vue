@@ -59,6 +59,12 @@ async function loadTemplates() {
   }
 }
 
+function openTemplateDialog() {
+  // 之前 user 关 dialog 后再点开会带上次输入的脏值。这里每次开都重置表单 + 清校验。
+  Object.assign(templateForm, { name: '', planId: null, period: '', price: 0 })
+  templateDialogVisible.value = true
+}
+
 async function handleCreateTemplate() {
   if (templateFormRef.value) {
     try { await templateFormRef.value.validate() } catch { return }
@@ -163,7 +169,7 @@ onMounted(loadTemplates)
   <section class="page-stack">
     <SectionCard title="礼品卡管理" description="管理礼品卡模板和兑换码，支持批量生成和导出。">
       <template #actions>
-        <el-button type="primary" @click="templateDialogVisible = true">
+        <el-button type="primary" @click="openTemplateDialog">
           <el-icon><Plus /></el-icon>
           创建模板
         </el-button>
@@ -197,7 +203,7 @@ onMounted(loadTemplates)
     </SectionCard>
 
     <!-- Create Template Dialog -->
-    <el-dialog v-model="templateDialogVisible" title="创建礼品卡模板" width="480px">
+    <el-dialog v-model="templateDialogVisible" title="创建礼品卡模板" width="min(480px, calc(100vw - 32px))">
       <el-form
         ref="templateFormRef"
         :model="templateForm"
@@ -229,7 +235,7 @@ onMounted(loadTemplates)
     </el-dialog>
 
     <!-- Generate Codes Dialog -->
-    <el-dialog v-model="generateDialogVisible" title="生成兑换码" width="360px">
+    <el-dialog v-model="generateDialogVisible" title="生成兑换码" width="min(360px, calc(100vw - 32px))">
       <el-form label-position="top">
         <el-form-item label="生成数量">
           <el-input-number v-model="generateCount" :min="1" :max="500" style="width: 100%;" />
@@ -242,7 +248,7 @@ onMounted(loadTemplates)
     </el-dialog>
 
     <!-- View Codes Dialog -->
-    <el-dialog v-model="codesDialogVisible" :title="`兑换码列表 - ${activeTemplate?.name || ''}`" width="680px">
+    <el-dialog v-model="codesDialogVisible" :title="`兑换码列表 - ${activeTemplate?.name || ''}`" width="min(680px, calc(100vw - 32px))">
       <el-table :data="codes" v-loading="codesLoading" class="dashboard-table">
         <el-table-column label="兑换码" prop="code" min-width="200">
           <template #default="{ row }">

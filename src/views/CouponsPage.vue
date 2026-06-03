@@ -365,7 +365,7 @@ onMounted(loadAll)
     </SectionCard>
 
     <!-- Add / Edit Coupon Dialog -->
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '添加优惠券' : '编辑优惠券'" width="540px">
+    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '添加优惠券' : '编辑优惠券'" width="min(540px, calc(100vw - 32px))">
       <el-form label-position="top">
         <el-form-item label="优惠券名称">
           <el-input v-model="form.name" placeholder="请输入优惠券名称" />

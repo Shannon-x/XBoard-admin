@@ -289,7 +289,7 @@ watch(
     v-model="visible"
     :title="plugin?.name || '插件配置'"
     class="plugin-config__dialog"
-    width="520px"
+    width="min(520px, calc(100vw - 32px))"
   >
     <el-form label-position="top" class="plugin-config">
       <el-form-item

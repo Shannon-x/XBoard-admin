@@ -17,23 +17,12 @@ function getNormalizedSecurePath() {
   return getDashboardSecurePath().replace(/^\//, "");
 }
 
+/**
+ * 拼接管理后台 v2 接口 URL。endpointPath 可带或不带前导 `/`。
+ * 之前同时存在 buildDashboardApiUrl 与 buildSecureV2ApiUrl —— 实际逻辑等价，
+ * 这里统一实现，buildSecureV2ApiUrl 保留为别名以保持 import 兼容。
+ */
 export function buildDashboardApiUrl(endpointPath, queryEntries = []) {
-  const apiOrigin = getNormalizedApiOrigin();
-  const securePath = getNormalizedSecurePath();
-  const url = new URL(`${apiOrigin}/api/v2/${securePath}/${endpointPath}`);
-
-  queryEntries.forEach(function appendQueryEntry([key, value]) {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-
-  url.searchParams.set("t", String(Date.now()));
-
-  return url.toString();
-}
-
-export function buildSecureV2ApiUrl(endpointPath, queryEntries = []) {
   const apiOrigin = getNormalizedApiOrigin();
   const securePath = getNormalizedSecurePath();
   const normalizedEndpoint = String(endpointPath || "").replace(/^\//, "");
@@ -47,10 +36,14 @@ export function buildSecureV2ApiUrl(endpointPath, queryEntries = []) {
     }
   });
 
+  // cache-buster：后端 Cache-Control 头并不可靠，先保留；如果未来后端补好可考虑移除。
   url.searchParams.set("t", String(Date.now()));
 
   return url.toString();
 }
+
+// 历史 alias —— 与 buildDashboardApiUrl 等价。保留以兼容现有 import。
+export const buildSecureV2ApiUrl = buildDashboardApiUrl;
 
 export function buildCommonApiUrl(endpointPath, queryEntries = []) {
   const apiOrigin = getNormalizedApiOrigin();
@@ -70,18 +63,15 @@ export function buildCommonApiUrl(endpointPath, queryEntries = []) {
 
 export function getDashboardApiHeaders() {
   const storedSession = readStoredAuth();
-  const storedAuthData = storedSession?.authData;
-  const apiToken = import.meta.env.VITE_DASHBOARD_API_TOKEN;
-  const authorizationValue =
-    storedAuthData || (apiToken ? `Bearer ${apiToken}` : "");
+  // SPA 不再支持构建期注入的全局 API token：任何 VITE_ 变量都会被打到 dist
+  // 里面对所有浏览器用户暴露。会话凭据必须由 /passport/auth/login 走用户登录拿到。
   const headers = {
     Accept: "application/json, text/plain, */*",
   };
-
-  if (authorizationValue) {
-    headers.Authorization = authorizationValue;
+  const authData = storedSession?.authData;
+  if (authData && typeof authData === 'string') {
+    headers.Authorization = authData;
   }
-
   return headers;
 }
 
@@ -221,14 +211,7 @@ function resolveMessage(key, values) {
   if (i18n?.global?.te?.(key)) {
     return i18n.global.t(key, values);
   }
-
-  const fallbackMap = {
-    "defaults.dashboardStatsAuthFailed":
-      "仪表盘接口鉴权失败，请先重新登录后再重试",
-    "defaults.dashboardRequestFailed": `Dashboard request failed: ${values?.status ?? ""}`,
-    "defaults.dashboardStatusFailed": "仪表盘接口返回失败状态",
-    "defaults.dashboardCodeFailed": "仪表盘接口返回异常状态码",
-  };
-
-  return fallbackMap[key] || key;
+  // i18n 缺 key 时直接返回 key 本身：让开发期立刻发现缺失，而不是被 fallback
+  // 字典默默兜底。之前的中文 fallback 重复了 zh-CN.js 里的字面量，永远不会触发。
+  return key;
 }

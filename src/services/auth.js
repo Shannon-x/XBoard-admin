@@ -12,8 +12,18 @@ function parseAuthStorage(rawValue) {
   }
 
   try {
-    return JSON.parse(rawValue)
-  } catch {
+    const parsed = JSON.parse(rawValue)
+    // 形态校验：authData 必须是非空字符串，避免被注入怪东西后还盲发 Authorization 头
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.authData !== 'string' || !parsed.authData) {
+      // eslint-disable-next-line no-console
+      console.warn('[auth] stored session shape invalid, clearing')
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      return null
+    }
+    return parsed
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] failed to parse stored session:', e?.message || e)
     localStorage.removeItem(AUTH_STORAGE_KEY)
     return null
   }

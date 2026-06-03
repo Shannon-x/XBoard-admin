@@ -229,7 +229,7 @@ onMounted(loadData)
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? '添加知识' : '编辑知识'"
-      width="860px"
+      width="min(860px, calc(100vw - 32px))"
       destroy-on-close
     >
       <div class="knowledge-form">

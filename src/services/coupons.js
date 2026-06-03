@@ -47,9 +47,9 @@ export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
-  const total = Number(rawData?.total || payload?.total || listSource.length)
-  const currentPage = Number(rawData?.current_page || payload?.current_page || page)
-  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
+  const total = Number(rawData?.total ?? payload?.total ?? listSource.length)
+  const currentPage = Number(rawData?.current_page ?? payload?.current_page ?? page)
+  const perPage = Number(rawData?.per_page ?? payload?.per_page ?? pageSize)
 
   return {
     list: listSource.map(normalizeCoupon),

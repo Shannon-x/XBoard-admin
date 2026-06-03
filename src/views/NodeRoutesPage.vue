@@ -58,16 +58,19 @@ const matchTextPlaceholder = computed(() => {
 })
 
 function fillDefaultOutboundConfig() {
+  // 用占位符替代示例凭据 —— 之前的 'your_password' / 'love@xray.com' 看上去像真实
+  // 配置，多次提交后会真的把脏数据写进 v2node 配置。现在 JSON 仍合法，但凡保留
+  // 默认值就走业务校验失败（如端口 0 / 空 address），强制 admin 修改。
   form.value.action_value = `{
-  "tag": "ss_out",
+  "tag": "<请填写出站标签>",
   "sendThrough": "0.0.0.0",
   "protocol": "shadowsocks",
   "settings": {
-    "email": "love@xray.com",
-    "address": "8.8.8.8",
-    "port": 5555,
+    "email": "<请填写邮箱>",
+    "address": "<请填写出站节点地址>",
+    "port": 0,
     "method": "2022-blake3-aes-128-gcm",
-    "password": "your_password"
+    "password": "<请填写出站节点密码>"
   }
 }`
 }
@@ -289,7 +292,7 @@ onMounted(loadRoutes)
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'create' ? '创建路由' : '编辑路由'"
-      width="520px"
+      width="min(520px, calc(100vw - 32px))"
       destroy-on-close
     >
       <div class="route-form">

@@ -33,7 +33,7 @@ export function createEmptyManagedNodeRoutes() {
 }
 
 function formatTimestamp(value) {
-  const timestamp = Number(value || 0);
+  const timestamp = Number(value ?? 0);
 
   if (!timestamp) {
     return "--";
@@ -55,7 +55,7 @@ function formatTimestamp(value) {
 }
 
 function formatRelativeTime(value) {
-  const timestamp = Number(value || 0);
+  const timestamp = Number(value ?? 0);
 
   if (!timestamp) {
     return "--";
@@ -80,7 +80,7 @@ function formatRelativeTime(value) {
 }
 
 function formatNodeRate(value) {
-  const numericValue = Number(value || 0);
+  const numericValue = Number(value ?? 0);
 
   if (!numericValue) {
     return "1x";
@@ -89,47 +89,12 @@ function formatNodeRate(value) {
   return `${numericValue}x`;
 }
 
-function resolveNodeLoad(status, loadStatus) {
-  if (status === "维护中") {
-    return 0;
-  }
-
-  const normalizedLoadStatus = String(loadStatus || "").toLowerCase();
-
-  if (
-    normalizedLoadStatus.includes("high") ||
-    normalizedLoadStatus.includes("full")
-  ) {
-    return 86;
-  }
-
-  if (normalizedLoadStatus.includes("busy")) {
-    return 72;
-  }
-
-  if (normalizedLoadStatus.includes("low")) {
-    return 28;
-  }
-
-  return status === "离线" ? 8 : 42;
-}
-
 function resolveNodeStatus(node) {
-  const isOnline = Number(node?.is_online || 0);
-  const onlineCount = Number(node?.online || 0);
+  const isOnline = Number(node?.is_online ?? 0);
+  const onlineCount = Number(node?.online ?? 0);
 
-  if (!isOnline) {
-    return "离线";
-  }
-
-  if (onlineCount === 0) {
-    return "异常";
-  }
-
-  if (onlineCount > 1) {
-    return "在线";
-  }
-
+  if (!isOnline) return "离线";
+  if (onlineCount === 0) return "异常";
   return "在线";
 }
 
@@ -190,7 +155,7 @@ function normalizeEchSettings(tlsSettings, tlsConfig) {
 
 function normalizeManagedNode(node, index) {
   const status = resolveNodeStatus(node);
-  const onlineUsers = Boolean(node.online || node.is_online) ? node.online : 0;
+  const onlineUsers = Number(node.online ?? 0);
   const groupIdsFromGroups = Array.isArray(node.groups)
     ? node.groups
         .map(function mapGroupId(group) {
@@ -257,7 +222,7 @@ function normalizeManagedNode(node, index) {
   const pluginOpts = String(protocolSettings?.plugin_opts || "").trim();
 
   return {
-    id: Number(node.id || 0),
+    id: Number(node.id ?? 0),
     code: node.code || null,
     parentId: node.parent_id,
     name: node.name || `节点 ${index + 1}`,
@@ -393,7 +358,7 @@ function normalizeManagedNode(node, index) {
       ...groupTags,
       node.parent_id ? "子节点" : "主节点",
     ].filter(Boolean),
-    availableStatus: Number(node.available_status || 0),
+    availableStatus: Number(node.available_status ?? 0),
     online: Boolean(node.online || node.is_online),
     lastPushAt: formatRelativeTime(node.last_push_at),
     cacheKey: node.cache_key || "--",
@@ -417,8 +382,8 @@ function normalizeManagedNodeGroup(group, index) {
   return {
     id: String(group?.id || index + 1),
     name: group?.name || `权限组 ${index + 1}`,
-    usersCount: Number(group?.users_count || 0),
-    serverCount: Number(group?.server_count || 0),
+    usersCount: Number(group?.users_count ?? 0),
+    serverCount: Number(group?.server_count ?? 0),
     createdAt: formatTimestamp(group?.created_at),
     updatedAt: formatTimestamp(group?.updated_at),
   };
@@ -489,9 +454,9 @@ export async function fetchManagedNodes(options = {}) {
         ? rawData
         : [];
 
-  const total = Number(rawData?.total || payload?.total || 0);
-  const currentPage = Number(rawData?.page || rawData?.current_page || page);
-  const perPage = Number(rawData?.per_page || rawData?.limit || limit);
+  const total = Number(rawData?.total ?? payload?.total ?? 0);
+  const currentPage = Number(rawData?.page ?? rawData?.current_page ?? page);
+  const perPage = Number(rawData?.per_page ?? rawData?.limit ?? limit);
 
   return {
     list: listSource.map(function mapNode(node, index) {
@@ -532,19 +497,19 @@ async function requestManagedNodeAction(path, payload) {
 
 export async function deleteManagedNode(id) {
   return requestManagedNodeAction("server/manage/drop", {
-    id: Number(id) || 0,
+    id: Number(id) ?? 0,
   });
 }
 
 export async function copyManagedNode(id) {
   return requestManagedNodeAction("server/manage/copy", {
-    id: Number(id) || 0,
+    id: Number(id) ?? 0,
   });
 }
 
 export async function updateManagedNodeShow(id, show) {
   return requestManagedNodeAction("server/manage/update", {
-    id: Number(id) || 0,
+    id: Number(id) ?? 0,
     show: Number(show ? 1 : 0),
   });
 }
@@ -634,7 +599,7 @@ export async function saveManagedNodeGroup(data) {
 
 export async function deleteManagedNodeGroup(id) {
   return requestManagedNodeAction("server/group/drop", {
-    id: Number(id || 0),
+    id: Number(id ?? 0),
   });
 }
 
@@ -645,6 +610,6 @@ export async function saveManagedNodeRoute(data) {
 
 export async function deleteManagedNodeRoute(id) {
   return requestManagedNodeAction("server/route/drop", {
-    id: Number(id || 0),
+    id: Number(id ?? 0),
   });
 }

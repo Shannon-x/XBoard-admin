@@ -56,18 +56,18 @@ const statusStyleMap = new Map([
   [STATUS_UNKNOWN, { type: 'warning', icon: Server }],
 ])
 
+// dialog 不可见时 marked 不工作；只有真正打开 README 弹窗才解析。
+// 之前 computed 在任何 readmePlugin 变化时都跑一次，包括关闭对话框 readmePlugin=null 的回归。
 const renderedReadme = computed(function resolveRenderedReadme() {
+  if (!readmeDialogVisible.value) return ''
   const content = readmePlugin.value?.readme || ''
-
-  if (!content) {
-    return ''
-  }
+  if (!content) return ''
 
   // 注意：marked ≥ 7 内置 sanitizer 已被移除；插件 README 来源于插件目录，
   // 在 v-html 注入前必须经 DOMPurify 过滤，否则可能存储型 XSS。
   const html = marked.parse(content, { breaks: true })
   return DOMPurify.sanitize(html, {
-    ADD_ATTR: ['target'], // 允许外链 target="_blank"
+    ADD_ATTR: ['target'],
     FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input'],
     FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover', 'onfocus'],
   })
@@ -318,12 +318,44 @@ function resetUploadState() {
   uploadRef.value?.clearFiles()
 }
 
+const PLUGIN_MAX_SIZE_BYTES = 20 * 1024 * 1024 // 20MB
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04]      // 'PK\x03\x04'
+
+async function validatePluginFile(file) {
+  // 后端 accept=".zip" 只是 hint —— 实际拖拽任意文件都能到这里。
+  const name = String(file?.name || '').toLowerCase()
+  if (!name.endsWith('.zip')) {
+    throw new Error('仅支持 .zip 格式的插件包')
+  }
+  if (file.size > PLUGIN_MAX_SIZE_BYTES) {
+    throw new Error(`插件包过大（${(file.size / 1024 / 1024).toFixed(1)}MB），不能超过 ${PLUGIN_MAX_SIZE_BYTES / 1024 / 1024}MB`)
+  }
+  // magic number 校验，防止改后缀的非 zip
+  try {
+    const head = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+    if (head.length < 4 || !ZIP_MAGIC.every((b, i) => head[i] === b)) {
+      throw new Error('文件头校验失败：不是合法的 zip 文件')
+    }
+  } catch (e) {
+    // 浏览器不支持 slice().arrayBuffer() 时不阻挡上传
+    if (e instanceof Error && e.message?.startsWith('文件头')) throw e
+  }
+}
+
 async function handleUploadRequest(options) {
   const file = options?.file
 
   if (!file) {
     const error = new Error('缺少上传文件')
     ElMessage.warning('请选择插件包')
+    options?.onError?.(error)
+    return
+  }
+
+  try {
+    await validatePluginFile(file)
+  } catch (error) {
+    ElMessage.error(error.message)
     options?.onError?.(error)
     return
   }
@@ -649,7 +681,7 @@ onUnmounted(function cleanupPluginsPage() {
         v-model="uploadDialogVisible"
         class="plugin-upload-dialog"
         title="上传插件"
-        width="560px"
+        width="min(560px, calc(100vw - 32px))"
         @close="resetUploadState"
     >
         <el-upload
@@ -677,7 +709,7 @@ onUnmounted(function cleanupPluginsPage() {
     <el-dialog
         v-model="readmeDialogVisible"
         :title="readmePlugin?.name || '插件说明'"
-        width="640px"
+        width="min(640px, calc(100vw - 32px))"
     >
         <div class="plugin-readme">
             <el-scrollbar max-height="60vh">

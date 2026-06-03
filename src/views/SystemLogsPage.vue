@@ -203,8 +203,18 @@ onMounted(() => {
   const tab = route.query.tab
   if (tab === 'failed') activeTab.value = 'failed'
   loadAuditLogs()
-  // Pre-load failed jobs to get count for badge
-  loadFailedJobs()
+  // 失败任务徽章计数：lazy 加载 —— 只在用户切到 failed tab 时拉，
+  // 避免每次进入"系统日志"都多打一次接口。
+  if (activeTab.value === 'failed') {
+    loadFailedJobs()
+  }
+})
+
+// 切到 failed tab 时再拉
+watch(activeTab, function onTabSwitch(nextTab) {
+  if (nextTab === 'failed' && failedJobs.value.length === 0 && !failedLoading.value) {
+    loadFailedJobs()
+  }
 })
 </script>
 
@@ -323,9 +333,9 @@ onMounted(() => {
                 <span style="font-size:12px;color:var(--el-color-danger);">{{ getExceptionSummary(row) }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="70" align="center">
+            <el-table-column label="操作" width="90" align="center">
               <template #default="{ row }">
-                <el-button :icon="Eye" link type="primary" @click="showJobDetail(row)" />
+                <el-button :icon="Eye" link type="primary" @click="showJobDetail(row)">详情</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -346,7 +356,7 @@ onMounted(() => {
     <el-dialog
       v-model="failedDetailVisible"
       title="失败任务详情"
-      width="720px"
+      width="min(720px, calc(100vw - 32px))"
       destroy-on-close
     >
       <template v-if="failedDetailJob">

@@ -180,15 +180,14 @@ const fallbackPagination = {
 
 let keywordDebounceTimer = null;
 
+// store 每次 fetch 都重新赋值 managedNodes ref，identity 变化即可触发；
+// 之前 deep:true 让每 30s 的轮询都对全表深度比对，纯属浪费。
 watch(
     function watchManagedNodes() {
         return adminStore.managedNodes;
     },
     function syncManagedNodes() {
         nodeList.value = buildNodeListFromStore();
-    },
-    {
-        deep: true,
     },
 );
 
@@ -478,46 +477,28 @@ const filteredNodes = computed(function filteredNodes() {
     });
 });
 
+// 把原本两个 computed 共 6 次全表 filter 合并为一次单遍计数 —— 大量节点时显著省 CPU。
 const stats = computed(function stats() {
-    const total = nodeList.value.length;
-    const healthy = nodeList.value.filter(function isHealthy(node) {
-        return node.status === "在线";
-    }).length;
-    const idle = nodeList.value.filter(function isIdle(node) {
-        return node.status === "异常";
-    }).length;
-    const offline = nodeList.value.filter(function isOffline(node) {
-        return node.status === "离线";
-    }).length;
-
-    return {
-        total,
-        healthy,
-        idle,
-        offline,
-    };
+    const counts = { total: 0, healthy: 0, idle: 0, offline: 0 };
+    const onlineLabel = t("nodes.statusOnline");
+    const abnormalLabel = t("nodes.statusAbnormal");
+    const offlineLabel = t("nodes.statusOffline");
+    for (const node of nodeList.value) {
+        counts.total += 1;
+        if (node.status === onlineLabel) counts.healthy += 1;
+        else if (node.status === abnormalLabel) counts.idle += 1;
+        else if (node.status === offlineLabel) counts.offline += 1;
+    }
+    return counts;
 });
 
 const statusSummary = computed(function statusSummary() {
-    const healthy = nodeList.value.filter(function isHealthy(node) {
-        return node.status === "在线";
-    }).length;
-    const idle = nodeList.value.filter(function isIdle(node) {
-        return node.status === "异常";
-    }).length;
-    const offline = nodeList.value.filter(function isOffline(node) {
-        return node.status === "离线";
-    }).length;
-
+    const s = stats.value;
     return [
-        {
-            value: "all",
-            label: t("nodes.summary.all"),
-            count: nodeList.value.length,
-        },
-        { value: "1", label: t("nodes.summary.online"), count: healthy },
-        { value: "2", label: t("nodes.summary.abnormal"), count: idle },
-        { value: "0", label: t("nodes.summary.offline"), count: offline },
+        { value: "all", label: t("nodes.summary.all"), count: s.total },
+        { value: "1", label: t("nodes.summary.online"), count: s.healthy },
+        { value: "2", label: t("nodes.summary.abnormal"), count: s.idle },
+        { value: "0", label: t("nodes.summary.offline"), count: s.offline },
     ];
 });
 
@@ -1108,6 +1089,12 @@ async function handleShowToggle(node, value) {
 
     if (!nodeId) {
         ElMessage.error(t("nodes.messages.showIdMissing"));
+        return;
+    }
+
+    // per-row 锁：上一次切换还在飞时，第二次点击直接吞掉 —— 否则 previousValue 会
+    // 被乐观更新值污染，失败回滚时回到错误的"上一个状态"。
+    if (node.showUpdating) {
         return;
     }
 

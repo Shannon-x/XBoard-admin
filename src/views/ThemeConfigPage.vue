@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import SectionCard from '../components/common/SectionCard.vue'
 import { fetchSiteSettings, saveSiteSettings } from '../services/settings'
@@ -9,13 +9,23 @@ const { t } = useI18n()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
-const form = ref({
-  frontendTheme: '',
-  frontendBackgroundUrl: '',
-  frontendAdminPath: '',
-  frontendCustomHtml: '',
-  frontendCustomCss: '',
-})
+
+function createEmptyForm() {
+  return {
+    frontendTheme: '',
+    frontendBackgroundUrl: '',
+    frontendAdminPath: '',
+    frontendCustomHtml: '',
+    frontendCustomCss: '',
+  }
+}
+
+const form = ref(createEmptyForm())
+// 服务端拉回时的快照，用于判定 dirty 与"重置为服务器值"
+const initialSnapshot = ref(JSON.stringify(createEmptyForm()))
+
+const isDirty = computed(() => JSON.stringify(form.value) !== initialSnapshot.value)
+const hasCustomHtml = computed(() => Boolean(form.value.frontendCustomHtml?.trim()))
 
 async function loadSettings() {
   loading.value = true
@@ -29,6 +39,7 @@ async function loadSettings() {
       frontendCustomHtml: settings.frontend_custom_html || '',
       frontendCustomCss: settings.frontend_custom_css || '',
     }
+    initialSnapshot.value = JSON.stringify(form.value)
   } catch (err) {
     error.value = err.message || t('themeConfigPage.messages.loadFailed')
   } finally {
@@ -37,6 +48,18 @@ async function loadSettings() {
 }
 
 async function handleSave() {
+  // 自定义 HTML 会原样注入到用户端页面 —— 至少在保存前提示一次。
+  if (hasCustomHtml.value) {
+    try {
+      await ElMessageBox.confirm(
+        '"自定义 HTML" 会被原样插入到所有用户访问的页面，请确认内容来自可信来源。\n如果包含 <script> 或外部资源，将与所有用户的浏览器同源运行。',
+        '⚠️ 自定义 HTML 安全提示',
+        { type: 'warning', confirmButtonText: '我已确认', cancelButtonText: '取消' },
+      )
+    } catch {
+      return // 用户取消
+    }
+  }
   saving.value = true
   try {
     await saveSiteSettings({
@@ -46,6 +69,7 @@ async function handleSave() {
       frontend_custom_html: form.value.frontendCustomHtml,
       frontend_custom_css: form.value.frontendCustomCss,
     })
+    initialSnapshot.value = JSON.stringify(form.value)
     ElMessage.success(t('themeConfigPage.messages.saveSuccess'))
   } catch (err) {
     ElMessage.error(err.message || t('themeConfigPage.messages.saveFailed'))
@@ -54,7 +78,34 @@ async function handleSave() {
   }
 }
 
-onMounted(loadSettings)
+function handleReset() {
+  if (!isDirty.value) return
+  try {
+    form.value = JSON.parse(initialSnapshot.value)
+    ElMessage.info('已重置为服务器当前值')
+  } catch {
+    loadSettings()
+  }
+}
+
+// 离开页面前提醒未保存修改
+function onBeforeUnload(e) {
+  if (isDirty.value) {
+    e.preventDefault()
+    e.returnValue = ''
+    return ''
+  }
+  return undefined
+}
+
+onMounted(() => {
+  loadSettings()
+  window.addEventListener('beforeunload', onBeforeUnload)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+})
 </script>
 
 <template>
@@ -64,12 +115,27 @@ onMounted(loadSettings)
       :description="t('themeConfigPage.sectionDescription')"
     >
       <template #actions>
-        <el-button type="primary" :loading="saving" @click="handleSave">
-          {{ t('themeConfigPage.saveButton') }}
-        </el-button>
+        <el-space wrap>
+          <el-button :disabled="!isDirty || saving" @click="handleReset">
+            重置为服务器值
+          </el-button>
+          <el-button type="primary" :loading="saving" :disabled="!isDirty" @click="handleSave">
+            {{ t('themeConfigPage.saveButton') }}
+          </el-button>
+        </el-space>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
+
+      <el-alert
+        v-if="hasCustomHtml"
+        type="warning"
+        show-icon
+        :closable="false"
+        title="安全提示"
+        description="自定义 HTML 会原样注入到所有用户访问的页面，请确保内容来自可信来源。"
+        class="dashboard-alert"
+      />
 
       <el-form v-loading="loading" label-position="top" style="max-width: 640px">
         <el-form-item :label="t('themeConfigPage.fields.theme')">

@@ -105,10 +105,12 @@ const periodOptions = computed(function getPeriodOptions() {
   return result
 })
 
-const filterFieldOptions = computed(() => [
+// 静态部分提到模块作用域，避免每次 reactivity tick 都重建 16 个 option 对象 +
+// 给 plans 做一次 .map。只有 plan_id 这一项依赖响应式 plans，单独合并。
+const FILTER_FIELD_STATIC = Object.freeze([
   { id: 'email', label: '邮箱', type: 'text', operators: ['模糊', '精确'] },
   { id: 'id', label: '用户ID', type: 'number', operators: ['等于', '大于', '小于'] },
-  { id: 'plan_id', label: '订阅', type: 'select', operators: ['等于'], selectOptions: plans.value.map(p => ({ label: p.name, value: String(p.id) })) },
+  // plan_id 见下方
   { id: 'transfer_enable', label: '流量', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'd', label: '已用流量', type: 'number', operators: ['大于', '小于', '等于'] },
   { id: 'online_count', label: '在线设备', type: 'number', operators: ['大于', '小于', '等于'] },
@@ -125,6 +127,18 @@ const filterFieldOptions = computed(() => [
   { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
 ])
 
+const filterFieldOptions = computed(() => {
+  const planEntry = {
+    id: 'plan_id',
+    label: '订阅',
+    type: 'select',
+    operators: ['等于'],
+    selectOptions: plans.value.map(p => ({ label: p.name, value: String(p.id) })),
+  }
+  // 插在 'id' 之后（保留原先位置）
+  return [FILTER_FIELD_STATIC[0], FILTER_FIELD_STATIC[1], planEntry, ...FILTER_FIELD_STATIC.slice(2)]
+})
+
 function getFieldDef(fieldId) {
   return filterFieldOptions.value.find(f => f.id === fieldId)
 }
@@ -139,8 +153,17 @@ function onFilterFieldChange(cond) {
   }
 }
 
+// 用 perf-now 单调时间戳 + 随机数生成稳定唯一 id —— 避免 crypto.randomUUID
+// 在非 secure context 不可用。v-for :key 用稳定 id 而不是 index，
+// 防止删除中间项时 v-model 串到下一行。
+let nextFilterCondId = 1
+function makeFilterCondId() {
+  nextFilterCondId += 1
+  return `fc-${nextFilterCondId}-${Math.random().toString(36).slice(2, 6)}`
+}
+
 function addFilterCondition() {
-  filterConditions.value.push({ field: '', operator: '', value: '' })
+  filterConditions.value.push({ id: makeFilterCondId(), field: '', operator: '', value: '' })
 }
 
 function removeFilterCondition(index) {
@@ -253,7 +276,10 @@ function restoreUsersPageState() {
     if (!raw) return
     const data = JSON.parse(raw)
     if (typeof data.searchKeyword === 'string') searchKeyword.value = data.searchKeyword
-    if (Array.isArray(data.filterConditions)) filterConditions.value = data.filterConditions
+    if (Array.isArray(data.filterConditions)) {
+      // 兼容旧版 sessionStorage 没 id 的项 —— 补一个稳定 id
+      filterConditions.value = data.filterConditions.map(c => c.id ? c : { ...c, id: makeFilterCondId() })
+    }
     if (typeof data.showFilters === 'boolean') showFilters.value = data.showFilters
     if (typeof data.sortField === 'string') sortField.value = data.sortField
     if (typeof data.sortOrder === 'string') sortOrder.value = data.sortOrder
@@ -287,6 +313,19 @@ async function loadUsers() {
     if (!usersSeq.isCurrent(my)) return
     users.value = result.list
     pagination.value = result.pagination
+    // 兜底 clamp：若服务器返回 page > totalPages（往往是 sessionStorage 恢复
+    // 到了一个被筛掉的页码），自动回到第 1 页再拉一次，避免"空白页"卡死。
+    const totalPages = Math.max(Math.ceil((result.pagination.total ?? 0) / (result.pagination.pageSize ?? 1)), 1)
+    if (
+      result.pagination.page > totalPages
+      && result.pagination.page > 1
+      && result.list.length === 0
+    ) {
+      pagination.value.page = 1
+      // 触发下一帧重新拉，避免同一帧内递归
+      Promise.resolve().then(() => loadUsers())
+      return
+    }
     saveUsersPageState()
   } catch (err) {
     if (!usersSeq.isCurrent(my)) return
@@ -714,7 +753,7 @@ onMounted(function onMount() {
           <span>筛选条件</span>
           <el-button :icon="PlusCircle" size="small" text type="primary" @click="addFilterCondition">添加条件</el-button>
         </div>
-        <div v-for="(cond, idx) in filterConditions" :key="idx" class="user-filter-row">
+        <div v-for="(cond, idx) in filterConditions" :key="cond.id || idx" class="user-filter-row">
           <span class="user-filter-row__label">条件 {{ idx + 1 }}</span>
           <el-select v-model="cond.field" placeholder="选择字段" style="width: 140px" @change="onFilterFieldChange(cond)">
             <el-option v-for="f in filterFieldOptions" :key="f.id" :label="f.label" :value="f.id" />
@@ -831,7 +870,7 @@ onMounted(function onMount() {
     </SectionCard>
 
     <!-- 用户管理对话框 -->
-    <el-dialog v-model="editDialogVisible" title="用户管理" width="480px" destroy-on-close>
+    <el-dialog v-model="editDialogVisible" title="用户管理" width="min(480px, calc(100vw - 32px))" destroy-on-close>
       <el-form
         ref="editFormRef"
         :model="editForm"
@@ -993,7 +1032,7 @@ onMounted(function onMount() {
     </el-dialog>
 
     <!-- 生成用户对话框 -->
-    <el-dialog v-model="generateDialogVisible" title="生成用户" width="500px" destroy-on-close>
+    <el-dialog v-model="generateDialogVisible" title="生成用户" width="min(500px, calc(100vw - 32px))" destroy-on-close>
       <el-form
         ref="generateFormRef"
         :model="generateForm"
@@ -1020,7 +1059,7 @@ onMounted(function onMount() {
     </el-dialog>
 
     <!-- 发送邮件对话框 -->
-    <el-dialog v-model="sendMailDialogVisible" :title="sendMailScope === 'all' ? '发送邮件给全部用户' : '发送邮件给筛选用户'" width="600px" destroy-on-close>
+    <el-dialog v-model="sendMailDialogVisible" :title="sendMailScope === 'all' ? '发送邮件给全部用户' : '发送邮件给筛选用户'" width="min(600px, calc(100vw - 32px))" destroy-on-close>
       <el-alert v-if="sendMailScope === 'filter' && filterConditions.length === 0" type="warning" title="未设置筛选条件，将发送给所有用户" :closable="false" show-icon style="margin-bottom: 16px" />
       <el-form
         ref="sendMailFormRef"
@@ -1042,7 +1081,7 @@ onMounted(function onMount() {
     </el-dialog>
 
     <!-- 分配订单对话框 -->
-    <el-dialog v-model="assignDialogVisible" title="分配订单" width="480px" destroy-on-close>
+    <el-dialog v-model="assignDialogVisible" title="分配订单" width="min(480px, calc(100vw - 32px))" destroy-on-close>
       <el-form
         ref="assignFormRef"
         :model="assignForm"
@@ -1072,7 +1111,7 @@ onMounted(function onMount() {
       </template>
     </el-dialog>
     <!-- 流量详情对话框 -->
-    <el-dialog v-model="trafficDialogVisible" title="流量详情" width="600px" destroy-on-close>
+    <el-dialog v-model="trafficDialogVisible" title="流量详情" width="min(600px, calc(100vw - 32px))" destroy-on-close>
       <el-table v-loading="trafficLoading" :data="trafficData" stripe style="width: 100%">
         <el-table-column prop="date" label="统计日期" width="120" />
         <el-table-column prop="uText" label="上行流量" />
