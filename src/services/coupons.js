@@ -35,24 +35,45 @@ function normalizeCoupon(raw) {
 
 /**
  * 按 id 拉单张优惠券（OrdersPage 详情对话框需要展示完整 coupon 信息时用）。
- * 后端没有专门的 fetch-by-id endpoint，但 coupon/fetch 的 filter 白名单
- * 接受 `id`，所以这里 GET 一条即可。返回 null 表示未找到。
+ *
+ * 后端没有专门的 fetch-by-id endpoint，且 coupon/fetch 的 filter 实现是
+ * `LIKE "%value%"`（CouponController.php:63）—— 完全忽略 `eq:` 之类前缀。
+ * 所以这里只能发裸数字 id 作为关键字，再在客户端用 .find() 取精确等值。
+ *
+ * 因为 LIKE 会命中所有"包含该数字"的 id（如查 57 会返回 57 / 157 / 570 / 1570…），
+ * pageSize 用 100 留余地，仍找不到精确匹配时第二次尝试取该 id 所在页码。
+ * 返回 null 表示未找到。
  */
 export async function fetchCouponById(id) {
   const couponId = Number(id || 0)
   if (!couponId) return null
-  const queryEntries = [
-    ['current', 1],
-    ['pageSize', 1],
+
+  const buildUrl = (page) => buildDashboardApiUrl('coupon/fetch', [
+    ['current', page],
+    ['pageSize', 100],
     ['filter[0][id]', 'id'],
-    ['filter[0][value]', `eq:${couponId}`],
-  ]
-  const apiUrl = buildDashboardApiUrl('coupon/fetch', queryEntries)
-  const payload = await requestDashboardApi(apiUrl)
-  const rawData = payload?.data ?? {}
-  const list = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
-  const found = list.find((c) => Number(c?.id) === couponId)
-  return found ? normalizeCoupon(found) : null
+    ['filter[0][value]', String(couponId)], // 不能带 eq:，后端只做 LIKE
+  ])
+
+  // 第一页
+  let payload = await requestDashboardApi(buildUrl(1))
+  const firstData = payload?.data ?? {}
+  const firstList = Array.isArray(firstData?.data) ? firstData.data : (Array.isArray(firstData) ? firstData : [])
+  const exact = firstList.find((c) => Number(c?.id) === couponId)
+  if (exact) return normalizeCoupon(exact)
+
+  // 如果没命中、且总数较多，再扫几页（少见场景，最多扫 5 页 ≈ 500 条）
+  const total = Number(firstData?.total ?? payload?.total ?? firstList.length)
+  const totalPages = Math.min(Math.ceil(total / 100), 5)
+  for (let page = 2; page <= totalPages; page += 1) {
+    payload = await requestDashboardApi(buildUrl(page))
+    const rawData = payload?.data ?? {}
+    const list = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+    const hit = list.find((c) => Number(c?.id) === couponId)
+    if (hit) return normalizeCoupon(hit)
+  }
+
+  return null
 }
 
 export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {} } = {}) {
