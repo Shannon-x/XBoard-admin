@@ -105,7 +105,24 @@ async function openEditDialog(article) {
   }
 }
 
+const saving = ref(false)
+
 async function handleSave() {
+  // KnowledgePage 历来用 <label>+<el-input> 拼装表单，没接 el-form，所以这里手工校验。
+  if (!String(form.title || '').trim()) {
+    ElMessage.warning('请输入知识标题')
+    return
+  }
+  if (!form.categoryId && form.categoryId !== 0) {
+    ElMessage.warning('请选择或输入分类')
+    return
+  }
+  if (!String(form.body || '').trim()) {
+    ElMessage.warning('请输入文章内容')
+    return
+  }
+
+  saving.value = true
   try {
     await saveKnowledgeArticle(form)
     ElMessage.success(dialogMode.value === 'create' ? '知识已创建' : '知识已更新')
@@ -113,6 +130,8 @@ async function handleSave() {
     await loadData()
   } catch (err) {
     ElMessage.error(err.message)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -260,13 +279,13 @@ onMounted(loadData)
       </div>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">提交</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">提交</el-button>
       </template>
     </el-dialog>
 
     <SortDialog
       v-model:visible="sortDialogVisible"
-      :items="articles"
+      :items="articles.map(a => ({ id: a.id, name: a.title }))"
       title="排序知识库"
       @save="handleSortSave"
     />

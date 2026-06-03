@@ -1,7 +1,7 @@
 import {
   buildDashboardApiUrl,
-  getDashboardApiHeaders,
   requestDashboardApi,
+  requestDashboardMutation,
 } from "./api";
 
 export function createEmptyManagedNodes() {
@@ -480,10 +480,6 @@ export async function fetchManagedNodes(options = {}) {
     ["status", status],
   ]);
   const payload = await requestDashboardApi(apiUrl);
-  console.log('[Nodes] API response structure:', JSON.stringify({
-    dataKeys: payload?.data ? Object.keys(payload.data) : [],
-    dataTotal: payload?.data?.total,
-  }))
   const rawData = payload?.data ?? {};
   const listSource = Array.isArray(rawData?.data)
     ? rawData.data
@@ -496,7 +492,6 @@ export async function fetchManagedNodes(options = {}) {
   const total = Number(rawData?.total || payload?.total || 0);
   const currentPage = Number(rawData?.page || rawData?.current_page || page);
   const perPage = Number(rawData?.per_page || rawData?.limit || limit);
-  console.log('[Nodes] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length });
 
   return {
     list: listSource.map(function mapNode(node, index) {
@@ -532,34 +527,7 @@ export async function fetchManagedNodeRoutes() {
 
 async function requestManagedNodeAction(path, payload) {
   const apiUrl = buildDashboardApiUrl(path);
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      ...getDashboardApiHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("仪表盘接口鉴权失败，请先重新登录后再重试");
-  }
-
-  if (!response.ok) {
-    throw new Error(`节点操作失败: ${response.status}`);
-  }
-
-  const result = await response.json();
-
-  if (result?.status && result.status !== "success") {
-    throw new Error(result.message || "节点操作失败");
-  }
-
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || "节点操作失败");
-  }
-
-  return result;
+  return requestDashboardMutation(apiUrl, payload);
 }
 
 export async function deleteManagedNode(id) {
@@ -647,41 +615,8 @@ export async function saveManagedNode(payload = {}) {
     type: String(payload.type || "shadowsocks"),
   };
 
-  console.log('[Nodes] Save request body:', JSON.stringify({
-    id: requestBody.id,
-    code: requestBody.code,
-    name: requestBody.name,
-    type: requestBody.type,
-  }));
 
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      ...getDashboardApiHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("仪表盘接口鉴权失败，请先重新登录后再重试");
-  }
-
-  if (!response.ok) {
-    throw new Error(`保存节点失败: ${response.status}`);
-  }
-
-  const result = await response.json();
-
-  if (result?.status && result.status !== "success") {
-    throw new Error(result.message || "保存节点失败");
-  }
-
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || "保存节点失败");
-  }
-
-  return result;
+  return requestDashboardMutation(apiUrl, requestBody);
 }
 
 export async function sortManagedNodes(ids) {
@@ -689,48 +624,12 @@ export async function sortManagedNodes(ids) {
     return { id: Number(id), order: index };
   });
   const apiUrl = buildDashboardApiUrl("server/manage/sort");
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      ...getDashboardApiHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(`排序保存失败: ${response.status}`);
-  }
-
-  const result = await response.json();
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || "排序保存失败");
-  }
-  return result;
+  return requestDashboardMutation(apiUrl, payload);
 }
 
 export async function saveManagedNodeGroup(data) {
   const apiUrl = buildDashboardApiUrl("server/group/save");
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      ...getDashboardApiHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    throw new Error(`权限组操作失败: ${response.status}`);
-  }
-
-  const result = await response.json();
-
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || "权限组操作失败");
-  }
-
-  return result;
+  return requestDashboardMutation(apiUrl, data);
 }
 
 export async function deleteManagedNodeGroup(id) {
@@ -741,26 +640,7 @@ export async function deleteManagedNodeGroup(id) {
 
 export async function saveManagedNodeRoute(data) {
   const apiUrl = buildDashboardApiUrl("server/route/save");
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      ...getDashboardApiHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    throw new Error(`路由操作失败: ${response.status}`);
-  }
-
-  const result = await response.json();
-
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || "路由操作失败");
-  }
-
-  return result;
+  return requestDashboardMutation(apiUrl, data);
 }
 
 export async function deleteManagedNodeRoute(id) {

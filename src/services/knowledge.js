@@ -1,4 +1,8 @@
-import { buildDashboardApiUrl, getDashboardApiHeaders, requestDashboardApi } from './api'
+import {
+  buildDashboardApiUrl,
+  requestDashboardApi,
+  requestDashboardMutation,
+} from './api'
 
 function normalizeArticle(raw) {
   const category = raw.category ?? raw.category_id ?? ''
@@ -78,80 +82,28 @@ export async function fetchKnowledgeCategories() {
 
 export async function saveKnowledgeArticle(formData) {
   const apiUrl = buildDashboardApiUrl('knowledge/save')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      id: formData.id || null,
-      category: formData.categoryId,
-      title: formData.title,
-      body: formData.body,
-      language: formData.language || '',
-      show: formData.show ? 1 : 0,
-      sort: formData.sort ?? 0,
-    }),
+  return requestDashboardMutation(apiUrl, {
+    id: formData.id || null,
+    category: formData.categoryId,
+    title: formData.title,
+    body: formData.body,
+    language: formData.language || '',
+    show: formData.show ? 1 : 0,
+    sort: formData.sort ?? 0,
   })
-
-  if (!response.ok) {
-    throw new Error(`保存知识库文章失败 (${response.status})`)
-  }
-
-  return response.json()
 }
 
 export async function toggleKnowledgeShow(id) {
   const apiUrl = buildDashboardApiUrl('knowledge/show')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`切换知识库显示状态失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { id })
 }
 
 export async function deleteKnowledgeArticle(id) {
   const apiUrl = buildDashboardApiUrl('knowledge/drop')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`删除知识库文章失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { id })
 }
 
 export async function sortKnowledgeArticles(ids) {
   const apiUrl = buildDashboardApiUrl('knowledge/sort')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ ids }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`排序知识库文章失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { ids })
 }

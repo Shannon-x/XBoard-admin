@@ -27,11 +27,12 @@ const loginRules = {
 }
 
 function resolveRedirectPath() {
-  if (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')) {
-    return route.query.redirect
-  }
-
-  return '/'
+  // 防止 ?redirect= 跳到外站（//evil.com 之类的协议相对 URL）
+  const raw = route.query.redirect
+  if (typeof raw !== 'string') return '/'
+  if (!raw.startsWith('/')) return '/'
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return '/'
+  return raw
 }
 
 async function handleLogin() {

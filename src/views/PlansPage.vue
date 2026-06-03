@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
-import { useI18n } from 'vue-i18n'
 import {
   fetchManagedPlans,
   saveManagedPlan,
@@ -18,7 +17,6 @@ import {
 } from '../services/nodes'
 import SortDialog from '../components/common/SortDialog.vue'
 
-const { t } = useI18n()
 
 const plans = ref(createEmptyManagedPlans())
 const loading = ref(false)

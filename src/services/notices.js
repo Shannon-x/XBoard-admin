@@ -3,31 +3,10 @@ import {
   requestDashboardApi,
   requestDashboardMutation,
 } from './api'
+import { formatTimestamp } from '../utils/format'
 
 export function createEmptyManagedNotices() {
   return []
-}
-
-function formatTimestamp(value) {
-  const timestamp = Number(value || 0)
-
-  if (!timestamp) {
-    return '--'
-  }
-
-  const date = new Date(timestamp * 1000)
-
-  if (Number.isNaN(date.getTime())) {
-    return '--'
-  }
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-
-  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
 function stripHtml(value) {
@@ -145,10 +124,12 @@ export async function saveManagedNotice(payload = {}) {
   }
 
   const apiUrl = buildSecureV2ApiUrl('notice/save')
+  // 与其它 service（payment/knowledge/users）保持一致用 1/0；之前发 boolean 让
+  // 部分后端把字面量 "true"/"false" 当字符串存进 DB。
   const requestPayload = {
     title,
     content,
-    show: Boolean(payload.show),
+    show: payload.show ? 1 : 0,
     tags: Array.isArray(payload.tags) ? payload.tags : [],
     img_url: payload.imgUrl ? String(payload.imgUrl).trim() : null,
   }

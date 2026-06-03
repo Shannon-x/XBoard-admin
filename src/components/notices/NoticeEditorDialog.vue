@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { MdEditor } from 'md-editor-v3'
 
 import 'md-editor-v3/lib/style.css'
@@ -87,10 +88,21 @@ function handleClosed() {
 }
 
 function handleSubmit() {
+  // 之前 template 里只是装饰性 `required`，没有真正阻挡空表单 —— 这里集中校验。
+  const title = String(form.title || '').trim()
+  const content = String(form.content || '').trim()
+  if (!title) {
+    ElMessage.warning('请输入公告标题')
+    return
+  }
+  if (!content) {
+    ElMessage.warning('请输入公告内容')
+    return
+  }
   emit('submit', {
     id: form.id,
-    title: form.title.trim(),
-    content: form.content.trim(),
+    title,
+    content,
     sort: form.sort === null || form.sort === '' ? null : Number(form.sort),
     show: Boolean(form.show),
     imgUrl: form.imgUrl.trim(),

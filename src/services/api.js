@@ -1,4 +1,4 @@
-import { readStoredAuth } from "./auth";
+import { readStoredAuth, signalAuthExpired } from "./auth";
 import i18n from "../i18n";
 
 function getApiOrigin() {
@@ -91,6 +91,7 @@ export async function requestDashboardApi(url) {
   });
 
   if (response.status === 401 || response.status === 403) {
+    signalAuthExpired(`get:${response.status}`);
     throw new Error(resolveMessage("defaults.dashboardStatsAuthFailed"));
   }
 
@@ -131,13 +132,13 @@ export async function requestDashboardMutation(url, payload, method = "POST") {
   });
 
   if (response.status === 401 || response.status === 403) {
+    signalAuthExpired(`mutation:${response.status}`);
     throw new Error(resolveMessage("defaults.dashboardStatsAuthFailed"));
   }
 
   if (!response.ok) {
     if (response.status === 422) {
       const errBody = await response.json().catch(() => null);
-      console.error('[Mutation] 422 validation error:', JSON.stringify(errBody));
       throw new Error(
         errBody?.message || errBody?.errors
           ? `验证失败: ${JSON.stringify(errBody?.errors || errBody?.message)}`
@@ -183,6 +184,7 @@ export async function requestDashboardUpload(url, formData, method = "POST") {
   });
 
   if (response.status === 401 || response.status === 403) {
+    signalAuthExpired(`upload:${response.status}`);
     throw new Error(resolveMessage("defaults.dashboardStatsAuthFailed"));
   }
 

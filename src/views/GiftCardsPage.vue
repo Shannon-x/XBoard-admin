@@ -17,6 +17,24 @@ const loading = ref(false)
 const error = ref('')
 const templateDialogVisible = ref(false)
 const templateForm = reactive({ name: '', planId: null, period: '', price: 0 })
+const templateFormRef = ref(null)
+const templateRules = {
+  name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
+  planId: [{ required: true, message: '请输入或选择套餐 ID', trigger: 'change' }],
+  period: [{ required: true, message: '请选择周期', trigger: 'change' }],
+  price: [
+    { required: true, message: '请输入价格', trigger: 'blur' },
+    {
+      validator: (_r, v, cb) => {
+        const n = Number(v)
+        if (!Number.isFinite(n) || n < 0) cb(new Error('价格必须为非负数字'))
+        else cb()
+      },
+      trigger: 'blur',
+    },
+  ],
+}
+const templateSaving = ref(false)
 
 const codesDialogVisible = ref(false)
 const activeTemplate = ref(null)
@@ -27,6 +45,7 @@ const codesPagination = reactive({ page: 1, pageSize: 15, total: 0 })
 const generateDialogVisible = ref(false)
 const generateCount = ref(1)
 const generateTemplateId = ref(null)
+const generateSaving = ref(false)
 
 async function loadTemplates() {
   loading.value = true
@@ -41,6 +60,10 @@ async function loadTemplates() {
 }
 
 async function handleCreateTemplate() {
+  if (templateFormRef.value) {
+    try { await templateFormRef.value.validate() } catch { return }
+  }
+  templateSaving.value = true
   try {
     await createGiftCardTemplate(templateForm)
     ElMessage.success('模板已创建')
@@ -49,6 +72,8 @@ async function handleCreateTemplate() {
     await loadTemplates()
   } catch (err) {
     ElMessage.error(err.message)
+  } finally {
+    templateSaving.value = false
   }
 }
 
@@ -83,13 +108,21 @@ function openGenerateDialog(template) {
 }
 
 async function handleGenerate() {
+  const n = Number(generateCount.value)
+  if (!Number.isFinite(n) || n < 1) {
+    ElMessage.warning('请填写有效的生成数量')
+    return
+  }
+  generateSaving.value = true
   try {
-    await generateGiftCardCodes(generateTemplateId.value, generateCount.value)
-    ElMessage.success(`已生成 ${generateCount.value} 个兑换码`)
+    await generateGiftCardCodes(generateTemplateId.value, n)
+    ElMessage.success(`已生成 ${n} 个兑换码`)
     generateDialogVisible.value = false
     await loadTemplates()
   } catch (err) {
     ElMessage.error(err.message)
+  } finally {
+    generateSaving.value = false
   }
 }
 
@@ -165,14 +198,19 @@ onMounted(loadTemplates)
 
     <!-- Create Template Dialog -->
     <el-dialog v-model="templateDialogVisible" title="创建礼品卡模板" width="480px">
-      <el-form label-position="top">
-        <el-form-item label="模板名称">
+      <el-form
+        ref="templateFormRef"
+        :model="templateForm"
+        :rules="templateRules"
+        label-position="top"
+      >
+        <el-form-item label="模板名称" prop="name">
           <el-input v-model="templateForm.name" placeholder="请输入模板名称" />
         </el-form-item>
-        <el-form-item label="绑定套餐 ID">
+        <el-form-item label="绑定套餐 ID" prop="planId">
           <el-input-number v-model="templateForm.planId" :min="1" style="width: 100%;" />
         </el-form-item>
-        <el-form-item label="周期">
+        <el-form-item label="周期" prop="period">
           <el-select v-model="templateForm.period" style="width: 100%;">
             <el-option value="month_price" label="月付" />
             <el-option value="quarter_price" label="季付" />
@@ -180,13 +218,13 @@ onMounted(loadTemplates)
             <el-option value="year_price" label="年付" />
           </el-select>
         </el-form-item>
-        <el-form-item label="价格（分）">
+        <el-form-item label="价格（分）" prop="price">
           <el-input-number v-model="templateForm.price" :min="0" style="width: 100%;" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="templateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateTemplate">创建</el-button>
+        <el-button type="primary" :loading="templateSaving" @click="handleCreateTemplate">创建</el-button>
       </template>
     </el-dialog>
 
@@ -199,7 +237,7 @@ onMounted(loadTemplates)
       </el-form>
       <template #footer>
         <el-button @click="generateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleGenerate">生成</el-button>
+        <el-button type="primary" :loading="generateSaving" @click="handleGenerate">生成</el-button>
       </template>
     </el-dialog>
 

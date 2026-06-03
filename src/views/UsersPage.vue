@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X, HelpCircle } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
-import { useI18n } from 'vue-i18n'
 import {
   fetchManagedUsers,
   updateManagedUser,
@@ -19,8 +18,9 @@ import {
 } from '../services/users'
 import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
 import { assignOrder } from '../services/orders'
+import { createSequence } from '../utils/sequence'
+import { copyText } from '../utils/clipboard'
 
-const { t } = useI18n()
 const router = useRouter()
 
 const users = ref([])
@@ -171,6 +171,13 @@ function buildFilterArray() {
 const editDialogVisible = ref(false)
 const editForm = ref({})
 const editSaving = ref(false)
+const editFormRef = ref(null)
+const editRules = {
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不合法', trigger: 'blur' },
+  ],
+}
 const plans = ref([])
 
 const generateDialogVisible = ref(false)
@@ -183,6 +190,32 @@ const generateForm = ref({
   generateCount: null,
 })
 const generateSaving = ref(false)
+const generateFormRef = ref(null)
+const generateRules = {
+  emailSuffix: [{ required: true, message: '请填写邮箱后缀（如 gmail.com）', trigger: 'blur' }],
+}
+
+const sendMailFormRef = ref(null)
+const sendMailRules = {
+  subject: [{ required: true, message: '请输入邮件主题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入邮件内容', trigger: 'blur' }],
+}
+
+const assignFormRef = ref(null)
+const assignRules = {
+  planId: [{ required: true, message: '请选择订阅计划', trigger: 'change' }],
+  period: [{ required: true, message: '请选择购买时长', trigger: 'change' }],
+  totalAmount: [
+    {
+      validator: (_r, v, cb) => {
+        const n = Number(v)
+        if (!Number.isFinite(n) || n < 0) cb(new Error('金额必须为非负数字'))
+        else cb()
+      },
+      trigger: 'blur',
+    },
+  ],
+}
 
 const sortField = ref('')
 const sortOrder = ref('desc')
@@ -231,7 +264,12 @@ function restoreUsersPageState() {
   }
 }
 
+// Sequence guard：快速切筛选/翻页时，旧响应若回得比新响应晚，
+// 之前会覆盖 users / pagination / sessionStorage —— 现在丢弃所有非最新响应。
+const usersSeq = createSequence()
+
 async function loadUsers() {
+  const my = usersSeq.next()
   loading.value = true
   errorMsg.value = ''
   try {
@@ -246,13 +284,15 @@ async function loadUsers() {
       filter,
       sort,
     })
+    if (!usersSeq.isCurrent(my)) return
     users.value = result.list
     pagination.value = result.pagination
     saveUsersPageState()
   } catch (err) {
+    if (!usersSeq.isCurrent(my)) return
     errorMsg.value = err.message || '加载用户列表失败'
   } finally {
-    loading.value = false
+    if (usersSeq.isCurrent(my)) loading.value = false
   }
 }
 
@@ -322,6 +362,9 @@ function openEditDialog(user) {
 }
 
 async function saveEditForm() {
+  if (editFormRef.value) {
+    try { await editFormRef.value.validate() } catch { return }
+  }
   editSaving.value = true
   try {
     const payload = { ...editForm.value }
@@ -439,9 +482,8 @@ function onAssignPeriodChange(period) {
 }
 
 async function submitAssignOrder() {
-  if (!assignForm.value.planId || !assignForm.value.period) {
-    ElMessage.warning('请选择订阅计划和周期')
-    return
+  if (assignFormRef.value) {
+    try { await assignFormRef.value.validate() } catch { return }
   }
   assignSaving.value = true
   try {
@@ -458,30 +500,32 @@ async function submitAssignOrder() {
   }
 }
 
-function copySubscribeUrl(user) {
-  if (!user.subscribeUrl) {
-    ElMessage.warning('该用户没有订阅URL')
+async function copySubscribeUrl(user) {
+  if (!user?.subscribeUrl) {
+    ElMessage.warning('该用户没有订阅 URL')
     return
   }
-  navigator.clipboard.writeText(user.subscribeUrl).then(() => {
-    ElMessage.success('订阅URL已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  try {
+    await copyText(user.subscribeUrl)
+    ElMessage.success('订阅 URL 已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败：' + (e?.message || ''))
+  }
 }
 
-function copyLoginUrl(user) {
-  const origin = window.location.origin
-  const loginUrl = `${origin}/#/login?token=${user.token}`
-  if (!user.token) {
-    ElMessage.warning('该用户没有token')
+async function copyLoginUrl(user) {
+  if (!user?.token) {
+    ElMessage.warning('该用户没有 token')
     return
   }
-  navigator.clipboard.writeText(loginUrl).then(() => {
-    ElMessage.success('登录URL已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  const origin = window.location.origin
+  const loginUrl = `${origin}/#/login?token=${encodeURIComponent(user.token)}`
+  try {
+    await copyText(loginUrl)
+    ElMessage.success('登录 URL 已复制到剪贴板')
+  } catch (e) {
+    ElMessage.error('复制失败：' + (e?.message || ''))
+  }
 }
 
 function navigateToUserOrders(user) {
@@ -544,6 +588,16 @@ function openGenerateDialog() {
 }
 
 async function submitGenerate() {
+  if (generateFormRef.value) {
+    try { await generateFormRef.value.validate() } catch { return }
+  }
+  // 至少要填一个：邮箱前缀 or 批量数量
+  const hasPrefix = !!generateForm.value.emailPrefix?.trim()
+  const hasCount = Number(generateForm.value.generateCount) > 0
+  if (!hasPrefix && !hasCount) {
+    ElMessage.warning('请填写邮箱前缀或批量数量')
+    return
+  }
   generateSaving.value = true
   try {
     const data = {
@@ -577,13 +631,8 @@ function openSendMailDialog(scope) {
 }
 
 async function submitSendMail() {
-  if (!sendMailForm.value.subject.trim()) {
-    ElMessage.warning('请输入邮件主题')
-    return
-  }
-  if (!sendMailForm.value.content.trim()) {
-    ElMessage.warning('请输入邮件内容')
-    return
+  if (sendMailFormRef.value) {
+    try { await sendMailFormRef.value.validate() } catch { return }
   }
   sendMailSending.value = true
   try {
@@ -783,8 +832,14 @@ onMounted(function onMount() {
 
     <!-- 用户管理对话框 -->
     <el-dialog v-model="editDialogVisible" title="用户管理" width="480px" destroy-on-close>
-      <el-form :model="editForm" label-position="top" style="padding: 0 4px">
-        <el-form-item label="邮箱">
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="editRules"
+        label-position="top"
+        style="padding: 0 4px"
+      >
+        <el-form-item label="邮箱" prop="email">
           <el-input v-model="editForm.email" />
         </el-form-item>
         <el-form-item label="邀请人邮箱">
@@ -939,11 +994,16 @@ onMounted(function onMount() {
 
     <!-- 生成用户对话框 -->
     <el-dialog v-model="generateDialogVisible" title="生成用户" width="500px" destroy-on-close>
-      <el-form :model="generateForm" label-width="120px">
+      <el-form
+        ref="generateFormRef"
+        :model="generateForm"
+        :rules="generateRules"
+        label-width="120px"
+      >
         <el-form-item label="邮箱前缀">
           <el-input v-model="generateForm.emailPrefix" placeholder="指定前缀或留空批量生成" />
         </el-form-item>
-        <el-form-item label="邮箱后缀">
+        <el-form-item label="邮箱后缀" prop="emailSuffix">
           <el-input v-model="generateForm.emailSuffix" />
         </el-form-item>
         <el-form-item label="批量数量">
@@ -962,11 +1022,16 @@ onMounted(function onMount() {
     <!-- 发送邮件对话框 -->
     <el-dialog v-model="sendMailDialogVisible" :title="sendMailScope === 'all' ? '发送邮件给全部用户' : '发送邮件给筛选用户'" width="600px" destroy-on-close>
       <el-alert v-if="sendMailScope === 'filter' && filterConditions.length === 0" type="warning" title="未设置筛选条件，将发送给所有用户" :closable="false" show-icon style="margin-bottom: 16px" />
-      <el-form :model="sendMailForm" label-position="top">
-        <el-form-item label="邮件主题" required>
+      <el-form
+        ref="sendMailFormRef"
+        :model="sendMailForm"
+        :rules="sendMailRules"
+        label-position="top"
+      >
+        <el-form-item label="邮件主题" prop="subject">
           <el-input v-model="sendMailForm.subject" placeholder="输入邮件主题" />
         </el-form-item>
-        <el-form-item label="邮件内容" required>
+        <el-form-item label="邮件内容" prop="content">
           <el-input v-model="sendMailForm.content" type="textarea" :rows="8" placeholder="支持 HTML 格式" />
         </el-form-item>
       </el-form>
@@ -978,21 +1043,26 @@ onMounted(function onMount() {
 
     <!-- 分配订单对话框 -->
     <el-dialog v-model="assignDialogVisible" title="分配订单" width="480px" destroy-on-close>
-      <el-form label-width="90px">
+      <el-form
+        ref="assignFormRef"
+        :model="assignForm"
+        :rules="assignRules"
+        label-width="90px"
+      >
         <el-form-item label="用户邮箱">
           <el-input :model-value="assignForm.email" disabled />
         </el-form-item>
-        <el-form-item label="订阅计划" required>
+        <el-form-item label="订阅计划" prop="planId">
           <el-select v-model="assignForm.planId" placeholder="请选择订阅计划" style="width:100%" @change="onAssignPlanChange">
             <el-option v-for="plan in plans" :key="plan.id" :label="plan.name" :value="plan.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="订阅周期" required>
+        <el-form-item label="订阅周期" prop="period">
           <el-select v-model="assignForm.period" placeholder="请先选择订阅计划" style="width:100%" :disabled="!assignForm.planId" @change="onAssignPeriodChange">
             <el-option v-for="opt in periodOptions" :key="opt.value" :label="`${opt.label} - ¥${opt.price}`" :value="opt.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="支付金额" required>
+        <el-form-item label="支付金额" prop="totalAmount">
           <el-input-number v-model="assignForm.totalAmount" :min="0" :precision="2" :step="1" style="width:100%" />
         </el-form-item>
       </el-form>

@@ -113,15 +113,18 @@ async function handlePaymentChange(payment) {
   }
 }
 
+const formRef = ref(null)
+const formRules = {
+  name: [{ required: true, message: '请输入显示名称', trigger: 'blur' }],
+  payment: [{ required: true, message: '请选择支付接口', trigger: 'change' }],
+}
+const formSaving = ref(false)
+
 async function handleSave() {
-  if (!form.name) {
-    ElMessage.warning('请输入显示名称')
-    return
+  if (formRef.value) {
+    try { await formRef.value.validate() } catch { return }
   }
-  if (!form.payment) {
-    ElMessage.warning('请选择支付接口')
-    return
-  }
+  formSaving.value = true
   try {
     await savePayment(form)
     ElMessage.success(dialogMode.value === 'create' ? '支付方式已添加' : '支付方式已更新')
@@ -129,6 +132,8 @@ async function handleSave() {
     await loadPayments()
   } catch (err) {
     ElMessage.error(err.message)
+  } finally {
+    formSaving.value = false
   }
 }
 
@@ -255,8 +260,14 @@ onMounted(loadPayments)
       :title="dialogMode === 'create' ? '添加支付方式' : '编辑支付方式'"
       width="540px"
     >
-      <el-form label-position="top" v-loading="formLoading">
-        <el-form-item label="显示名称">
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="formRules"
+        label-position="top"
+        v-loading="formLoading"
+      >
+        <el-form-item label="显示名称" prop="name">
           <el-input v-model="form.name" placeholder="支付宝" />
           <div class="form-help-text">用于前端显示</div>
         </el-form-item>
@@ -280,7 +291,7 @@ onMounted(loadPayments)
           </el-form-item>
         </div>
 
-        <el-form-item label="支付接口">
+        <el-form-item label="支付接口" prop="payment">
           <el-select
             v-model="form.payment"
             style="width:100%;"
@@ -318,7 +329,7 @@ onMounted(loadPayments)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">提交</el-button>
+        <el-button type="primary" :loading="formSaving" @click="handleSave">提交</el-button>
       </template>
     </el-dialog>
 

@@ -1,6 +1,5 @@
 import {
   buildSecureV2ApiUrl,
-  getDashboardApiHeaders,
   requestDashboardApi,
   requestDashboardMutation,
 } from './api'
@@ -128,37 +127,13 @@ export async function fetchManagedTickets(options = {}) {
     body.sort = options.sort
   }
 
-  const headers = {
-    ...getDashboardApiHeaders(),
-    'Content-Type': 'application/json',
-  }
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error('鉴权失败，请重新登录')
-  }
-
-  if (!response.ok) {
-    throw new Error(`工单列表请求失败: ${response.status}`)
-  }
-
-  const payload = await response.json()
-  console.log('[Tickets] API response structure:', JSON.stringify({
-    dataKeys: payload?.data ? Object.keys(payload.data) : [],
-    dataTotal: payload?.data?.total,
-    nestedTotal: payload?.data?.data ? 'has nested data' : 'no nested data',
-  }))
+  const payload = await requestDashboardMutation(apiUrl, body)
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
   const total = Number(rawData?.total || payload?.total || 0)
   const currentPage = Number(rawData?.current_page || payload?.current_page || current)
   const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
-  console.log('[Tickets] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(function mapTicket(ticket) {

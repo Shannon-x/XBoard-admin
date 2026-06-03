@@ -221,7 +221,12 @@ onMounted(function loadManagedNodesOnMount() {
     adminStore.loadManagedNodeGroups();
     adminStore.loadManagedNodeRoutes();
 
+    // 30s 轮询：
+    //  1) Tab 不可见时跳过（visibilityState ≠ 'visible'）
+    //  2) 上一次还没回来时跳过（避免请求堆积）
     autoRefreshTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+        if (adminStore.managedNodesLoading) return;
         adminStore.loadManagedNodes({
             page: pagination.value.page,
             limit: pagination.value.limit,
@@ -428,10 +433,12 @@ const filteredNodes = computed(function filteredNodes() {
             nodeGroupIds.includes(normalizedGroup) ||
             nodeGroupNames.includes(normalizedGroup) ||
             resolvedGroups.includes(normalizedGroup);
+        // resolveStatusLabel 只产出 在线/异常/离线 三个值，原先匹配 '高负载'/'维护中'
+        // 永远命中 0 条 —— 现在让它匹配真实词汇表。
         const matchesAbnormal =
             !filters.abnormalOnly ||
-            node.status === "高负载" ||
-            node.status === "维护中";
+            node.status === t("nodes.statusAbnormal") ||
+            node.status === t("nodes.statusOffline");
         const nodeIdFilter = String(filters.nodeId || "").trim();
         const matchesNodeId =
             !nodeIdFilter ||

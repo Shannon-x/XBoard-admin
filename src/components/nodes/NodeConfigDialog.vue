@@ -45,6 +45,10 @@ const props = defineProps({
         type: String,
         default: "shadowsocks",
     },
+    submitting: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(["update:modelValue", "submit"]);
@@ -1098,9 +1102,9 @@ onBeforeUnmount(destroyRouteSortable);
                         <el-button
                             type="danger"
                             link
-                            :icon="Delete"
+                            :icon="Trash2"
                             @click="removeDynamicRule(index)"
-                        />
+                        >删除</el-button>
                     </div>
 
                     <div class="node-rate-rule-card__grid">
@@ -1568,7 +1572,7 @@ onBeforeUnmount(destroyRouteSortable);
                     placeholder="请输入私钥"
                 >
                     <template #append>
-                        <el-button :icon="Key" @click="generateRealityKeys" title="自动生成密钥对" />
+                        <el-button :icon="KeyRound" @click="generateRealityKeys" title="自动生成密钥对" />
                     </template>
                 </el-input>
             </el-form-item>
@@ -1594,7 +1598,7 @@ onBeforeUnmount(destroyRouteSortable);
                     placeholder="可留空，长度为 2 的倍数，最长 16 位"
                 >
                     <template #append>
-                        <el-button :icon="Refresh" @click="generateShortId" title="自动生成 Short ID" />
+                        <el-button :icon="RefreshCw" @click="generateShortId" title="自动生成 Short ID" />
                     </template>
                 </el-input>
                 <p class="node-config-form__hint">
@@ -1856,9 +1860,9 @@ onBeforeUnmount(destroyRouteSortable);
                         <el-button
                             type="danger"
                             link
-                            :icon="Delete"
+                            :icon="Trash2"
                             @click="removeFbnodeChild(index)"
-                        />
+                        >删除</el-button>
                     </div>
 
                     <div class="node-config-form__row node-config-form__row--half">
@@ -1971,7 +1975,7 @@ onBeforeUnmount(destroyRouteSortable);
         <template #footer>
             <div class="node-config-form__footer">
                 <el-button @click="closeDialog">取消</el-button>
-                <el-button type="primary" @click="handleSubmit"
+                <el-button type="primary" :loading="props.submitting" @click="handleSubmit"
                     >保存节点</el-button
                 >
             </div>
@@ -2152,7 +2156,7 @@ onBeforeUnmount(destroyRouteSortable);
                     <label>Private Key</label>
                     <el-input v-model="form.vlessRealityPrivateKey" placeholder="留空自动生成">
                         <template #append>
-                            <el-button :icon="Key" @click="generateRealityKeys" title="自动生成密钥对" />
+                            <el-button :icon="KeyRound" @click="generateRealityKeys" title="自动生成密钥对" />
                         </template>
                     </el-input>
                 </div>
@@ -2164,7 +2168,7 @@ onBeforeUnmount(destroyRouteSortable);
                     <label>ShortId</label>
                     <el-input v-model="form.vlessRealityShortId" placeholder="留空自动生成">
                         <template #append>
-                            <el-button :icon="Refresh" @click="generateShortId" title="自动生成 Short ID" />
+                            <el-button :icon="RefreshCw" @click="generateShortId" title="自动生成 Short ID" />
                         </template>
                     </el-input>
                 </div>

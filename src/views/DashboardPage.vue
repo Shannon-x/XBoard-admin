@@ -62,13 +62,13 @@ function refreshSystemStatus() {
 }
 
 onMounted(function loadStatsOnMount() {
+    // AdminLayout 已经在 mount 时加载 userInfo，这里不再重复触发。
     adminStore.loadDashboardStats();
     adminStore.loadIncomeOverview();
     adminStore.loadNodeTrafficRank();
     adminStore.loadQueueStats();
     adminStore.loadSystemStatus();
     adminStore.loadUserTrafficRank();
-    adminStore.loadUserInfo();
 });
 </script>
 

@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import { createSequence } from '../utils/sequence'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
-import { useI18n } from 'vue-i18n'
 import {
   fetchManagedOrders,
   fetchOrderDetail,
@@ -19,7 +19,6 @@ import {
 import { fetchManagedPlans } from '../services/plans'
 import { fetchPayments } from '../services/payment'
 
-const { t } = useI18n()
 const route = useRoute()
 
 const orders = ref([])
@@ -70,7 +69,11 @@ const periodOptions = [
   { label: '重置包', value: 'reset_price' },
 ]
 
+const ordersSeq = createSequence()
+const detailSeq = createSequence()
+
 async function loadOrders() {
+  const my = ordersSeq.next()
   loading.value = true
   errorMsg.value = ''
   try {
@@ -96,12 +99,14 @@ async function loadOrders() {
       filter,
       isCommission: isCommission.value,
     })
+    if (!ordersSeq.isCurrent(my)) return
     orders.value = result.list
     pagination.value = result.pagination
   } catch (err) {
+    if (!ordersSeq.isCurrent(my)) return
     errorMsg.value = err.message || '加载订单列表失败'
   } finally {
-    loading.value = false
+    if (ordersSeq.isCurrent(my)) loading.value = false
   }
 }
 
@@ -122,15 +127,19 @@ function handleSearch() {
 }
 
 async function openDetail(order) {
+  const my = detailSeq.next()
   detailLoading.value = true
   detailDialogVisible.value = true
   try {
-    detailData.value = await fetchOrderDetail(order.id)
+    const data = await fetchOrderDetail(order.id)
+    if (!detailSeq.isCurrent(my)) return
+    detailData.value = data
   } catch (err) {
+    if (!detailSeq.isCurrent(my)) return
     ElMessage.error(err.message || '获取订单详情失败')
     detailDialogVisible.value = false
   } finally {
-    detailLoading.value = false
+    if (detailSeq.isCurrent(my)) detailLoading.value = false
   }
 }
 
@@ -164,6 +173,30 @@ async function handleCancel(order) {
   }
 }
 
+const assignFormRef = ref(null)
+const assignRules = {
+  email: [
+    { required: true, message: '请输入用户邮箱', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不合法', trigger: 'blur' },
+  ],
+  planId: [{ required: true, message: '请选择订阅计划', trigger: 'change' }],
+  period: [{ required: true, message: '请选择订单周期', trigger: 'change' }],
+  totalAmount: [
+    { required: true, message: '请输入支付金额', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        const n = Number(value)
+        if (!Number.isFinite(n) || n < 0) {
+          callback(new Error('金额必须为非负数字'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+}
+
 function openAssignDialog() {
   assignForm.value = {
     email: '',
@@ -172,9 +205,20 @@ function openAssignDialog() {
     totalAmount: 0,
   }
   assignDialogVisible.value = true
+  // 等 dialog mount 完再清表单校验状态，避免上次的红框残留
+  nextTick(() => assignFormRef.value?.clearValidate?.())
 }
 
 async function submitAssign() {
+  // 之前没有任何校验，operator 漏填套餐/周期/金额都能直接 POST，
+  // 后端可能收到 NaN 或被前端 round 成 0 元。
+  if (!assignFormRef.value) return
+  try {
+    await assignFormRef.value.validate()
+  } catch {
+    return // validate() 抛出即未通过
+  }
+
   assignSaving.value = true
   try {
     await assignOrder({
@@ -486,11 +530,16 @@ onMounted(function onMount() {
 
     <!-- 订单分配对话框 -->
     <el-dialog v-model="assignDialogVisible" title="订单分配" width="440px" destroy-on-close>
-      <el-form :model="assignForm" label-position="top">
-        <el-form-item label="用户邮箱">
-          <el-input v-model="assignForm.email" placeholder="请输入用户邮箱" />
+      <el-form
+        ref="assignFormRef"
+        :model="assignForm"
+        :rules="assignRules"
+        label-position="top"
+      >
+        <el-form-item label="用户邮箱" prop="email">
+          <el-input v-model="assignForm.email" placeholder="请输入用户邮箱" clearable />
         </el-form-item>
-        <el-form-item label="订阅计划">
+        <el-form-item label="订阅计划" prop="planId">
           <el-select v-model="assignForm.planId" placeholder="请选择订阅计划" style="width: 100%">
             <el-option
               v-for="plan in plans"
@@ -500,7 +549,7 @@ onMounted(function onMount() {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="订单周期">
+        <el-form-item label="订单周期" prop="period">
           <el-select v-model="assignForm.period" placeholder="请选择购买时长" style="width: 100%">
             <el-option
               v-for="opt in periodOptions"
@@ -510,8 +559,8 @@ onMounted(function onMount() {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="支付金额">
-          <el-input v-model.number="assignForm.totalAmount" placeholder="0" type="number" />
+        <el-form-item label="支付金额（元）" prop="totalAmount">
+          <el-input v-model.number="assignForm.totalAmount" placeholder="0" type="number" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>

@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, MessageCircle, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
-import { useI18n } from 'vue-i18n'
 import {
   fetchManagedTickets,
   fetchTicketDetail,
@@ -12,6 +11,7 @@ import {
   closeTicket,
   createEmptyManagedTicketsPagination,
 } from '../services/tickets'
+import { createSequence } from '../utils/sequence'
 import {
   getUserInfoById,
   updateManagedUser,
@@ -19,7 +19,6 @@ import {
   banManagedUsers,
 } from '../services/users'
 
-const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -28,6 +27,7 @@ const pagination = ref(createEmptyManagedTicketsPagination())
 const loading = ref(false)
 const errorMsg = ref('')
 const statusFilter = ref('')
+const priorityFilter = ref('')   // '' / '0' / '1' / '2'
 const emailSearch = ref('')
 
 const detailDialogVisible = ref(false)
@@ -81,7 +81,10 @@ const statusOptions = [
   { label: '已关闭', value: 'closed' },
 ]
 
+const ticketsSeq = createSequence()
+
 async function loadTickets() {
+  const my = ticketsSeq.next()
   loading.value = true
   errorMsg.value = ''
   try {
@@ -101,13 +104,18 @@ async function loadTickets() {
     if (emailSearch.value.trim()) {
       options.email = emailSearch.value.trim()
     }
+    if (priorityFilter.value !== '') {
+      options.filter = [{ id: 'level', value: `eq:${priorityFilter.value}` }]
+    }
     const result = await fetchManagedTickets(options)
+    if (!ticketsSeq.isCurrent(my)) return
     tickets.value = result.list
     pagination.value = result.pagination
   } catch (err) {
+    if (!ticketsSeq.isCurrent(my)) return
     errorMsg.value = err.message || '加载工单列表失败'
   } finally {
-    loading.value = false
+    if (ticketsSeq.isCurrent(my)) loading.value = false
   }
 }
 
@@ -292,7 +300,7 @@ function handleOpenUserOrders() {
     name: 'orders',
     query: { user_id: user.id, user_email: user.email },
   }).href
-  window.open(href, '_blank')
+  window.open(href, '_blank', 'noopener,noreferrer')
 }
 
 function handleOpenUserManage() {
@@ -302,7 +310,7 @@ function handleOpenUserManage() {
     name: 'users',
     query: { user_id: user.id, user_email: user.email },
   }).href
-  window.open(href, '_blank')
+  window.open(href, '_blank', 'noopener,noreferrer')
 }
 
 const ticketUserSummary = computed(function ticketUserSummary() {
@@ -360,7 +368,7 @@ onMounted(function onMount() {
             v-model="emailSearch"
             :prefix-icon="Search"
             clearable
-            placeholder="搜索工单标题或用户邮箱"
+            placeholder="搜索用户邮箱"
             style="width: 220px"
             @keyup.enter="handleSearch"
             @clear="handleSearch"
@@ -383,11 +391,12 @@ onMounted(function onMount() {
           >{{ opt.label }}</el-tag>
           <el-divider direction="vertical" />
           <el-tag
-            v-for="opt in [{label:'高优先', value:'2'},{label:'中优先', value:'1'},{label:'低优先', value:'0'}]"
+            v-for="opt in [{label:'全部优先', value:''},{label:'高优先', value:'2'},{label:'中优先', value:'1'},{label:'低优先', value:'0'}]"
             :key="opt.value"
-            effect="plain"
+            :effect="priorityFilter === opt.value ? 'dark' : 'plain'"
             class="order-filter-tag"
             size="small"
+            @click="priorityFilter = opt.value; handleSearch()"
           >{{ opt.label }}</el-tag>
         </el-space>
       </div>

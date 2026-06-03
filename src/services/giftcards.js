@@ -1,4 +1,9 @@
-import { buildDashboardApiUrl, getDashboardApiHeaders, requestDashboardApi } from './api'
+import {
+  buildDashboardApiUrl,
+  getDashboardApiHeaders,
+  requestDashboardApi,
+  requestDashboardMutation,
+} from './api'
 
 function normalizeTemplate(raw) {
   return {
@@ -35,46 +40,20 @@ export async function fetchGiftCardTemplates() {
 
 export async function createGiftCardTemplate(formData) {
   const apiUrl = buildDashboardApiUrl('gift-card/create-template')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: formData.name,
-      plan_id: formData.planId,
-      period: formData.period,
-      price: formData.price,
-    }),
+  return requestDashboardMutation(apiUrl, {
+    name: formData.name,
+    plan_id: formData.planId,
+    period: formData.period,
+    price: formData.price,
   })
-
-  if (!response.ok) {
-    throw new Error(`创建礼品卡模板失败 (${response.status})`)
-  }
-
-  return response.json()
 }
 
 export async function generateGiftCardCodes(templateId, count = 1) {
   const apiUrl = buildDashboardApiUrl('gift-card/generate-codes')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      template_id: templateId,
-      count,
-    }),
+  return requestDashboardMutation(apiUrl, {
+    template_id: templateId,
+    count,
   })
-
-  if (!response.ok) {
-    throw new Error(`生成兑换码失败 (${response.status})`)
-  }
-
-  return response.json()
 }
 
 export async function fetchGiftCardCodes(templateId, { page = 1, pageSize = 15 } = {}) {
@@ -85,17 +64,13 @@ export async function fetchGiftCardCodes(templateId, { page = 1, pageSize = 15 }
   ]
   const apiUrl = buildDashboardApiUrl('gift-card/codes', queryEntries)
   const payload = await requestDashboardApi(apiUrl)
-  console.log('[GiftCards] API response structure:', JSON.stringify({
-    dataKeys: payload?.data ? Object.keys(payload.data) : [],
-    dataTotal: payload?.data?.total,
-  }))
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
-  const total = Number(rawData?.total || payload?.total || listSource.length)
-  const currentPage = Number(rawData?.current_page || payload?.current_page || page)
-  const perPage = Number(rawData?.per_page || payload?.per_page || pageSize)
-  console.log('[GiftCards] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
+  // 兼容 total: 0 的真实零结果（旧代码用 || 会被当成 missing）
+  const total = Number(rawData?.total ?? payload?.total ?? listSource.length)
+  const currentPage = Number(rawData?.current_page ?? payload?.current_page ?? page)
+  const perPage = Number(rawData?.per_page ?? payload?.per_page ?? pageSize)
 
   return {
     list: listSource.map(normalizeCode),
@@ -109,27 +84,22 @@ export async function fetchGiftCardCodes(templateId, { page = 1, pageSize = 15 }
 
 export async function toggleGiftCardCode(id) {
   const apiUrl = buildDashboardApiUrl('gift-card/toggle-code')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`切换兑换码状态失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { id })
 }
 
 export async function exportGiftCardCodes(templateId) {
+  // 导出返回 blob，必须保留原生 fetch；但仍在 401 时主动调用 signalAuthExpired。
   const apiUrl = buildDashboardApiUrl('gift-card/export-codes', [['template_id', templateId]])
   const response = await fetch(apiUrl, {
     headers: getDashboardApiHeaders(),
   })
+
+  if (response.status === 401 || response.status === 403) {
+    // 动态 import 避免循环依赖
+    const { signalAuthExpired } = await import('./auth')
+    signalAuthExpired(`blob:${response.status}`)
+    throw new Error('登录状态已失效，请重新登录')
+  }
 
   if (!response.ok) {
     throw new Error(`导出兑换码失败 (${response.status})`)

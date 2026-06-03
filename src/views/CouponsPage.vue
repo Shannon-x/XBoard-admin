@@ -195,6 +195,8 @@ function validateCouponForm() {
   return true
 }
 
+const saving = ref(false)
+
 async function handleSave() {
   if (!validateCouponForm()) {
     return
@@ -213,7 +215,10 @@ async function handleSave() {
     limitPeriod: Array.isArray(form.limitPeriod) ? form.limitPeriod : [],
     startedAt: form.dateRange?.[0] ? Math.floor(new Date(form.dateRange[0]).getTime() / 1000) : null,
     endedAt: form.dateRange?.[1] ? Math.floor(new Date(form.dateRange[1]).getTime() / 1000) : null,
+    // 编辑时也要传 show，避免后端把隐藏状态默默改回显示
+    show: form.id ? (form.show === false ? 0 : 1) : undefined,
   }
+  saving.value = true
   try {
     await generateCoupons(payload)
     ElMessage.success(form.id ? '优惠券已保存' : '优惠券已生成')
@@ -221,6 +226,8 @@ async function handleSave() {
     await loadCoupons()
   } catch (err) {
     ElMessage.error(err.message)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -460,7 +467,7 @@ onMounted(loadAll)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
   </section>

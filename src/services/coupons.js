@@ -1,4 +1,8 @@
-import { buildDashboardApiUrl, getDashboardApiHeaders, requestDashboardApi } from './api'
+import {
+  buildDashboardApiUrl,
+  requestDashboardApi,
+  requestDashboardMutation,
+} from './api'
 
 const AMOUNT_COUPON_TYPE = 1
 
@@ -98,6 +102,8 @@ export async function generateCoupons(formData) {
   }
   if (formData.id) {
     body.id = formData.id
+    // 编辑模式必须显式发送 show，否则后端会默默将"已隐藏的优惠券"重新置显示。
+    body.show = formData.show === false || formData.show === 0 ? 0 : 1
   }
   if (formData.code && !formData.generateCount) {
     body.code = formData.code
@@ -105,61 +111,15 @@ export async function generateCoupons(formData) {
   if (!formData.id && formData.generateCount) {
     body.generate_count = formData.generateCount
   }
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-
-  const result = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    const actionText = formData.id ? '保存' : '生成'
-    throw new Error(getResponseErrorMessage(result, `${actionText}优惠券失败 (${response.status})`))
-  }
-
-  if (result?.code !== undefined && Number(result.code) !== 0) {
-    throw new Error(result.message || `${formData.id ? '保存' : '生成'}优惠券失败`)
-  }
-
-  return result
+  return requestDashboardMutation(apiUrl, body)
 }
 
 export async function deleteCoupon(id) {
   const apiUrl = buildDashboardApiUrl('coupon/drop')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`删除优惠券失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { id })
 }
 
 export async function toggleCouponShow(id) {
   const apiUrl = buildDashboardApiUrl('coupon/show')
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      ...getDashboardApiHeaders(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ id }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`切换优惠券状态失败 (${response.status})`)
-  }
-
-  return response.json()
+  return requestDashboardMutation(apiUrl, { id })
 }

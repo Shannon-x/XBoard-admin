@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import SectionCard from '../components/common/SectionCard.vue'
 import { fetchSiteSettings, saveSiteSettings } from '../services/settings'
 
+const { t } = useI18n()
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -28,7 +30,7 @@ async function loadSettings() {
       frontendCustomCss: settings.frontend_custom_css || '',
     }
   } catch (err) {
-    error.value = err.message || '加载主题配置失败'
+    error.value = err.message || t('themeConfigPage.messages.loadFailed')
   } finally {
     loading.value = false
   }
@@ -44,9 +46,9 @@ async function handleSave() {
       frontend_custom_html: form.value.frontendCustomHtml,
       frontend_custom_css: form.value.frontendCustomCss,
     })
-    ElMessage.success('主题配置已保存')
+    ElMessage.success(t('themeConfigPage.messages.saveSuccess'))
   } catch (err) {
-    ElMessage.error(err.message || '保存失败')
+    ElMessage.error(err.message || t('themeConfigPage.messages.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -57,30 +59,45 @@ onMounted(loadSettings)
 
 <template>
   <section class="page-stack">
-    <SectionCard title="主题配置" description="配置前端主题、背景、自定义样式等。">
+    <SectionCard
+      :title="t('themeConfigPage.sectionTitle')"
+      :description="t('themeConfigPage.sectionDescription')"
+    >
       <template #actions>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">
+          {{ t('themeConfigPage.saveButton') }}
+        </el-button>
       </template>
 
       <el-alert v-if="error" type="error" :closable="false" :title="error" class="dashboard-alert" />
 
       <el-form v-loading="loading" label-position="top" style="max-width: 640px">
-        <el-form-item label="前端主题">
-          <el-input v-model="form.frontendTheme" placeholder="主题名称（留空使用默认）" />
+        <el-form-item :label="t('themeConfigPage.fields.theme')">
+          <el-input v-model="form.frontendTheme" :placeholder="t('themeConfigPage.fields.themePlaceholder')" />
         </el-form-item>
-        <el-form-item label="背景图片 URL">
+        <el-form-item :label="t('themeConfigPage.fields.bgUrl')">
           <el-input v-model="form.frontendBackgroundUrl" placeholder="https://example.com/bg.jpg" />
         </el-form-item>
-        <el-form-item label="管理员面板路径">
+        <el-form-item :label="t('themeConfigPage.fields.adminPath')">
           <el-input v-model="form.frontendAdminPath" placeholder="admin">
             <template #prepend>/</template>
           </el-input>
         </el-form-item>
-        <el-form-item label="自定义 HTML">
-          <el-input v-model="form.frontendCustomHtml" type="textarea" :autosize="{ minRows: 4, maxRows: 10 }" placeholder="插入到页面中的自定义 HTML" />
+        <el-form-item :label="t('themeConfigPage.fields.customHtml')">
+          <el-input
+            v-model="form.frontendCustomHtml"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 10 }"
+            :placeholder="t('themeConfigPage.fields.customHtmlPlaceholder')"
+          />
         </el-form-item>
-        <el-form-item label="自定义 CSS">
-          <el-input v-model="form.frontendCustomCss" type="textarea" :autosize="{ minRows: 4, maxRows: 10 }" placeholder="自定义 CSS 样式" />
+        <el-form-item :label="t('themeConfigPage.fields.customCss')">
+          <el-input
+            v-model="form.frontendCustomCss"
+            type="textarea"
+            :autosize="{ minRows: 4, maxRows: 10 }"
+            :placeholder="t('themeConfigPage.fields.customCssPlaceholder')"
+          />
         </el-form-item>
       </el-form>
     </SectionCard>

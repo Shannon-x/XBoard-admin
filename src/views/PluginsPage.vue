@@ -11,7 +11,8 @@ import {
 } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
-import { computed, onMounted, reactive, ref } from 'vue'
+import DOMPurify from 'dompurify'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -62,7 +63,14 @@ const renderedReadme = computed(function resolveRenderedReadme() {
     return ''
   }
 
-  return marked.parse(content, { breaks: true })
+  // 注意：marked ≥ 7 内置 sanitizer 已被移除；插件 README 来源于插件目录，
+  // 在 v-html 注入前必须经 DOMPurify 过滤，否则可能存储型 XSS。
+  const html = marked.parse(content, { breaks: true })
+  return DOMPurify.sanitize(html, {
+    ADD_ATTR: ['target'], // 允许外链 target="_blank"
+    FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'form', 'input'],
+    FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover', 'onfocus'],
+  })
 })
 
 const statusOptions = computed(function resolveStatusOptions() {
@@ -254,23 +262,35 @@ async function fetchPlugins() {
   pluginsLoadingFallback.value = true
 
   try {
-    await adminStore.loadPluginTypes()
-    await adminStore.loadPlugins({
-      filters: {
-        status: filters.status,
-        type: filters.type,
-      },
-    })
+    // 之前是串行 await，loadPluginTypes 慢就让首屏整体翻倍。
+    // 改并行；任一失败都触发 catch 但 Promise.allSettled 仍能保证另一边推进。
+    const results = await Promise.allSettled([
+      adminStore.loadPluginTypes(),
+      adminStore.loadPlugins({
+        filters: {
+          status: filters.status,
+          type: filters.type,
+        },
+      }),
+    ])
+    const failed = results.find(r => r.status === 'rejected')
+    if (failed) throw failed.reason
   } catch (error) {
-    ElMessage.error('插件列表加载失败，请稍后重试')
+    ElMessage.error(error?.message || '插件列表加载失败，请稍后重试')
   } finally {
     pluginsLoadingFallback.value = false
   }
 }
 
+// 关键字输入打 debounce —— 之前每个键弹一次全量请求，连续输入 6 个字符触发 6 次 API。
+let filterDebounceTimer = null
 function handleFilterChange() {
   syncFiltersToRoute()
-  fetchPlugins()
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    filterDebounceTimer = null
+    fetchPlugins()
+  }, 350)
 }
 
 function handleRefresh() {
@@ -441,6 +461,13 @@ onMounted(function initializePluginsPage() {
   filters.keyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
 
   fetchPlugins()
+})
+
+onUnmounted(function cleanupPluginsPage() {
+  if (filterDebounceTimer) {
+    clearTimeout(filterDebounceTimer)
+    filterDebounceTimer = null
+  }
 })
 </script>
 

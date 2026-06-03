@@ -5,7 +5,8 @@ import Sortable from 'sortablejs'
 const props = defineProps({
   visible: Boolean,
   items: Array, // Array of { id, name }
-  title: { type: String, default: '排序' }
+  title: { type: String, default: '排序' },
+  saving: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:visible', 'save'])
 
@@ -76,7 +77,7 @@ function handleSave() {
     </div>
     <template #footer>
       <el-button @click="$emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" @click="handleSave">保存排序</el-button>
+      <el-button type="primary" :loading="props.saving" @click="handleSave">保存排序</el-button>
     </template>
   </el-dialog>
 </template>

@@ -1,25 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { hasStoredAuthSession } from '../services/auth'
+import { useAuthStore } from '../stores/auth'
 import AdminLayout from '../layouts/AdminLayout.vue'
-import CouponsPage from '../views/CouponsPage.vue'
-import DashboardPage from '../views/DashboardPage.vue'
-import GiftCardsPage from '../views/GiftCardsPage.vue'
-import KnowledgePage from '../views/KnowledgePage.vue'
-import LoginPage from '../views/LoginPage.vue'
-import NodeGroupsPage from '../views/NodeGroupsPage.vue'
-import NodeRoutesPage from '../views/NodeRoutesPage.vue'
-import NodesPage from '../views/NodesPage.vue'
-import NoticesPage from '../views/NoticesPage.vue'
-import OrdersPage from '../views/OrdersPage.vue'
-import PaymentPage from '../views/PaymentPage.vue'
-import PlansPage from '../views/PlansPage.vue'
-import PluginsPage from '../views/PluginsPage.vue'
-import SettingsPage from '../views/SettingsPage.vue'
-import SystemLogsPage from '../views/SystemLogsPage.vue'
-import ThemeConfigPage from '../views/ThemeConfigPage.vue'
-import TicketsPage from '../views/TicketsPage.vue'
-import UsersPage from '../views/UsersPage.vue'
+
+// 所有业务页改 lazy import：首屏不再加载 Monaco/marked/md-editor，
+// 每个 view 走独立 chunk，按需下载。
+const LoginPage = () => import('../views/LoginPage.vue')
+const DashboardPage = () => import('../views/DashboardPage.vue')
+const CouponsPage = () => import('../views/CouponsPage.vue')
+const GiftCardsPage = () => import('../views/GiftCardsPage.vue')
+const KnowledgePage = () => import('../views/KnowledgePage.vue')
+const NodeGroupsPage = () => import('../views/NodeGroupsPage.vue')
+const NodeRoutesPage = () => import('../views/NodeRoutesPage.vue')
+const NodesPage = () => import('../views/NodesPage.vue')
+const NoticesPage = () => import('../views/NoticesPage.vue')
+const OrdersPage = () => import('../views/OrdersPage.vue')
+const PaymentPage = () => import('../views/PaymentPage.vue')
+const PlansPage = () => import('../views/PlansPage.vue')
+const PluginsPage = () => import('../views/PluginsPage.vue')
+const SettingsPage = () => import('../views/SettingsPage.vue')
+const SystemLogsPage = () => import('../views/SystemLogsPage.vue')
+const ThemeConfigPage = () => import('../views/ThemeConfigPage.vue')
+const TicketsPage = () => import('../views/TicketsPage.vue')
+const UsersPage = () => import('../views/UsersPage.vue')
 
 const ROUTE_META_KEYS = {
   login: {
@@ -282,11 +285,24 @@ const router = createRouter({
   routes,
 })
 
+function isSafeInternalRedirect(target) {
+  // 防止 ?redirect= 被用来跳到外站（open redirect）。只允许同站绝对路径。
+  if (typeof target !== 'string') return false
+  if (!target.startsWith('/')) return false
+  if (target.startsWith('//')) return false   // 协议相对 URL
+  if (target.startsWith('/\\')) return false
+  return true
+}
+
 router.beforeEach(function authGuard(to) {
-  const isAuthenticated = hasStoredAuthSession()
+  // 从响应式 store 取认证状态 —— 当 401 触发 logout() 后，
+  // 整个 SPA 的守卫立刻感知，老的"只看 localStorage 有没有 key"是死循环根因。
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
 
   if (to.meta.public && isAuthenticated) {
-    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : `${basePath}/`
+    const raw = typeof to.query.redirect === 'string' ? to.query.redirect : ''
+    const redirect = isSafeInternalRedirect(raw) ? raw : `${basePath}/`
     return redirect
   }
 

@@ -170,6 +170,17 @@ async function handleSave() {
     ElMessage.warning('请输入至少一条匹配规则')
     return
   }
+  // 当 action 是 JSON 类型时（出站配置 / DNS），校验 JSON 合法性，
+  // 避免把脏字符串推给后端造成 500。
+  const JSON_VALUE_ACTIONS = ['route', 'route_ip', 'default_out']
+  if (JSON_VALUE_ACTIONS.includes(form.value.action) && form.value.action_value?.trim()) {
+    try {
+      JSON.parse(form.value.action_value)
+    } catch (e) {
+      ElMessage.error(`动作参数不是合法 JSON：${e?.message || ''}`)
+      return
+    }
+  }
   saving.value = true
   try {
     await saveManagedNodeRoute({

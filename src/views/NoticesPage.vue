@@ -14,6 +14,7 @@ import NoticeEditorDialog from '../components/notices/NoticeEditorDialog.vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import SortDialog from '../components/common/SortDialog.vue'
 import { useAdminStore } from '../stores/admin'
+import { deleteManagedNotice, sortManagedNotices } from '../services/notices'
 
 const adminStore = useAdminStore()
 const { t } = useI18n()
@@ -121,23 +122,31 @@ async function handleDelete(notice) {
     await ElMessageBox.confirm(
       t('notices.messages.deletePending', { title: notice.title }),
       t('notices.messages.deleteConfirmTitle'),
-      {
-        type: 'warning',
-      },
+      { type: 'warning' },
     )
   } catch {
-    return
+    return // 用户取消
+  }
+
+  // 此前这里只有确认弹窗，没有调用任何删除接口 —— 公告点删除后实际什么都不发生。
+  try {
+    await deleteManagedNotice(notice.id)
+    ElMessage.success(t('notices.messages.deleteSuccess'))
+    await loadNotices()
+  } catch (err) {
+    ElMessage.error(err?.message || t('notices.messages.deleteFailed'))
   }
 }
 
 async function handleSortSave(ids) {
+  // 之前调的是 adminStore.sortManagedNotices —— store 里压根没暴露这个方法，每次都 TypeError。
   try {
-    await adminStore.sortManagedNotices(ids)
-    ElMessage.success('排序已保存')
+    await sortManagedNotices(ids)
+    ElMessage.success(t('notices.messages.sortSaved'))
     sortDialogVisible.value = false
     await loadNotices()
   } catch (err) {
-    ElMessage.error(err.message || '排序保存失败')
+    ElMessage.error(err?.message || t('notices.messages.sortFailed'))
   }
 }
 

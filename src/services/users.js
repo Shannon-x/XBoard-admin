@@ -4,6 +4,7 @@ import {
   requestDashboardApi,
   requestDashboardMutation,
 } from './api'
+import { signalAuthExpired } from './auth'
 
 export function createEmptyManagedUsers() {
   return []
@@ -136,39 +137,7 @@ export async function fetchManagedUsers(options = {}) {
     body.sort = options.sort
   }
 
-  const headers = {
-    ...getDashboardApiHeaders(),
-    'Content-Type': 'application/json',
-  }
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error('鉴权失败，请重新登录')
-  }
-
-  if (!response.ok) {
-    let errMsg = `用户列表请求失败: ${response.status}`
-    try {
-      const errBody = await response.json()
-      if (errBody?.message) errMsg += ` - ${errBody.message}`
-      else if (errBody?.errors) errMsg += ` - ${JSON.stringify(errBody.errors)}`
-    } catch (_) { /* ignore parse failure */ }
-    throw new Error(errMsg)
-  }
-
-  const payload = await response.json()
-  console.log('[Users] API response structure:', JSON.stringify({
-    hasData: !!payload?.data,
-    dataType: typeof payload?.data,
-    dataKeys: payload?.data ? Object.keys(payload.data) : [],
-    topTotal: payload?.total,
-    dataTotal: payload?.data?.total,
-    nestedTotal: payload?.data?.data ? 'has nested data' : 'no nested data',
-  }))
+  const payload = await requestDashboardMutation(apiUrl, body)
   const rawData = payload?.data ?? {}
   const listSource = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
 
@@ -192,7 +161,6 @@ export async function fetchManagedUsers(options = {}) {
     || pageSize
   )
 
-  console.log('[Users] Parsed pagination:', { total, currentPage, perPage, listCount: listSource.length })
 
   return {
     list: listSource.map(function mapUser(user) {
@@ -241,6 +209,7 @@ export async function sendMailToUsers(data) {
 
 export async function dumpUsersCSV(data) {
   const apiUrl = buildSecureV2ApiUrl('user/dumpCSV')
+  // CSV 返回 blob，保留原生 fetch，但 401/403 走统一 signalAuthExpired。
   const headers = {
     ...getDashboardApiHeaders(),
     'Content-Type': 'application/json',
@@ -251,6 +220,10 @@ export async function dumpUsersCSV(data) {
     body: JSON.stringify(data),
   })
 
+  if (response.status === 401 || response.status === 403) {
+    signalAuthExpired(`csv:${response.status}`)
+    throw new Error('登录状态已失效，请重新登录')
+  }
   if (!response.ok) {
     throw new Error(`导出失败: ${response.status}`)
   }
@@ -288,19 +261,7 @@ export async function fetchUserTrafficStats(userId, options = {}) {
     ['pageSize', pageSize],
   ]
   const apiUrl = buildSecureV2ApiUrl('stat/getStatUser', queryEntries)
-
-  const headers = { ...getDashboardApiHeaders() }
-  const response = await fetch(apiUrl, { headers })
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error('鉴权失败，请重新登录')
-  }
-
-  if (!response.ok) {
-    throw new Error(`请求失败: ${response.status}`)
-  }
-
-  const payload = await response.json()
+  const payload = await requestDashboardApi(apiUrl)
   const list = Array.isArray(payload?.data) ? payload.data : []
   const total = Number(payload?.total || 0)
 
