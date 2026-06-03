@@ -18,6 +18,7 @@ import {
 } from '../services/orders'
 import { fetchManagedPlans } from '../services/plans'
 import { fetchPayments } from '../services/payment'
+import { fetchCouponById } from '../services/coupons'
 
 const route = useRoute()
 
@@ -39,6 +40,11 @@ const userEmailDisplay = ref('')
 const detailDialogVisible = ref(false)
 const detailData = ref(null)
 const detailLoading = ref(false)
+
+// 订单详情里的优惠券信息：后端 order/detail 只返回 coupon_id，前端按 id 单独拉
+const detailCoupon = ref(null)
+const detailCouponLoading = ref(false)
+const detailCouponError = ref('')
 
 const assignDialogVisible = ref(false)
 const assignForm = ref({
@@ -130,10 +136,16 @@ async function openDetail(order) {
   const my = detailSeq.next()
   detailLoading.value = true
   detailDialogVisible.value = true
+  detailCoupon.value = null
+  detailCouponError.value = ''
   try {
     const data = await fetchOrderDetail(order.id)
     if (!detailSeq.isCurrent(my)) return
     detailData.value = data
+    // 并行（不阻塞主面板）拉取 coupon 详情
+    if (data?.couponId) {
+      loadDetailCoupon(data.couponId, my)
+    }
   } catch (err) {
     if (!detailSeq.isCurrent(my)) return
     ElMessage.error(err.message || '获取订单详情失败')
@@ -141,6 +153,47 @@ async function openDetail(order) {
   } finally {
     if (detailSeq.isCurrent(my)) detailLoading.value = false
   }
+}
+
+async function loadDetailCoupon(couponId, parentSeqToken) {
+  detailCouponLoading.value = true
+  detailCouponError.value = ''
+  try {
+    const coupon = await fetchCouponById(couponId)
+    // 用打开订单时的 seq 守住：用户已切到下一张订单则丢弃
+    if (!detailSeq.isCurrent(parentSeqToken)) return
+    detailCoupon.value = coupon
+    if (!coupon) {
+      detailCouponError.value = `优惠券 #${couponId} 已被删除或不可访问`
+    }
+  } catch (err) {
+    if (!detailSeq.isCurrent(parentSeqToken)) return
+    detailCouponError.value = err?.message || '加载优惠券信息失败'
+  } finally {
+    if (detailSeq.isCurrent(parentSeqToken)) detailCouponLoading.value = false
+  }
+}
+
+function handleDetailDialogClose() {
+  detailData.value = null
+  detailCoupon.value = null
+  detailCouponLoading.value = false
+  detailCouponError.value = ''
+}
+
+function formatCouponValidity(coupon) {
+  if (!coupon) return ''
+  const fmt = (ts) => {
+    if (!ts) return ''
+    const d = new Date(Number(ts) * 1000)
+    if (Number.isNaN(d.getTime())) return ''
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  const start = fmt(coupon.startedAt)
+  const end = fmt(coupon.endedAt)
+  if (!start && !end) return '永久有效'
+  return `${start || '不限'} ~ ${end || '不限'}`
 }
 
 async function handleMarkPaid(order) {
@@ -446,7 +499,13 @@ onMounted(function onMount() {
     </SectionCard>
 
     <!-- 订单详情对话框 -->
-    <el-dialog v-model="detailDialogVisible" title="订单详情" width="min(600px, calc(100vw - 32px))" destroy-on-close>
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="订单详情"
+      width="min(640px, calc(100vw - 32px))"
+      destroy-on-close
+      @closed="handleDetailDialogClose"
+    >
       <div v-loading="detailLoading">
         <template v-if="detailData">
           <el-descriptions :column="2" border size="small">
@@ -461,7 +520,12 @@ onMounted(function onMount() {
             <el-descriptions-item label="周期">{{ detailData.periodText }}</el-descriptions-item>
             <el-descriptions-item label="套餐" :span="2">{{ detailData.planName }}</el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
-            <el-descriptions-item label="优惠">{{ detailData.discountAmount ? '¥' + detailData.discountAmount.toFixed(2) : '--' }}</el-descriptions-item>
+            <el-descriptions-item label="优惠金额">
+              <span v-if="detailData.discountAmount" style="color: var(--el-color-success); font-weight: 600;">
+                -¥{{ detailData.discountAmount.toFixed(2) }}
+              </span>
+              <span v-else style="color: var(--el-text-color-placeholder);">--</span>
+            </el-descriptions-item>
             <el-descriptions-item v-if="detailData.balanceAmount > 0" label="余额抵扣">
               ¥{{ detailData.balanceAmount.toFixed(2) }}
             </el-descriptions-item>
@@ -492,7 +556,40 @@ onMounted(function onMount() {
               </span>
               <span v-else>--</span>
             </el-descriptions-item>
-            <el-descriptions-item label="优惠券ID">{{ detailData.couponId || '--' }}</el-descriptions-item>
+            <!-- 优惠券完整信息（按 id 异步拉取） -->
+            <el-descriptions-item v-if="detailData.couponId" label="优惠券" :span="2">
+              <div v-if="detailCouponLoading" style="color: var(--el-text-color-placeholder); font-size: 12px;">
+                正在加载优惠券信息...
+              </div>
+              <div v-else-if="detailCoupon" class="order-coupon-detail">
+                <div class="order-coupon-detail__line">
+                  <strong>{{ detailCoupon.name || '未命名' }}</strong>
+                  <el-tag size="small" :type="detailCoupon.type === 2 ? 'warning' : detailCoupon.type === 3 ? 'info' : 'success'">
+                    {{ detailCoupon.type === 2 ? '按比例优惠' : detailCoupon.type === 3 ? '重置流量' : '按金额优惠' }}
+                  </el-tag>
+                  <span class="order-coupon-detail__value">
+                    <template v-if="detailCoupon.type === 2">{{ detailCoupon.value }}%</template>
+                    <template v-else-if="detailCoupon.type === 3">免单</template>
+                    <template v-else>¥{{ (Number(detailCoupon.value || 0) / 100).toFixed(2) }}</template>
+                  </span>
+                </div>
+                <div class="order-coupon-detail__meta">
+                  <span>券码：<code>{{ detailCoupon.code || '--' }}</code></span>
+                  <span>有效期：{{ formatCouponValidity(detailCoupon) }}</span>
+                </div>
+                <div class="order-coupon-detail__meta">
+                  <span>使用上限：{{ detailCoupon.limitUse ?? '不限' }}</span>
+                  <span>单用户限用：{{ detailCoupon.limitUseWithUser ?? '不限' }}</span>
+                  <span>ID：{{ detailCoupon.id }}</span>
+                </div>
+              </div>
+              <div v-else-if="detailCouponError" style="color: var(--el-color-danger); font-size: 12px;">
+                ⚠ {{ detailCouponError }}（ID: {{ detailData.couponId }}）
+              </div>
+              <div v-else style="color: var(--el-text-color-placeholder); font-size: 12px;">
+                未关联优惠券
+              </div>
+            </el-descriptions-item>
             <el-descriptions-item label="支付时间">{{ detailData.paidAt }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ detailData.createdAt }}</el-descriptions-item>
             <el-descriptions-item label="回调单号" :span="2">
@@ -602,5 +699,39 @@ onMounted(function onMount() {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   line-height: 1.5;
+}
+
+.order-coupon-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-coupon-detail__line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.order-coupon-detail__value {
+  color: var(--el-color-success);
+  font-weight: 600;
+}
+
+.order-coupon-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.order-coupon-detail__meta code {
+  background: var(--el-fill-color-light);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 </style>

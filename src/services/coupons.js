@@ -33,6 +33,28 @@ function normalizeCoupon(raw) {
   }
 }
 
+/**
+ * 按 id 拉单张优惠券（OrdersPage 详情对话框需要展示完整 coupon 信息时用）。
+ * 后端没有专门的 fetch-by-id endpoint，但 coupon/fetch 的 filter 白名单
+ * 接受 `id`，所以这里 GET 一条即可。返回 null 表示未找到。
+ */
+export async function fetchCouponById(id) {
+  const couponId = Number(id || 0)
+  if (!couponId) return null
+  const queryEntries = [
+    ['current', 1],
+    ['pageSize', 1],
+    ['filter[0][id]', 'id'],
+    ['filter[0][value]', `eq:${couponId}`],
+  ]
+  const apiUrl = buildDashboardApiUrl('coupon/fetch', queryEntries)
+  const payload = await requestDashboardApi(apiUrl)
+  const rawData = payload?.data ?? {}
+  const list = Array.isArray(rawData?.data) ? rawData.data : (Array.isArray(rawData) ? rawData : [])
+  const found = list.find((c) => Number(c?.id) === couponId)
+  return found ? normalizeCoupon(found) : null
+}
+
 export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {} } = {}) {
   const queryEntries = [
     ['current', page],
