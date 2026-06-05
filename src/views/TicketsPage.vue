@@ -537,7 +537,13 @@ onMounted(function onMount() {
               <div class="ticket-user-detail">
                 <div class="ticket-user-detail__row">
                   <span class="ticket-user-detail__label">邮箱</span>
-                  <span class="ticket-user-detail__val">{{ ticketUser.email }}</span>
+                  <span
+                    v-if="ticketUser.id"
+                    class="ticket-user-detail__val x-link"
+                    title="前往用户管理查看该用户（新页）"
+                    @click="handleOpenUserManage"
+                  >{{ ticketUser.email }}</span>
+                  <span v-else class="ticket-user-detail__val">{{ ticketUser.email }}</span>
                 </div>
                 <div class="ticket-user-detail__row">
                   <span class="ticket-user-detail__label">套餐</span>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchManagedNodeGroups,
@@ -11,6 +12,7 @@ import {
 } from '../services/nodes'
 
 const { t } = useI18n()
+const route = useRoute()
 
 const groups = ref([])
 const loading = ref(false)
@@ -96,7 +98,12 @@ async function handleDelete(group) {
   }
 }
 
-onMounted(loadGroups)
+onMounted(() => {
+  // 从套餐/节点的「权限组」点过来时，用组 id 预填搜索框定位该组
+  // （displayGroups 同时按名称/ID 子串过滤，无需额外调用）
+  if (route.query.group_id) searchWord.value = String(route.query.group_id)
+  loadGroups()
+})
 </script>
 
 <template>

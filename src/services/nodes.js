@@ -177,6 +177,17 @@ function normalizeManagedNode(node, index) {
         })
         .filter(Boolean)
     : [];
+  // 名称 + id 严格按同一个 group 对象成对保留（id 可能为空 → 该项不可点）。
+  // 不要从已各自 filter 过的 groupTags / groupIds 按下标配对，那样会错位。
+  const groupPairs = Array.isArray(node.groups)
+    ? node.groups
+        .map(function mapGroupPair(group) {
+          return { id: String(group?.id || "").trim(), name: group?.name };
+        })
+        .filter(function hasName(pair) {
+          return Boolean(pair.name);
+        })
+    : [];
   const groupIds =
     groupIdsFromGroups.length > 0 ? groupIdsFromGroups : groupIdsFromNode;
 
@@ -346,6 +357,7 @@ function normalizeManagedNode(node, index) {
     priority: Number(node.sort || index + 1),
     groupIds,
     groupNames: groupTags,
+    groupPairs,
     rawTags: Array.isArray(node.tags)
       ? node.tags
           .map(function mapTag(tag) {

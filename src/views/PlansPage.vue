@@ -16,7 +16,16 @@ import {
   fetchManagedNodeGroups,
 } from '../services/nodes'
 import SortDialog from '../components/common/SortDialog.vue'
+import { useRoute, useRouter } from 'vue-router'
+import { toNodeGroup } from '../utils/crossLink'
 
+const route = useRoute()
+const router = useRouter()
+// 套餐页无搜索框：从订单/用户/工单等处带 ?plan_id= 跳进来时高亮对应行
+const highlightPlanId = ref(null)
+function planRowClass({ row }) {
+  return highlightPlanId.value && String(row.id) === highlightPlanId.value ? 'plan-row--highlight' : ''
+}
 
 const plans = ref(createEmptyManagedPlans())
 const loading = ref(false)
@@ -236,6 +245,7 @@ async function handleSortSave(ids) {
 }
 
 onMounted(function onMount() {
+  if (route.query.plan_id) highlightPlanId.value = String(route.query.plan_id)
   loadPlans()
   loadGroups()
 })
@@ -258,10 +268,15 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="plans" stripe style="width: 100%" table-layout="auto">
+      <el-table v-loading="loading" :data="plans" :row-class-name="planRowClass" stripe style="width: 100%" table-layout="auto">
         <el-table-column label="ID" prop="id" width="70" align="center" />
         <el-table-column label="名称" min-width="180" prop="name" show-overflow-tooltip />
-        <el-table-column label="权限组" min-width="130" prop="groupName" show-overflow-tooltip />
+        <el-table-column label="权限组" min-width="130" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="toNodeGroup(row.groupId)" class="x-link" @click="router.push(toNodeGroup(row.groupId))">{{ row.groupName }}</span>
+            <span v-else>{{ row.groupName }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="流量" width="110">
           <template #default="{ row }">
             <span style="white-space:nowrap">{{ row.transferEnableText }}</span>
@@ -458,6 +473,14 @@ onMounted(function onMount() {
 </template>
 
 <style scoped>
+/* 从别处带 ?plan_id= 跳进来时高亮该套餐行 */
+:deep(.plan-row--highlight > td.el-table__cell) {
+  background: var(--primary-soft) !important;
+}
+:deep(.plan-row--highlight > td.el-table__cell:first-child) {
+  box-shadow: inset 3px 0 0 0 var(--el-color-primary);
+}
+
 .plan-price-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

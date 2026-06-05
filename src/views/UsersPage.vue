@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { toPlan } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X, HelpCircle } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -22,6 +23,7 @@ import { createSequence } from '../utils/sequence'
 import { copyText } from '../utils/clipboard'
 
 const router = useRouter()
+const route = useRoute()
 
 const users = ref([])
 const pagination = ref(createEmptyManagedUsersPagination())
@@ -568,7 +570,8 @@ async function copyLoginUrl(user) {
 }
 
 function navigateToUserOrders(user) {
-  router.push({ path: 'orders', query: { user_id: user.id, user_email: user.email } })
+  // 用具名路由，自动带上 frontendSecurePath 前缀（相对 path 会在改安全路径后失效）
+  router.push({ name: 'orders', query: { user_id: user.id, user_email: user.email } })
 }
 
 function navigateToUserInvites(user) {
@@ -585,7 +588,7 @@ function navigateToUserInvites(user) {
 }
 
 function navigateToUserTickets(user) {
-  router.push({ path: 'tickets', query: { user_email: user.email } })
+  router.push({ name: 'tickets', query: { user_email: user.email } })
 }
 
 async function handleResetTraffic(user) {
@@ -692,8 +695,31 @@ async function submitSendMail() {
   }
 }
 
+// 消费跨页跳转的 query：从订单/工单/邀请等处点过来时自动定位用户。
+// 必须在 restoreUsersPageState() 之后执行 —— 否则恢复的 sessionStorage
+// 旧筛选会把这里注入的条件覆盖掉。
+function applyQueryFilter() {
+  const q = route.query
+  if (q.user_id) {
+    // 按用户 id 精确筛选（清空关键词，避免和旧的高级筛选 AND 串味）
+    searchKeyword.value = ''
+    filterConditions.value = [{ id: makeFilterCondId(), field: 'id', operator: '等于', value: String(q.user_id) }]
+    showFilters.value = true
+    return true
+  }
+  const email = q.email || q.user_email
+  if (email) {
+    // 邮箱 LIKE：直接填进主搜索框
+    searchKeyword.value = String(email)
+    filterConditions.value = []
+    return true
+  }
+  return false
+}
+
 onMounted(function onMount() {
   restoreUsersPageState()
+  applyQueryFilter()
   loadUsers()
   fetchManagedPlans()
     .then(list => { plans.value = list })
@@ -790,7 +816,12 @@ onMounted(function onMount() {
             <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="订阅" prop="planName" min-width="120" show-overflow-tooltip />
+        <el-table-column label="订阅" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
+            <span v-else>{{ row.planName }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="已用/总量" min-width="140" prop="totalUsedRaw" sortable="custom">
           <template #default="{ row }">
             <span :style="{ color: row.totalUsedRaw > row.transferEnableRaw ? 'var(--el-color-danger)' : '', fontWeight: row.totalUsedRaw > row.transferEnableRaw ? '600' : '' }">

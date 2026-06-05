@@ -29,9 +29,9 @@ function handleIncomeRangeChange(rangeSelection) {
 
 function handleMetricClick(label) {
     if (label === '待处理工单') {
-        router.push({ path: 'tickets' });
+        router.push({ name: 'tickets' });
     } else if (label === '待处理佣金') {
-        router.push({ path: 'orders', query: { commission: '1' } });
+        router.push({ name: 'orders', query: { commission: '1' } });
     } else if (label === '月新增用户') {
         dailyUsersDialogVisible.value = true;
     }

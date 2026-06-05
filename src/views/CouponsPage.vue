@@ -10,7 +10,9 @@ import {
   toggleCouponShow,
 } from '../services/coupons'
 import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const coupons = ref([])
 const plans = ref([])
 const loading = ref(false)
@@ -279,7 +281,12 @@ function formatTime(ts) {
   return new Date(ts * 1000).toLocaleString('zh-CN')
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  // 从订单详情「优惠券」点过来时按名称（后端仅支持名称 LIKE）/券码自动筛选
+  if (route.query.coupon_name) filters.keyword = String(route.query.coupon_name)
+  else if (route.query.coupon_code) filters.keyword = String(route.query.coupon_code)
+  loadAll()
+})
 </script>
 
 <template>

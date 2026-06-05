@@ -20,11 +20,18 @@ import NodeConfigDialog from "../components/nodes/NodeConfigDialog.vue";
 import SortDialog from "../components/common/SortDialog.vue";
 import CopyButton from "../components/common/CopyButton.vue";
 import { sortManagedNodes } from "../services/nodes";
+import { toNodeGroup } from "../utils/crossLink";
 
 const adminStore = useAdminStore();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
+
+// 节点「分组」标签 → 跳转权限组页并定位该组（无 id 的兜底标签不可点）
+function goNodeGroup(groupId) {
+    const loc = toNodeGroup(groupId);
+    if (loc) router.push(loc);
+}
 
 function createFallbackNodeModel(node, index) {
     return {
@@ -583,6 +590,26 @@ function resolveNodeGroups(node) {
     }
 
     return [t("nodes.groupEmpty")];
+}
+
+// 给「分组」标签做可点击跳转：返回 { id, name } 对，id 与 name 始终来自同一个
+// group 对象（见 normalizeManagedNode 的 groupPairs），避免按下标在两个分别
+// filter 过的数组间错位、点到错误的权限组。id 为空的项不可点。
+function resolveNodeGroupChips(node) {
+    if (Array.isArray(node.groupPairs) && node.groupPairs.length > 0) {
+        return node.groupPairs;
+    }
+    if (Array.isArray(node.groupIds) && node.groupIds.length > 0) {
+        return node.groupIds.map(function mapGroupChip(groupId) {
+            return {
+                id: groupId,
+                name:
+                    groupNameById.value.get(groupId) ||
+                    t("nodes.groupFallback", { id: groupId }),
+            };
+        });
+    }
+    return [{ id: null, name: t("nodes.groupEmpty") }];
 }
 
 function handleCreateNodeCommand(protocol) {
@@ -1397,12 +1424,15 @@ onUnmounted(function clearDebounceOnUnmount() {
                     <template #default="{ row }">
                         <div class="node-tags">
                             <el-tag
-                                v-for="groupName in resolveNodeGroups(row)"
-                                :key="`${row.id}-group-${groupName}`"
+                                v-for="(chip, gi) in resolveNodeGroupChips(row)"
+                                :key="`${row.id}-group-${gi}`"
                                 effect="plain"
                                 size="small"
+                                :style="chip.id ? 'cursor: pointer' : ''"
+                                :title="chip.id ? '查看该权限组' : ''"
+                                @click="goNodeGroup(chip.id)"
                             >
-                                {{ groupName }}
+                                {{ chip.name }}
                             </el-tag>
                         </div>
                     </template>

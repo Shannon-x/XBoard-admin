@@ -11,7 +11,10 @@ import {
   toggleGiftCardCode,
   exportGiftCardCodes,
 } from '../services/giftcards'
+import { useRouter } from 'vue-router'
+import { toPlan } from '../utils/crossLink'
 
+const router = useRouter()
 const templates = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -181,7 +184,10 @@ onMounted(loadTemplates)
         <el-table-column label="ID" prop="id" width="70" />
         <el-table-column label="模板名称" prop="name" min-width="140" />
         <el-table-column label="绑定套餐" min-width="100">
-          <template #default="{ row }">{{ row.planName || `ID: ${row.planId}` }}</template>
+          <template #default="{ row }">
+            <span v-if="toPlan(row.planId)" class="x-link" title="在套餐管理中查看" @click="router.push(toPlan(row.planId))">{{ row.planName || `ID: ${row.planId}` }}</span>
+            <span v-else>{{ row.planName || `ID: ${row.planId}` }}</span>
+          </template>
         </el-table-column>
         <el-table-column label="周期" prop="period" width="100" />
         <el-table-column label="价格" width="100">

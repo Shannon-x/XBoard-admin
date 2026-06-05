@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { createSequence } from '../utils/sequence'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { toUser, toPlan, toCoupon } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -21,6 +22,7 @@ import { fetchPayments } from '../services/payment'
 import { fetchCouponById } from '../services/coupons'
 
 const route = useRoute()
+const router = useRouter()
 
 const orders = ref([])
 const pagination = ref(createEmptyManagedOrdersPagination())
@@ -45,6 +47,12 @@ const detailLoading = ref(false)
 const detailCoupon = ref(null)
 const detailCouponLoading = ref(false)
 const detailCouponError = ref('')
+
+// 订单详情里的跨实体跳转目标（无目标时为 null → 模板渲染纯文本）
+const detailUserLink = computed(() => detailData.value && toUser(detailData.value.userId, detailData.value.userEmail))
+const detailInviterLink = computed(() => detailData.value && toUser(detailData.value.inviteUserId, detailData.value.inviteUserEmail))
+const detailPlanLink = computed(() => detailData.value && toPlan(detailData.value.planId))
+const detailCouponLink = computed(() => detailCoupon.value && toCoupon(detailCoupon.value.name, detailCoupon.value.code))
 
 const assignDialogVisible = ref(false)
 const assignForm = ref({
@@ -423,7 +431,12 @@ onMounted(function onMount() {
           </template>
         </el-table-column>
         <el-table-column label="类型" width="80" prop="typeText" />
-        <el-table-column label="订阅计划" min-width="140" prop="planName" show-overflow-tooltip />
+        <el-table-column label="订阅计划" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
+            <span v-else>{{ row.planName }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="周期" width="80" prop="periodText" />
         <el-table-column label="支付金额" width="110">
           <template #default="{ row }">
@@ -513,12 +526,16 @@ onMounted(function onMount() {
               <span style="font-family: monospace; font-size: 12px; word-break: break-all;">{{ detailData.tradeNo }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="用户邮箱" :span="2">
-              <span style="font-weight: 600; color: var(--el-color-primary);">{{ detailData.userEmail }}</span>
+              <span v-if="detailUserLink" class="x-link" style="font-weight: 600;" title="在用户管理中查看该用户" @click="router.push(detailUserLink)">{{ detailData.userEmail }}</span>
+              <span v-else style="font-weight: 600; color: var(--el-color-primary);">{{ detailData.userEmail }}</span>
               <span style="color: var(--el-text-color-secondary); margin-left: 8px;">(ID: {{ detailData.userId }})</span>
             </el-descriptions-item>
             <el-descriptions-item label="类型">{{ detailData.typeText }}</el-descriptions-item>
             <el-descriptions-item label="周期">{{ detailData.periodText }}</el-descriptions-item>
-            <el-descriptions-item label="套餐" :span="2">{{ detailData.planName }}</el-descriptions-item>
+            <el-descriptions-item label="套餐" :span="2">
+              <span v-if="detailPlanLink" class="x-link" title="在套餐管理中查看" @click="router.push(detailPlanLink)">{{ detailData.planName }}</span>
+              <span v-else>{{ detailData.planName }}</span>
+            </el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
             <el-descriptions-item label="优惠金额">
               <span v-if="detailData.discountAmount" style="color: var(--el-color-success); font-weight: 600;">
@@ -551,9 +568,11 @@ onMounted(function onMount() {
             <el-descriptions-item label="佣金">¥{{ detailData.commissionBalance.toFixed(2) }}</el-descriptions-item>
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>
             <el-descriptions-item label="邀请人">
-              <span v-if="detailData.inviteUserId">
-                {{ detailData.inviteUserEmail || '--' }} (ID: {{ detailData.inviteUserId }})
-              </span>
+              <template v-if="detailData.inviteUserId">
+                <span v-if="detailInviterLink" class="x-link" title="在用户管理中查看邀请人" @click="router.push(detailInviterLink)">{{ detailData.inviteUserEmail || `ID:${detailData.inviteUserId}` }}</span>
+                <span v-else>{{ detailData.inviteUserEmail || '--' }}</span>
+                <span style="color: var(--el-text-color-secondary);"> (ID: {{ detailData.inviteUserId }})</span>
+              </template>
               <span v-else>--</span>
             </el-descriptions-item>
             <!-- 优惠券完整信息（按 id 异步拉取） -->
@@ -563,7 +582,8 @@ onMounted(function onMount() {
               </div>
               <div v-else-if="detailCoupon" class="order-coupon-detail">
                 <div class="order-coupon-detail__line">
-                  <strong>{{ detailCoupon.name || '未命名' }}</strong>
+                  <strong v-if="detailCouponLink" class="x-link" title="在优惠券管理中查看" @click="router.push(detailCouponLink)">{{ detailCoupon.name || '未命名' }}</strong>
+                  <strong v-else>{{ detailCoupon.name || '未命名' }}</strong>
                   <el-tag size="small" :type="detailCoupon.type === 2 ? 'warning' : detailCoupon.type === 3 ? 'info' : 'success'">
                     {{ detailCoupon.type === 2 ? '按比例优惠' : detailCoupon.type === 3 ? '重置流量' : '按金额优惠' }}
                   </el-tag>

@@ -4182,3 +4182,22 @@ a:hover {
 .traffic-rank-copy strong {
     cursor: default;
 }
+
+/* 跨实体跳转链接：把「用户邮箱 / 套餐 / 优惠券 / 权限组」等引用值做成可点击。
+   配套逻辑见 src/utils/crossLink.js —— 无可跳转目标时模板渲染纯文本，不加此类。 */
+.x-link {
+    color: var(--el-color-primary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+    word-break: break-all;
+}
+
+.x-link:hover {
+    text-decoration: underline;
+    opacity: 0.85;
+}
+
+.x-link:active {
+    opacity: 0.7;
+}
