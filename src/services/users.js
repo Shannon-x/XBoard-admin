@@ -78,8 +78,9 @@ function normalizeUser(user) {
     groupName,
     inviteUserId: user?.invite_user_id || null,
     inviteUserEmail: inviteEmail,
-    balance: Number(user?.balance || 0).toFixed(2),
-    commissionBalance: Number(user?.commission_balance || 0).toFixed(2),
+    // 后端余额/佣金以「分」存储，展示需 ÷100 转「元」（与 orders.js 一致）
+    balance: (Number(user?.balance || 0) / 100).toFixed(2),
+    commissionBalance: (Number(user?.commission_balance || 0) / 100).toFixed(2),
     transferEnable: formatBytes(transferEnable),
     transferEnableRaw: transferEnable,
     totalUsed: formatBytes(totalUsed),
