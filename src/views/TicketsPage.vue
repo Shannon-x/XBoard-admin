@@ -18,6 +18,7 @@ import {
   resetManagedUserSecret,
   banManagedUsers,
 } from '../services/users'
+import { fetchManagedPlans } from '../services/plans'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +44,22 @@ const ticketUserLoading = ref(false)
 const ticketUserError = ref('')
 const ticketUserActionLoading = ref(false)
 let ticketUserFetchToken = 0
+
+// user/getUserInfoById 接口只返回 plan_id 等标量字段，不带 plan 关联对象，
+// 所以 ticketUser.planName 恒为 '--'。这里单独加载套餐列表，用 planId 解析套餐名。
+const userPlans = ref([])
+const ticketUserPlanName = computed(function ticketUserPlanName() {
+  const u = ticketUser.value
+  if (!u) return '--'
+  // 接口若已带套餐名（非占位符）则优先用
+  if (u.planName && u.planName !== '--') return u.planName
+  // 否则按 planId 查套餐列表解析
+  if (u.planId) {
+    const p = userPlans.value.find(pl => pl.id === u.planId)
+    return p ? p.name : `ID:${u.planId}`
+  }
+  return '--'
+})
 
 async function loadTicketUser(userId) {
   ticketUser.value = null
@@ -317,7 +334,7 @@ const ticketUserSummary = computed(function ticketUserSummary() {
   const user = ticketUser.value
   if (!user) return null
   return {
-    plan: user.planName,
+    plan: ticketUserPlanName.value,
     balance: user.balance,
     used: user.totalUsed,
     total: user.transferEnable,
@@ -356,6 +373,9 @@ onMounted(function onMount() {
     emailSearch.value = String(route.query.user_email)
   }
   loadTickets()
+  fetchManagedPlans()
+    .then(list => { userPlans.value = list })
+    .catch(err => { console.warn('[TicketsPage] 加载套餐列表失败', err) })
 })
 </script>
 
@@ -547,7 +567,7 @@ onMounted(function onMount() {
                 </div>
                 <div class="ticket-user-detail__row">
                   <span class="ticket-user-detail__label">套餐</span>
-                  <span class="ticket-user-detail__val">{{ ticketUser.planName }}</span>
+                  <span class="ticket-user-detail__val">{{ ticketUserPlanName }}</span>
                 </div>
                 <div class="ticket-user-detail__row">
                   <span class="ticket-user-detail__label">账户状态</span>
