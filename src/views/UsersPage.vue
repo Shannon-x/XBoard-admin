@@ -412,12 +412,13 @@ async function saveEditForm() {
     if (!payload.password) {
       delete payload.password
     }
-    // 余额/佣金：界面以「元」展示/输入，后端存「分」(整数) —— 回存时 ×100 取整
+    // 余额/佣金：界面与后端 update 均以「元」交互（后端 UserController::update 会自行 ×100 存「分」）。
+    // 前端按原值（元）发送即可，切勿在此再 ×100，否则与后端叠加成 100 倍。
     if (payload.balance !== undefined) {
-      payload.balance = Math.round((Number(payload.balance) || 0) * 100)
+      payload.balance = Number(payload.balance) || 0
     }
     if (payload.commission_balance !== undefined) {
-      payload.commission_balance = Math.round((Number(payload.commission_balance) || 0) * 100)
+      payload.commission_balance = Number(payload.commission_balance) || 0
     }
     // Convert GB to bytes and round to integer (backend requires integer)
     if (payload.transfer_enable !== undefined) {

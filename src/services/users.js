@@ -78,9 +78,11 @@ function normalizeUser(user) {
     groupName,
     inviteUserId: user?.invite_user_id || null,
     inviteUserEmail: inviteEmail,
-    // 后端余额/佣金以「分」存储，展示需 ÷100 转「元」（与 orders.js 一致）
-    balance: (Number(user?.balance || 0) / 100).toFixed(2),
-    commissionBalance: (Number(user?.commission_balance || 0) / 100).toFixed(2),
+    // 余额/佣金统一以「元」处理：user/fetch 由后端 transformUserData 已 ÷100 返回「元」；
+    // user/getUserInfoById 返回原始「分」，故在该接口 wrapper 里单独 ÷100（见下方 getUserInfoById）。
+    // 此处 normalizeUser 一律不再除，避免对列表口径重复除导致 100 倍偏小。
+    balance: Number(user?.balance || 0).toFixed(2),
+    commissionBalance: Number(user?.commission_balance || 0).toFixed(2),
     transferEnable: formatBytes(transferEnable),
     transferEnableRaw: transferEnable,
     totalUsed: formatBytes(totalUsed),
@@ -180,7 +182,12 @@ export async function getUserInfoById(id) {
   const apiUrl = buildSecureV2ApiUrl('user/getUserInfoById', [['id', id]])
   const payload = await requestDashboardApi(apiUrl)
   const user = payload?.data
-
+  // 与 user/fetch 不同：后端 getUserInfoById 直接返回原始模型，balance/commission_balance
+  // 仍是「分」，没像列表那样 ÷100。这里补偿成「元」，使其与列表口径一致后再交给 normalizeUser。
+  if (user && typeof user === 'object') {
+    if (user.balance != null) user.balance = Number(user.balance) / 100
+    if (user.commission_balance != null) user.commission_balance = Number(user.commission_balance) / 100
+  }
   return normalizeUser(user)
 }
 
