@@ -885,8 +885,8 @@ async function handleNodeDialogSubmit(payload) {
                   : protocolType === "tuic"
                     ? {
                           version:
-                              String(payload.tuicVersion || "v5") === "v5"
-                                  ? 5
+                              String(payload.tuicVersion || "v5") === "v4"
+                                  ? 4
                                   : 5,
                           congestion_control: String(
                               payload.tuicCongestionControl || "bbr",
@@ -905,45 +905,29 @@ async function handleNodeDialogSubmit(payload) {
                       }
                     : protocolType === "mieru"
                       ? {
+                            // 后端校验 in:TCP,UDP 大小写敏感，存储规范值也是大写
                             transport: String(
-                                payload.transportProtocol || "tcp",
-                            ).toLowerCase(),
+                                payload.transportProtocol || "TCP",
+                            ).toUpperCase(),
                             multiplexing: String(
                                 payload.mieruBandwidth || "low",
                             ).toLowerCase(),
                         }
                       : protocolType === "anytls"
-                        ? (() => {
-                              const security = String(payload.anytlsSecurity || "tls");
-                              const paddingScheme = String(payload.anytlsPaddingScheme || "")
+                        ? {
+                              // 后端规则 tls 必须是对象（整数会 422）；Reality 在后端模型、
+                              // 下发载荷与 V2bX AnyTlsNode 中均无实现，不提供该形状
+                              tls: {
+                                  server_name: String(payload.sni || "").trim(),
+                                  allow_insecure: Boolean(payload.allowInsecure),
+                                  ech: echPayload,
+                              },
+                              padding_scheme: String(payload.anytlsPaddingScheme || "")
                                   .split("\n")
                                   .map(function trimLine(line) { return line.trim(); })
-                                  .filter(Boolean);
-                              const settings = {
-                                  tls: security === "reality" ? 2 : 1,
-                                  padding_scheme: paddingScheme,
-                                  alpn: String(payload.anytlsAlpn || "").trim() || undefined,
-                              };
-                              if (security === "reality") {
-                                  settings.reality_settings = {
-                                      server_name: String(payload.vlessRealityDest || "").trim(),
-                                      server_port: payload.vlessRealityPort
-                                          ? Number(payload.vlessRealityPort)
-                                          : undefined,
-                                      public_key: String(payload.vlessRealityPublicKey || "").trim(),
-                                      private_key: String(payload.vlessRealityPrivateKey || "").trim(),
-                                      short_id: String(payload.vlessRealityShortId || "").trim(),
-                                      allow_insecure: Boolean(payload.allowInsecure),
-                                  };
-                              } else {
-                                  settings.tls = {
-                                      server_name: String(payload.sni || "").trim(),
-                                      allow_insecure: Boolean(payload.allowInsecure),
-                                      ech: echPayload,
-                                  };
-                              }
-                              return settings;
-                          })()
+                                  .filter(Boolean),
+                              alpn: String(payload.anytlsAlpn || "").trim() || undefined,
+                          }
                       : protocolType === "fbnode"
                         ? {}
                       : {
@@ -952,6 +936,51 @@ async function handleNodeDialogSubmit(payload) {
                             plugin_opts: payload.pluginOpts,
                         client_fingerprint: "chrome",
                     };
+
+    // 编辑保存必须回传表单未映射的既有键：后端模型按白名单整体重建 protocol_settings，
+    // 缺失键会被重置为默认值（multiplex/utls 每次编辑丢失；trojan 的 REALITY 会被降级成 tls=1）
+    if (
+        isEditing &&
+        activeNode.value?.rawProtocolSettings &&
+        String(activeNode.value.type || "").toLowerCase() === protocolType &&
+        protocolSettings &&
+        typeof protocolSettings === "object"
+    ) {
+        const raw = activeNode.value.rawProtocolSettings;
+        const carryKeys = ["multiplex", "utls"];
+        if (protocolType === "mieru") carryKeys.push("traffic_pattern");
+        if (protocolType === "shadowsocks") carryKeys.push("obfs", "obfs_settings");
+        if (protocolType === "vmess") carryKeys.push("rules");
+        for (const key of carryKeys) {
+            // 空串不回传：全局 ConvertEmptyStringsToNull 会把 "" 转成 null，
+            // 撞上无 nullable 的 string 规则直接 422（如 mieru traffic_pattern 默认态）
+            if (
+                raw[key] !== undefined &&
+                raw[key] !== "" &&
+                (protocolSettings[key] === undefined || protocolSettings[key] === null)
+            ) {
+                protocolSettings[key] = raw[key];
+            }
+        }
+        if (protocolType === "trojan") {
+            if (raw.tls !== undefined) protocolSettings.tls = raw.tls;
+            if (raw.reality_settings !== undefined) {
+                if (raw.reality_settings === null) {
+                    protocolSettings.reality_settings = null;
+                } else {
+                    const reality = { ...raw.reality_settings };
+                    // REALITY trojan 的表单 SNI 显示的就是 reality_settings.server_name
+                    // （tls_settings.server_name 为空时的回填来源），管理员改它的意图
+                    // 必须落到实际生效的字段，否则 UI 显示已改、握手域名未变
+                    const sni = String(payload.sni || "").trim();
+                    if ((raw.tls === 2 || raw.tls === "2") && sni) {
+                        reality.server_name = sni;
+                    }
+                    protocolSettings.reality_settings = reality;
+                }
+            }
+        }
+    }
 
     try {
         await adminStore.saveManagedNodeItem(
@@ -999,17 +1028,41 @@ async function handleNodeDialogSubmit(payload) {
                       routeIds: selectedRouteIds,
                       protocolSettings,
                       certConfig: (protocolType === "hysteria" || (protocolType === "anytls" && String(payload.anytlsSecurity || "tls") === "tls") || (protocolType === "vless" && String(payload.vlessSecurity || "") === "tls"))
-                          ? {
-                                cert_mode: String(payload.certMode || "selfSign"),
-                                fingerprint: String(payload.certFingerprint || "chrome"),
-                                reject_unknown_sni: Boolean(payload.certRejectUnknownSni),
-                                server_name: String(payload.sni || "").trim(),
-                                allow_insecure: Boolean(payload.allowInsecure),
-                                cert_path: String(payload.certPath || "").trim() || undefined,
-                                key_path: String(payload.keyPath || "").trim() || undefined,
-                                dns_provider: String(payload.certDnsProvider || "").trim() || undefined,
-                                dns_env: String(payload.certDnsEnv || "").trim() || undefined,
-                            }
+                          ? (() => {
+                                // 展开旧值合并：tls_cert/tls_key/pinned_* 等表单未映射键必须原样保留，
+                                // 整对象替换会把 remote 模式的证书与指纹永久抹掉（换指纹=已发订阅全失效）
+                                const originalCert =
+                                    (activeNode.value &&
+                                        typeof activeNode.value.rawCertConfig === "object" &&
+                                        activeNode.value.rawCertConfig) ||
+                                    {};
+                                const certConfig = {
+                                    ...originalCert,
+                                    // 下发链路读取的键名是 cert_file/key_file/provider；
+                                    // 空串显式覆盖旧值（下发侧 array_filter 只滤 null，节点端对空串跳过）
+                                    cert_mode: String(payload.certMode || originalCert.cert_mode || "selfSign"),
+                                    reject_unknown_sni: Boolean(payload.certRejectUnknownSni),
+                                    server_name: String(payload.sni || "").trim(),
+                                    cert_file: String(payload.certPath || "").trim(),
+                                    key_file: String(payload.keyPath || "").trim(),
+                                    provider: String(payload.certDnsProvider || "").trim(),
+                                    dns_env: String(payload.certDnsEnv || "").trim(),
+                                };
+                                // 历史错位键与全链路无读取方的死键，写回时清理
+                                delete certConfig.cert_path;
+                                delete certConfig.key_path;
+                                delete certConfig.dns_provider;
+                                delete certConfig.fingerprint;
+                                delete certConfig.allow_insecure;
+                                // 证书材料一律由后端权威回填（preserveServerHeldCert 读当前库），
+                                // 页面快照可能过期：把旧指纹钉回去会造成证书/指纹错位；
+                                // 脱敏占位键混部署时也不得落库
+                                delete certConfig.pinned_peer_cert_sha256;
+                                delete certConfig.pinned_public_key_sha256;
+                                delete certConfig.tls_cert_set;
+                                delete certConfig.tls_key_set;
+                                return certConfig;
+                            })()
                           : undefined,
                       children:
                           protocolType === "fbnode" && Array.isArray(payload.fbnodeChildren)

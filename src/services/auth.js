@@ -58,6 +58,23 @@ export function hasStoredAuthSession() {
   return Boolean(session?.authData)
 }
 
+// 登出时吊销后端 token。必须用裸 fetch：走统一请求层的话，401/403 会再触发
+// signalAuthExpired → logout 循环。失败静默——本地登出照常进行。
+export async function revokeCurrentSession() {
+  const session = readStoredAuth()
+  if (!session?.authData) {
+    return
+  }
+  try {
+    await fetch(buildCommonApiUrl('user/logout'), {
+      method: 'POST',
+      headers: { Authorization: session.authData },
+    })
+  } catch {
+    // 网络失败不阻塞本地登出；token 只能等后端过期
+  }
+}
+
 // ===== 会话失效广播 =====
 // 当 api.js 收到 401/403 时调用 signalAuthExpired() —— 由 main.js 注入的回调
 // 负责 logout + 跳登录页。这里只做事件分发，避免 services 圈引到 router/store。

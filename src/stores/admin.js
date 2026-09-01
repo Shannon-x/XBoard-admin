@@ -425,7 +425,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.recaptchaKey.label",
           descriptionKey: "systemSettings.fields.recaptchaKey.description",
           placeholderKey: "systemSettings.fields.recaptchaKey.placeholder",
-          type: "text",
+          type: "password",
           visibleWhen: {
             all: [
               {
@@ -463,7 +463,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.recaptchaV3SecretKey.label",
           descriptionKey: "systemSettings.fields.recaptchaV3SecretKey.description",
           placeholderKey: "systemSettings.fields.recaptchaV3SecretKey.placeholder",
-          type: "text",
+          type: "password",
           visibleWhen: {
             all: [
               {
@@ -522,7 +522,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.turnstileSecretKey.label",
           descriptionKey: "systemSettings.fields.turnstileSecretKey.description",
           placeholderKey: "systemSettings.fields.turnstileSecretKey.placeholder",
-          type: "text",
+          type: "password",
           visibleWhen: {
             all: [
               {
@@ -864,7 +864,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.serverToken.label",
           descriptionKey: "systemSettings.fields.serverToken.description",
           placeholderKey: "systemSettings.fields.serverToken.placeholder",
-          type: "text",
+          type: "password",
         },
         {
           key: "serverPullInterval",
@@ -951,7 +951,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.emailPassword.label",
           descriptionKey: "systemSettings.fields.emailPassword.description",
           placeholderKey: "systemSettings.fields.emailPassword.placeholder",
-          type: "text",
+          type: "password",
         },
         {
           key: "emailFromAddress",
@@ -995,7 +995,7 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.telegramBotToken.label",
           descriptionKey: "systemSettings.fields.telegramBotToken.description",
           placeholderKey: "systemSettings.fields.telegramBotToken.placeholder",
-          type: "text",
+          type: "password",
         },
         {
           key: "telegramWebhookAction",

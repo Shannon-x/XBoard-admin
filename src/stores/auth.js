@@ -7,6 +7,7 @@ import {
   loginWithPassword,
   persistAuthSession,
   readStoredAuth,
+  revokeCurrentSession,
 } from '../services/auth'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -26,6 +27,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const nextSession = await loginWithPassword(credentials)
+      // 登录接口对普通用户同样发 token；非管理员会话不落地
+      if (!nextSession.isAdmin) {
+        throw new Error('该账户没有管理员权限')
+      }
       session.value = nextSession
       persistAuthSession(nextSession)
       return nextSession
@@ -38,6 +43,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    // 吊销必须在 clearAuthSession 之前发起（token 读自 storage）；
+    // fire-and-forget 保持同步签名，网络失败兜底本地登出
+    revokeCurrentSession()
     session.value = null
     loginError.value = ''
     clearAuthSession()

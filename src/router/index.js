@@ -300,6 +300,19 @@ router.beforeEach(function authGuard(to) {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
 
+  // 权限实体是后端 Admin 中间件（非管理员一律 403）；这里是 UI 层纵深防御：
+  // 非管理员 token 不进入后台壳，直接清会话回登录页
+  if (isAuthenticated && !authStore.session?.isAdmin) {
+    authStore.logout()
+    if (to.meta.public) return true
+    return {
+      name: 'login',
+      query: {
+        redirect: to.fullPath,
+      },
+    }
+  }
+
   if (to.meta.public && isAuthenticated) {
     const raw = typeof to.query.redirect === 'string' ? to.query.redirect : ''
     const redirect = isSafeInternalRedirect(raw) ? raw : `${basePath}/`

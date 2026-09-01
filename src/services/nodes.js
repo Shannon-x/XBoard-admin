@@ -247,17 +247,22 @@ function normalizeManagedNode(node, index) {
     plugin: plugin || "None",
     pluginOpts,
     tls: tlsEnabled ? "tls" : "none",
-    transportProtocol: protocolSettings?.transport || protocolSettings?.network || "",
+    transportProtocol: String(
+      protocolSettings?.transport || protocolSettings?.network || "",
+    ).toLowerCase(),
     transportConfig:
       (typeof (protocolSettings?.network_settings || protocolSettings?.transport_config) === "object" && (protocolSettings?.network_settings || protocolSettings?.transport_config) !== null)
         ? JSON.stringify((protocolSettings?.network_settings || protocolSettings?.transport_config), null, 2)
         : String(protocolSettings?.network_settings || protocolSettings?.transport_config || ""),
-    sni:
-      tlsSettings?.server_name ||
-      realitySettings?.server_name ||
-      hysteriaTls?.server_name ||
-      protocolSettings?.server_name ||
-      "",
+    // REALITY(tls=2) 节点表单 SNI 必须与实际生效字段同源（reality_settings），
+    // 否则残留的 tls_settings.server_name 会在编辑回传时被钉进握手域名
+    sni: realityEnabled
+      ? String(realitySettings?.server_name || tlsSettings?.server_name || "")
+      : tlsSettings?.server_name ||
+        realitySettings?.server_name ||
+        hysteriaTls?.server_name ||
+        protocolSettings?.server_name ||
+        "",
     allowInsecure: Boolean(
       tlsSettings?.allow_insecure ??
         realitySettings?.allow_insecure ??
@@ -286,9 +291,12 @@ function normalizeManagedNode(node, index) {
       protocolSettings?.version !== undefined
         ? `v${Number(protocolSettings.version) || 5}`
         : "v5",
+    // sing-quic 只认 bbr/cubic/new_reno；历史入库的 "newreno" 会让节点 inbound 起不来
     tuicCongestionControl: String(
       protocolSettings?.congestion_control || "bbr",
-    ).toLowerCase(),
+    )
+      .toLowerCase()
+      .replace(/^newreno$/, "new_reno"),
     tuicAlpn: tuicAlpn
       .map(function mapTuicAlpn(alpn) {
         return String(alpn || "").trim();
@@ -298,11 +306,8 @@ function normalizeManagedNode(node, index) {
       protocolSettings?.udp_relay_mode || "native",
     ).toLowerCase(),
     mieruBandwidth: String(protocolSettings?.multiplexing || "low").toLowerCase(),
-    anytlsSecurity: String(
-      protocolSettings?.tls === 2 || protocolSettings?.tls === "2"
-        ? "reality"
-        : "tls",
-    ),
+    // anytls 无 Reality 通道（tls=2 从未能过后端校验入库），恒为 tls
+    anytlsSecurity: "tls",
     anytlsPaddingScheme: Array.isArray(protocolSettings?.padding_scheme)
       ? protocolSettings.padding_scheme.join("\n")
       : "stop=8\n0=30-30\n1=100-400\n2=400-500,c,500-1000,c,500-1000,c,500-1000,c,500-1000\n3=9-9,500-1000\n4=500-1000\n5=500-1000\n6=500-1000\n7=500-1000",
@@ -319,7 +324,12 @@ function normalizeManagedNode(node, index) {
         : protocolSettings.encryption,
     vlessEncMode: String(protocolSettings?.encryption_settings?.mode || ""),
     vlessEncRtt: String(protocolSettings?.encryption_settings?.rtt || ""),
-    vlessEncTicket: String(protocolSettings?.encryption_settings?.ticket || ""),
+    // 提交/存储/下发翻译的源键都是 ticket_time（下发给节点时才翻成 ticket）
+    vlessEncTicket: String(
+      protocolSettings?.encryption_settings?.ticket_time ||
+        protocolSettings?.encryption_settings?.ticket ||
+        "",
+    ),
     vlessEncServerPadding: String(
       protocolSettings?.encryption_settings?.server_padding || "",
     ),
@@ -345,12 +355,36 @@ function normalizeManagedNode(node, index) {
       realitySettings?.fingerprint || protocolSettings?.utls?.fingerprint || "",
     ),
     certMode: String(certConfig?.cert_mode || ""),
-    certFingerprint: String(certConfig?.fingerprint || ""),
     certRejectUnknownSni: Boolean(certConfig?.reject_unknown_sni),
-    certPath: String(certConfig?.cert_path || ""),
-    keyPath: String(certConfig?.key_path || ""),
-    certDnsProvider: String(certConfig?.dns_provider || ""),
+    // 下发链路读取的键名是 cert_file/key_file/provider；旧键名兜底以兼容历史入库数据
+    certPath: String(certConfig?.cert_file || certConfig?.cert_path || ""),
+    keyPath: String(certConfig?.key_file || certConfig?.key_path || ""),
+    certDnsProvider: String(certConfig?.provider || certConfig?.dns_provider || ""),
     certDnsEnv: String(certConfig?.dns_env || ""),
+    certPinnedPeerCertSha256: String(
+      certConfig?.pinned_peer_cert_sha256 ||
+        tlsSettings?.pinned_peer_cert_sha256 ||
+        "",
+    ),
+    certPinnedPublicKeySha256: String(
+      certConfig?.pinned_public_key_sha256 ||
+        tlsSettings?.pinned_public_key_sha256 ||
+        "",
+    ),
+    // 保存时展开合并用：tls_cert/tls_key/pinned_* 等未映射键不得因整对象替换而丢失
+    rawCertConfig:
+      node && typeof node.cert_config === "object" && node.cert_config !== null
+        ? node.cert_config
+        : null,
+    // 编辑保存回传用：后端模型按白名单整体重建 protocol_settings，缺失键会被重置
+    rawProtocolSettings:
+      node &&
+      typeof node.protocol_settings === "object" &&
+      node.protocol_settings !== null
+        ? node.protocol_settings
+        : null,
+    // 列表接口对私钥脱敏后以 tls_key_set 布尔占位（旧后端兜底读 tls_key 本体）
+    certTlsKeySet: Boolean(certConfig?.tls_key_set ?? certConfig?.tls_key),
     rate: formatNodeRate(node.rate),
     status,
     onlineUsers,
@@ -581,9 +615,6 @@ export async function saveManagedNode(payload = {}) {
         })
       : [],
     protocol_settings: protocolSettings,
-    cert_config: payload.certConfig && typeof payload.certConfig === "object"
-      ? payload.certConfig
-      : null,
     children: Array.isArray(payload.children)
       ? payload.children.map(function mapChildId(childId) {
           return Number(childId);
@@ -592,6 +623,17 @@ export async function saveManagedNode(payload = {}) {
     type: String(payload.type || "shadowsocks"),
   };
 
+  // cert_config 缺省时必须整键省略：后端 validated() 只排除"缺键"，
+  // 提交 null / 空对象 / 空 cert_mode 都会把库里已存的证书与指纹整列清掉，
+  // 且 remote 模式的证书不可等价重建（换指纹 = 已发订阅全部失效）。
+  if (
+    payload.certConfig &&
+    typeof payload.certConfig === "object" &&
+    typeof payload.certConfig.cert_mode === "string" &&
+    payload.certConfig.cert_mode.trim() !== ""
+  ) {
+    requestBody.cert_config = payload.certConfig;
+  }
 
   return requestDashboardMutation(apiUrl, requestBody);
 }

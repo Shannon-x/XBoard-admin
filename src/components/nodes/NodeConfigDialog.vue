@@ -74,19 +74,9 @@ const certModeOptions = [
     { label: "自签名", value: "selfSign" },
     { label: "HTTP申请", value: "http" },
     { label: "DNS申请", value: "dns" },
+    { label: "面板托管证书(指纹固定)", value: "remote" },
+    { label: "本地证书文件", value: "file" },
     { label: "无证书(关闭TLS)", value: "none" },
-];
-const certFingerprintOptions = [
-    { label: "Chrome", value: "chrome" },
-    { label: "Firefox", value: "firefox" },
-    { label: "Safari", value: "safari" },
-    { label: "iOS", value: "ios" },
-    { label: "Android", value: "android" },
-    { label: "Edge", value: "edge" },
-    { label: "360", value: "360" },
-    { label: "QQ", value: "qq" },
-    { label: "Random", value: "random" },
-    { label: "RandomizedALPS", value: "randomized" },
 ];
 const tuicVersionOptions = [
     { label: "V5", value: "v5" },
@@ -95,7 +85,8 @@ const tuicVersionOptions = [
 const tuicCongestionControlOptions = [
     { label: "BBR", value: "bbr" },
     { label: "CUBIC", value: "cubic" },
-    { label: "NEW_RENO", value: "newreno" },
+    // sing-quic 的枚举是 new_reno（"newreno" 会让 TUIC inbound 起不来）
+    { label: "NEW_RENO", value: "new_reno" },
 ];
 const tuicAlpnOptions = [
     { label: "HTTP/3", value: "h3" },
@@ -116,9 +107,9 @@ const vlessSecurityOptions = [
     { label: "TLS", value: "tls" },
     { label: "Reality", value: "reality" },
 ];
+// Reality 在后端模型/下发载荷/V2bX AnyTlsNode 中均未实现，提交必 422，不提供该选项
 const anytlsSecurityOptions = [
     { label: "TLS", value: "tls" },
-    { label: "Reality", value: "reality" },
 ];
 const vlessFlowOptions = [
     { label: "none", value: "none" },
@@ -417,12 +408,13 @@ function createDefaultForm() {
         hysteriaDownMbps: null,
         hysteriaHopInterval: null,
         certMode: "selfSign",
-        certFingerprint: "chrome",
         certRejectUnknownSni: false,
         certPath: "",
         keyPath: "",
         certDnsProvider: "",
         certDnsEnv: "",
+        certPinnedPeerCertSha256: "",
+        certPinnedPublicKeySha256: "",
         tuicVersion: "v5",
         tuicCongestionControl: "bbr",
         tuicAlpn: [],
@@ -595,12 +587,13 @@ function createFormFromNode(node) {
         hysteriaDownMbps: normalizeOptionalNumber(node.hysteriaDownMbps),
         hysteriaHopInterval: normalizeOptionalNumber(node.hysteriaHopInterval),
         certMode: node.certMode || "selfSign",
-        certFingerprint: node.certFingerprint || "chrome",
         certRejectUnknownSni: Boolean(node.certRejectUnknownSni),
         certPath: node.certPath || "",
         keyPath: node.keyPath || "",
         certDnsProvider: node.certDnsProvider || "",
         certDnsEnv: node.certDnsEnv || "",
+        certPinnedPeerCertSha256: node.certPinnedPeerCertSha256 || "",
+        certPinnedPublicKeySha256: node.certPinnedPublicKeySha256 || "",
         tuicVersion: node.tuicVersion || "v5",
         tuicCongestionControl: node.tuicCongestionControl || "bbr",
         tuicAlpn: Array.isArray(node.tuicAlpn) ? [...node.tuicAlpn] : [],
@@ -776,6 +769,15 @@ function removeDynamicRule(index) {
     form.dynamicRules.splice(index, 1);
 }
 
+async function copyFingerprint(value) {
+    try {
+        await navigator.clipboard.writeText(String(value || ""));
+        ElMessage.success("指纹已复制");
+    } catch (error) {
+        ElMessage.error("复制失败，请手动选中复制");
+    }
+}
+
 function handleSubmit() {
     if (!String(form.name || "").trim()) {
         ElMessage.warning("请填写节点名称");
@@ -825,6 +827,20 @@ function handleSubmit() {
         return;
     }
 
+    // file 模式下发空路径会让节点端加载证书失败起不来，必须前置拦截
+    const managesCertConfig =
+        isHysteriaProtocol.value ||
+        (isAnytlsProtocol.value && String(form.anytlsSecurity || "tls") === "tls") ||
+        (isVlessProtocol.value && String(form.vlessSecurity || "") === "tls");
+    if (
+        managesCertConfig &&
+        form.certMode === "file" &&
+        (!String(form.certPath || "").trim() || !String(form.keyPath || "").trim())
+    ) {
+        ElMessage.warning("本地证书文件模式必须填写证书与私钥文件路径（节点机上的路径）");
+        return;
+    }
+
     emit("submit", {
         protocol: currentProtocol.value,
         name: String(form.name || "").trim(),
@@ -870,7 +886,6 @@ function handleSubmit() {
         hysteriaDownMbps: normalizeOptionalNumber(form.hysteriaDownMbps),
         hysteriaHopInterval: normalizeOptionalNumber(form.hysteriaHopInterval),
         certMode: String(form.certMode || "selfSign"),
-        certFingerprint: String(form.certFingerprint || "chrome"),
         certRejectUnknownSni: Boolean(form.certRejectUnknownSni),
         certPath: String(form.certPath || "").trim(),
         keyPath: String(form.keyPath || "").trim(),
@@ -2094,29 +2109,47 @@ onBeforeUnmount(destroyRouteSortable);
 
                 <div v-if="form.certMode === 'dns'" class="cert-config-form__field">
                     <label>DNS env</label>
-                    <el-input v-model="form.certDnsEnv" placeholder="书写格式CF_DNS_API_TOKEN=xxxxxxx如有多条使用逗号,分隔" />
+                    <el-input v-model="form.certDnsEnv" type="password" show-password placeholder="书写格式CF_DNS_API_TOKEN=xxxxxxx如有多条使用逗号,分隔" />
                 </div>
 
-                <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                <div v-if="['dns', 'http', 'file'].includes(form.certMode)" class="cert-config-form__field">
                     <label>证书公钥文件地址Cert File Path</label>
-                    <el-input v-model="form.certPath" placeholder="留空在/etc/v2node/目录自动生成" />
+                    <el-input
+                        v-model="form.certPath"
+                        :placeholder="form.certMode === 'file' ? '节点机上的证书文件路径（必填）' : '留空在/etc/v2node/目录自动生成'"
+                    />
                 </div>
 
-                <div v-if="form.certMode === 'dns' || form.certMode === 'http'" class="cert-config-form__field">
+                <div v-if="['dns', 'http', 'file'].includes(form.certMode)" class="cert-config-form__field">
                     <label>证书私钥文件地址Key File Path</label>
-                    <el-input v-model="form.keyPath" placeholder="留空在/etc/v2node/目录自动生成" />
+                    <el-input
+                        v-model="form.keyPath"
+                        :placeholder="form.certMode === 'file' ? '节点机上的私钥文件路径（必填）' : '留空在/etc/v2node/目录自动生成'"
+                    />
                 </div>
 
-                <div class="cert-config-form__field">
-                    <label>FingerPrint</label>
-                    <el-select v-model="form.certFingerprint" style="width: 100%">
-                        <el-option
-                            v-for="opt in certFingerprintOptions"
-                            :key="opt.value"
-                            :label="opt.label"
-                            :value="opt.value"
-                        />
-                    </el-select>
+                <div v-if="form.certMode === 'remote'" class="cert-config-form__field">
+                    <p class="node-config-form__hint" style="margin: 0;">
+                        证书与私钥由面板生成并下发节点，保存不会更换已有证书，SNI 可填伪装域名。指纹固定对 hysteria 官方客户端与 sing-box 1.13+ 生效；其余客户端等效于跳过证书校验（insecure）。
+                    </p>
+                </div>
+
+                <div v-if="form.certPinnedPeerCertSha256" class="cert-config-form__field">
+                    <label>证书指纹 pinned_peer_cert_sha256（xray pcs / hysteria pinSHA256）</label>
+                    <el-input :model-value="form.certPinnedPeerCertSha256" readonly>
+                        <template #append>
+                            <el-button @click="copyFingerprint(form.certPinnedPeerCertSha256)">复制</el-button>
+                        </template>
+                    </el-input>
+                </div>
+
+                <div v-if="form.certPinnedPublicKeySha256" class="cert-config-form__field">
+                    <label>公钥指纹 pinned_public_key_sha256（sing-box certificate_public_key_sha256）</label>
+                    <el-input :model-value="form.certPinnedPublicKeySha256" readonly>
+                        <template #append>
+                            <el-button @click="copyFingerprint(form.certPinnedPublicKeySha256)">复制</el-button>
+                        </template>
+                    </el-input>
                 </div>
 
                 <div class="cert-config-form__field">
