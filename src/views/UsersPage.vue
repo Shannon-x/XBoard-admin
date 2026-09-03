@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { toPlan } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -285,6 +285,43 @@ const sortOptions = [
   { label: '在线设备', value: 'online_count' },
 ]
 
+// 排序有两个入口（工具栏下拉 + 可排序表头），它们操作的是同一份 sortField/
+// sortOrder，所以必须双向回写。之前只有「表头 → 下拉」一个方向：从下拉选了
+// 排序后表头箭头不亮，列表明明已按该字段排序，看起来却像没排。
+// 这张表是两个方向共用的字段映射，改列 prop 或后端字段只需改这一处。
+const SORT_FIELD_BY_COLUMN = Object.freeze({
+  totalUsedRaw: 'd',
+  expiredAtRaw: 'expired_at',
+  nextResetAtRaw: 'next_reset_at',
+  balance: 'balance',
+  commissionBalance: 'commission_balance',
+  onlineCount: 'online_count',
+})
+const COLUMN_BY_SORT_FIELD = Object.freeze(
+  Object.fromEntries(
+    Object.entries(SORT_FIELD_BY_COLUMN).map(([column, field]) => [field, column]),
+  ),
+)
+
+const usersTableRef = ref(null)
+
+// ElTable.sort() 会再抛一次 sort-change，不加锁就会和 handleSortChange 互相
+// 触发，并多打一次请求。clearSort() 是 silent 的，但一并纳入锁内更省心。
+let syncingTableSort = false
+
+function syncTableSortIndicator() {
+  const table = usersTableRef.value
+  if (!table) return
+  const column = COLUMN_BY_SORT_FIELD[sortField.value]
+  syncingTableSort = true
+  if (column) {
+    table.sort(column, sortOrder.value === 'asc' ? 'ascending' : 'descending')
+  } else {
+    table.clearSort()
+  }
+  nextTick(() => { syncingTableSort = false })
+}
+
 const USERS_PAGE_STATE_KEY = 'xboard-admin:users-page-state'
 
 function saveUsersPageState() {
@@ -384,17 +421,12 @@ function handleSearch() {
   loadUsers()
 }
 
+// 表头 → 下拉。syncTableSortIndicator 自己触发的 sort-change 直接忽略，
+// 否则会绕回来重复设置并再拉一次列表。
 function handleSortChange({ prop, order }) {
-  const fieldMap = {
-    totalUsedRaw: 'd',
-    expiredAtRaw: 'expired_at',
-    nextResetAtRaw: 'next_reset_at',
-    balance: 'balance',
-    commissionBalance: 'commission_balance',
-    onlineCount: 'online_count',
-  }
-  if (prop && order && fieldMap[prop]) {
-    sortField.value = fieldMap[prop]
+  if (syncingTableSort) return
+  if (prop && order && SORT_FIELD_BY_COLUMN[prop]) {
+    sortField.value = SORT_FIELD_BY_COLUMN[prop]
     sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   } else {
     sortField.value = ''
@@ -402,6 +434,18 @@ function handleSortChange({ prop, order }) {
   }
   pagination.value.page = 1
   loadUsers()
+}
+
+// 下拉 → 表头。选完字段/切换升降序后把表头箭头同步过去再拉数据。
+function handleSortFieldChange() {
+  syncTableSortIndicator()
+  handleSearch()
+}
+
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+  syncTableSortIndicator()
+  handleSearch()
 }
 
 function openEditDialog(user) {
@@ -765,6 +809,9 @@ function applyQueryFilter() {
 onMounted(function onMount() {
   restoreUsersPageState()
   applyQueryFilter()
+  // 从 sessionStorage 恢复的排序同样要让表头箭头亮起来，否则回到本页时
+  // 列表是排过序的、表头却显示未排序。等表格挂载完再同步。
+  nextTick(syncTableSortIndicator)
   loadUsers()
   fetchManagedPlans()
     .then(list => { plans.value = list })
@@ -789,10 +836,10 @@ onMounted(function onMount() {
           <el-button :icon="SlidersHorizontal" class="ghost-btn small" plain type="info" @click="showFilters = !showFilters">
             筛选
           </el-button>
-          <el-select v-model="sortField" placeholder="排序" style="width:120px" size="default" @change="handleSearch">
+          <el-select v-model="sortField" placeholder="排序" style="width:120px" size="default" @change="handleSortFieldChange">
             <el-option v-for="opt in sortOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
-          <el-button v-if="sortField" size="default" plain @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'; handleSearch()">
+          <el-button v-if="sortField" size="default" plain @click="toggleSortOrder">
             {{ sortOrder === 'desc' ? '↓ 降序' : '↑ 升序' }}
           </el-button>
           <el-button :icon="Search" class="ghost-btn small" plain type="info" @click="handleSearch">
@@ -870,7 +917,7 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
+      <el-table ref="usersTableRef" v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
         <el-table-column label="ID" prop="id" width="88" />
         <el-table-column label="邮箱" prop="email" width="180" show-overflow-tooltip />
         <el-table-column label="状态" width="90">
