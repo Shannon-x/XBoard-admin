@@ -282,7 +282,8 @@ async function fetchPlugins() {
   }
 }
 
-// 关键字输入打 debounce —— 之前每个键弹一次全量请求，连续输入 6 个字符触发 6 次 API。
+// status / type 是服务端筛选（进 loadPlugins 的 filters），需要重新拉列表；
+// 打 debounce 避免连点时请求堆积。
 let filterDebounceTimer = null
 function handleFilterChange() {
   syncFiltersToRoute()
@@ -291,6 +292,13 @@ function handleFilterChange() {
     filterDebounceTimer = null
     fetchPlugins()
   }, 350)
+}
+
+// 关键字是纯客户端过滤（filteredPlugins computed），keyword 根本不在下发的
+// filters 里。之前它也走 handleFilterChange，等于每敲一个字就白打一次全量
+// 接口 —— 只同步 URL 就够了，列表由 computed 即时重算。
+function handleKeywordChange() {
+  syncFiltersToRoute()
 }
 
 function handleRefresh() {
@@ -511,8 +519,9 @@ onUnmounted(function cleanupPluginsPage() {
                     <el-input
                         v-model="filters.keyword"
                         class="plugin-filter"
+                        clearable
                         placeholder="搜索插件名称/标识/作者"
-                        @input="handleFilterChange"
+                        @input="handleKeywordChange"
                     />
                     <el-select
                         v-model="filters.status"

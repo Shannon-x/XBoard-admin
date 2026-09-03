@@ -148,11 +148,10 @@ function getFieldDef(fieldId) {
 function onFilterFieldChange(cond) {
   cond.value = ''
   const def = getFieldDef(cond.field)
-  if (def?.operators?.length === 1) {
-    cond.operator = def.operators[0]
-  } else {
-    cond.operator = ''
-  }
+  // 总是预选第一个运算符，而不是只在唯一运算符时预选。留空会让
+  // buildFilterArray 拿不到运算符，之前会静默退化成裸值（后端按 LIKE 处理）：
+  // 字段选「用户ID」、值填 5，实际匹配到 5/15/50/105，用户以为在查 ID=5。
+  cond.operator = def?.operators?.[0] || ''
 }
 
 // 用 perf-now 单调时间戳 + 随机数生成稳定唯一 id —— 避免 crypto.randomUUID
@@ -172,23 +171,55 @@ function removeFilterCondition(index) {
   filterConditions.value.splice(index, 1)
 }
 
+// 顶部搜索框在语义上就是一条「邮箱 模糊」条件。后端把 filter 数组逐项 AND
+// 到查询上，所以搜索框和一条 email 高级条件会同时命中 email 列
+// （LIKE '%a%' AND = 'b'）→ 结果恒为空，而界面上两个控件都还亮着，
+// 用户完全看不出是自己把条件写冲了。这里让显式条件优先、搜索框让位，
+// 并用 keywordShadowed 在界面上明说搜索框已被条件覆盖。
+const keywordShadowed = computed(function keywordShadowed() {
+  if (!searchKeyword.value.trim()) return false
+  return filterConditions.value.some(function isEmailCond(cond) {
+    return cond.field === 'email'
+      && cond.value !== ''
+      && cond.value !== null
+      && cond.value !== undefined
+  })
+})
+
+// 选了字段和值、却没有运算符的条件是无效条件：不能按裸值下发（会被后端
+// 当模糊匹配），也不能一声不响地丢掉。这里统计出来在界面上提示。
+const incompleteConditionCount = computed(function incompleteConditionCount() {
+  return filterConditions.value.filter(function isIncomplete(cond) {
+    const hasValue = cond.value !== '' && cond.value !== null && cond.value !== undefined
+    return cond.field && hasValue && !cond.operator
+  }).length
+})
+
+// key 与 FILTER_FIELD_STATIC 里的 operators 文案一一对应，改文案必须同步改这里。
+const OPERATOR_PREFIX = Object.freeze({
+  '大于': 'gt:',
+  '晚于': 'gt:',
+  '小于': 'lt:',
+  '早于': 'lt:',
+  '等于': 'eq:',
+  '精确': 'eq:',
+  '模糊': '', // 裸值，后端做 LIKE
+})
+
 function buildFilterArray() {
   const filter = []
-  if (searchKeyword.value.trim()) {
+  if (searchKeyword.value.trim() && !keywordShadowed.value) {
     filter.push({ id: 'email', value: searchKeyword.value.trim() })
   }
   filterConditions.value.forEach(cond => {
     if (!cond.field || cond.value === '' || cond.value === null || cond.value === undefined) return
     const def = getFieldDef(cond.field)
     if (!def) return
-    let val = cond.value
-    if (cond.operator === '大于') val = `gt:${val}`
-    else if (cond.operator === '小于') val = `lt:${val}`
-    else if (cond.operator === '等于' || cond.operator === '精确') val = `eq:${val}`
-    else if (cond.operator === '早于') val = `lt:${val}`
-    else if (cond.operator === '晚于') val = `gt:${val}`
-    // '模糊' uses raw value (backend does LIKE)
-    filter.push({ id: cond.field, value: String(val) })
+    // 运算符缺失或不认识时跳过 —— 由 incompleteConditionCount 负责提示，
+    // 绝不退化成裸值偷偷改变匹配语义。
+    const prefix = OPERATOR_PREFIX[cond.operator]
+    if (prefix === undefined) return
+    filter.push({ id: cond.field, value: `${prefix}${cond.value}` })
   })
   return filter
 }
@@ -578,7 +609,10 @@ function navigateToUserOrders(user) {
 function navigateToUserInvites(user) {
   // Clear keyword search to avoid it being combined with the new invite filter
   searchKeyword.value = ''
+  // id 必须走 makeFilterCondId()：模板 :key 退化成 index 后，删除中间行会让
+  // v-model 串到下一行（见 makeFilterCondId 注释）。
   filterConditions.value = [{
+    id: makeFilterCondId(),
     field: 'invite_user_id',
     operator: '等于',
     value: String(user.id)
@@ -610,9 +644,13 @@ async function handleResetTraffic(user) {
 }
 
 async function handleExportCSV() {
+  // 导出按钮就贴在筛选栏旁边，用户必然理解为「导出筛选结果」。之前写死
+  // scope:'all' 完全无视当前筛选，导出的是全量用户。这里带上与列表完全
+  // 一致的 filter；无筛选时 filter 为空数组，等价于全量导出。
+  const filter = buildFilterArray()
   try {
-    await dumpUsersCSV({ scope: 'all' })
-    ElMessage.success('导出成功')
+    await dumpUsersCSV(filter.length > 0 ? { filter } : {})
+    ElMessage.success(filter.length > 0 ? '已按当前筛选条件导出' : '已导出全部用户')
   } catch (err) {
     ElMessage.error(err.message || '导出失败')
   }
@@ -701,6 +739,12 @@ async function submitSendMail() {
 // 旧筛选会把这里注入的条件覆盖掉。
 function applyQueryFilter() {
   const q = route.query
+  // 注入一套全新筛选后必须回到第 1 页：restoreUsersPageState() 刚刚可能恢复
+  // 了一个属于旧筛选的页码（如第 7 页），带着新条件请求第 7 页会拿到空列表。
+  // loadUsers 里的 clamp 能兜底，但要多打一次请求且列表会闪一下空白。
+  if (q.user_id || q.email || q.user_email) {
+    pagination.value.page = 1
+  }
   if (q.user_id) {
     // 按用户 id 精确筛选（清空关键词，避免和旧的高级筛选 AND 串味）
     searchKeyword.value = ''
@@ -780,6 +824,23 @@ onMounted(function onMount() {
           <span>筛选条件</span>
           <el-button :icon="PlusCircle" size="small" text type="primary" @click="addFilterCondition">添加条件</el-button>
         </div>
+        <!-- 冲突必须显式告知，不能让用户对着两个都亮着的控件猜哪个生效 -->
+        <el-alert
+          v-if="keywordShadowed"
+          type="warning"
+          :closable="false"
+          show-icon
+          title="上方搜索框已被下面的「邮箱」条件覆盖，本次筛选只使用邮箱条件"
+          style="margin-bottom: 8px"
+        />
+        <el-alert
+          v-if="incompleteConditionCount > 0"
+          type="warning"
+          :closable="false"
+          show-icon
+          :title="`有 ${incompleteConditionCount} 条条件未选择运算符，已被忽略`"
+          style="margin-bottom: 8px"
+        />
         <div v-for="(cond, idx) in filterConditions" :key="cond.id || idx" class="user-filter-row">
           <span class="user-filter-row__label">条件 {{ idx + 1 }}</span>
           <el-select v-model="cond.field" placeholder="选择字段" style="width: 140px" @change="onFilterFieldChange(cond)">

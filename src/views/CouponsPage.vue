@@ -10,6 +10,7 @@ import {
   toggleCouponShow,
 } from '../services/coupons'
 import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
+import { createSequence } from '../utils/sequence'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -18,7 +19,19 @@ const plans = ref([])
 const loading = ref(false)
 const error = ref('')
 const pagination = reactive({ page: 1, pageSize: 15, total: 0 })
-const filters = reactive({ keyword: '' })
+// 单输入框 + 显式搜索字段：一个控件只对应一个后端字段，避免「输入了但搜的
+// 不是这个字段」的静默失配（按券码搜名称永远 0 条）。
+const COUPON_SEARCH_FIELDS = [
+  { value: 'name', label: '名称' },
+  { value: 'code', label: '券码' },
+  { value: 'id', label: 'ID' },
+]
+const filters = reactive({ keyword: '', field: 'name' })
+
+const searchPlaceholder = computed(function searchPlaceholder() {
+  const hit = COUPON_SEARCH_FIELDS.find(f => f.value === filters.field)
+  return `搜索优惠券${hit ? hit.label : '名称'}`
+})
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
 
@@ -69,7 +82,12 @@ function valueStep() {
   return form.type === 1 ? '0.01' : '1'
 }
 
+// Sequence guard：快速改关键字/切搜索字段时，旧响应可能比新响应回得更晚，
+// 之前会把旧结果和旧 pagination 覆盖上来。与 Users/Orders/Tickets 三页对齐。
+const couponsSeq = createSequence()
+
 async function loadAll() {
+  const my = couponsSeq.next()
   loading.value = true
   error.value = ''
   try {
@@ -77,27 +95,32 @@ async function loadAll() {
       fetchManagedCoupons({ page: pagination.page, pageSize: pagination.pageSize, filters }),
       fetchManagedPlans(),
     ])
+    if (!couponsSeq.isCurrent(my)) return
     coupons.value = couponResult.list
     Object.assign(pagination, couponResult.pagination)
     plans.value = planList
   } catch (err) {
+    if (!couponsSeq.isCurrent(my)) return
     error.value = err.message
   } finally {
-    loading.value = false
+    if (couponsSeq.isCurrent(my)) loading.value = false
   }
 }
 
 async function loadCoupons() {
+  const my = couponsSeq.next()
   loading.value = true
   error.value = ''
   try {
     const result = await fetchManagedCoupons({ page: pagination.page, pageSize: pagination.pageSize, filters })
+    if (!couponsSeq.isCurrent(my)) return
     coupons.value = result.list
     Object.assign(pagination, result.pagination)
   } catch (err) {
+    if (!couponsSeq.isCurrent(my)) return
     error.value = err.message
   } finally {
-    loading.value = false
+    if (couponsSeq.isCurrent(my)) loading.value = false
   }
 }
 
@@ -282,9 +305,15 @@ function formatTime(ts) {
 }
 
 onMounted(() => {
-  // 从订单详情「优惠券」点过来时按名称（后端仅支持名称 LIKE）/券码自动筛选
-  if (route.query.coupon_name) filters.keyword = String(route.query.coupon_name)
-  else if (route.query.coupon_code) filters.keyword = String(route.query.coupon_code)
+  // 从订单详情「优惠券」点过来时自动筛选。关键：keyword 与 field 必须成对
+  // 设置 —— 带券码过来就得把搜索字段切到 code，否则拿券码去搜名称必然 0 条。
+  if (route.query.coupon_name) {
+    filters.keyword = String(route.query.coupon_name)
+    filters.field = 'name'
+  } else if (route.query.coupon_code) {
+    filters.keyword = String(route.query.coupon_code)
+    filters.field = 'code'
+  }
   loadAll()
 })
 </script>
@@ -305,12 +334,17 @@ onMounted(() => {
         <el-input
           v-model="filters.keyword"
           clearable
-          placeholder="搜索优惠券名称"
-          style="max-width: 320px;"
+          :placeholder="searchPlaceholder"
+          style="max-width: 380px;"
           @keyup.enter="handleSearch"
           @clear="handleSearch"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
+          <template #prepend>
+            <el-select v-model="filters.field" style="width: 92px" @change="handleSearch">
+              <el-option v-for="f in COUPON_SEARCH_FIELDS" :key="f.value" :label="f.label" :value="f.value" />
+            </el-select>
+          </template>
         </el-input>
       </div>
 

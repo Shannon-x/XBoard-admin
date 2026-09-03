@@ -193,6 +193,14 @@ function handleRefresh() {
 
 watch(activeAction, () => { auditPage.value = 1; loadAuditLogs() })
 
+// 关键字搜索必须和「操作类型」筛选一样把页码归 1。之前直接调 loadAuditLogs，
+// 在第 5 页敲关键字会去请求过滤结果的第 5 页 —— 拿到空列表，表格一片空白，
+// 分页器却还显示着总数。
+function handleKeywordSearch() {
+  auditPage.value = 1
+  loadAuditLogs()
+}
+
 watch(activeTab, (tab) => {
   if (tab === 'failed' && failedJobs.value.length === 0 && !failedLoading.value) {
     loadFailedJobs()
@@ -239,7 +247,7 @@ watch(activeTab, function onTabSwitch(nextTab) {
             <el-input
               v-model="searchKeyword" clearable placeholder="搜索 URI / 请求数据"
               size="small" style="max-width: 240px;"
-              @keyup.enter="loadAuditLogs" @clear="loadAuditLogs"
+              @keyup.enter="handleKeywordSearch" @clear="handleKeywordSearch"
             />
           </div>
 

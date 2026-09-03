@@ -76,13 +76,21 @@ export async function fetchCouponById(id) {
   return null
 }
 
+// coupon/fetch 的 filter[n][id] 直接当列名用（见 fetchCouponById 用的 'id'），
+// 这里白名单化可搜字段，防止把任意列名透传给后端。
+export const COUPON_FILTER_FIELDS = Object.freeze(['name', 'code', 'id'])
+
 export async function fetchManagedCoupons({ page = 1, pageSize = 15, filters = {} } = {}) {
   const queryEntries = [
     ['current', page],
     ['pageSize', pageSize],
   ]
   if (filters.keyword) {
-    queryEntries.push(['filter[0][id]', 'name'])
+    // 搜索字段必须由调用方显式指定。之前这里写死 'name'，导致 CouponsPage
+    // 把券码（route.query.coupon_code）填进同一个 keyword 时是拿券码去搜名称，
+    // 永远 0 条 —— 用户看到搜索框有内容、列表却是空的。
+    const field = COUPON_FILTER_FIELDS.includes(filters.field) ? filters.field : 'name'
+    queryEntries.push(['filter[0][id]', field])
     queryEntries.push(['filter[0][value]', filters.keyword])
   }
   const apiUrl = buildDashboardApiUrl('coupon/fetch', queryEntries)

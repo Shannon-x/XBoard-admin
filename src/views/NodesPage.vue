@@ -112,9 +112,12 @@ const nodeDialogProtocol = ref("shadowsocks");
 const activeNode = ref(null);
 const sortDialogVisible = ref(false);
 
+// 筛选状态只有这一个来源。之前 keyword/protocol 从 adminStore.managedNodesFilters
+// 初始化、又有两个 watch 从 store 往回同步，而 store 里那份状态也只有本页在写 ——
+// 同一个状态两个写入方，谁生效取决于代码位置。现在 store 只负责节点数据本身。
 const filters = reactive({
-    keyword: adminStore.managedNodesFilters?.word || "",
-    protocol: adminStore.managedNodesFilters?.type || "all",
+    keyword: "",
+    protocol: "all",
     status: "all",
     group: "all",
     nodeId: "",
@@ -179,13 +182,23 @@ function syncStatusToRoute(status) {
     router.replace({ query: nextQuery });
 }
 
-const fallbackPagination = {
-    page: 1,
-    limit: 10,
-    total: 0,
-};
+// 后端 server/manage/getNodes 忽略 word/type/status，所以筛选只能在前端做
+// （见 filteredNodes）。既然如此，分页也必须一并放到前端：之前表格渲染的是
+// 客户端过滤后的结果，分页器的总数/页码却来自服务端 —— 关键字只能在「当前
+// 这一页」里匹配（要找的节点在第 3 页就永远搜不到），而分页器显示的总数
+// 又和表格实际行数不符。现在一次拉回全量，过滤 + 分页统一在前端完成。
+const NODE_FETCH_LIMIT = 1000;
 
-let keywordDebounceTimer = null;
+const clientPage = ref(1);
+const clientPageSize = ref(10);
+
+function reloadNodes({ silent = false } = {}) {
+    return adminStore.loadManagedNodes({
+        page: 1,
+        limit: NODE_FETCH_LIMIT,
+        silent,
+    });
+}
 
 // store 每次 fetch 都重新赋值 managedNodes ref，identity 变化即可触发；
 // 之前 deep:true 让每 30s 的轮询都对全表深度比对，纯属浪费。
@@ -203,7 +216,7 @@ async function handleSortSave(ids) {
         await sortManagedNodes(ids);
         ElMessage.success("排序已保存");
         sortDialogVisible.value = false;
-        adminStore.loadManagedNodes();
+        reloadNodes();
     } catch (err) {
         ElMessage.error(err.message || "排序保存失败");
     }
@@ -212,18 +225,9 @@ async function handleSortSave(ids) {
 let autoRefreshTimer = null;
 
 onMounted(function loadManagedNodesOnMount() {
-    const initialStatus = normalizeStatusFromQuery(route.query.status);
-    filters.status = initialStatus;
+    filters.status = normalizeStatusFromQuery(route.query.status);
 
-    adminStore.loadManagedNodes({
-        page: 1,
-        limit: pagination.value.limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status: initialStatus,
-        },
-    });
+    reloadNodes();
     adminStore.loadManagedNodeGroups();
     adminStore.loadManagedNodeRoutes();
 
@@ -233,37 +237,12 @@ onMounted(function loadManagedNodesOnMount() {
     autoRefreshTimer = setInterval(() => {
         if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
         if (adminStore.managedNodesLoading) return;
-        adminStore.loadManagedNodes({
-            page: pagination.value.page,
-            limit: pagination.value.limit,
-            filters: {
-                type: filters.protocol,
-                word: filters.keyword,
-                status: filters.status,
-            },
-            silent: true
-        });
+        reloadNodes({ silent: true });
     }, 30000);
 });
 
-watch(
-    function watchManagedNodeFilters() {
-        return adminStore.managedNodesFilters?.type;
-    },
-    function syncManagedNodeType(type) {
-        filters.protocol = type || "all";
-    },
-);
-
-watch(
-    function watchManagedNodeStatus() {
-        return adminStore.managedNodesFilters?.status;
-    },
-    function syncManagedNodeStatus(status) {
-        filters.status = status || "all";
-    },
-);
-
+// 浏览器前进/后退改了 ?status= 时同步筛选。只改本地状态即可 —— 筛选是纯前端的，
+// 不需要重新请求；也不再回调 handleStatusChange（那会再写一次 route，绕成环）。
 watch(
     function watchRouteStatus() {
         return route.query.status;
@@ -276,39 +255,26 @@ watch(
         }
 
         filters.status = normalizedStatus;
-        handleStatusChange(normalizedStatus);
     },
 );
 
+// 任何筛选维度变化都必须回到第 1 页，否则会停在一个被筛掉的页码上看空白表格。
 watch(
-    function watchKeywordInput() {
-        return filters.keyword;
+    function watchAllFilters() {
+        // JSON 序列化而不是拼字符串：关键字里含分隔符时拼接会误判为"没变化"。
+        return JSON.stringify([
+            filters.keyword,
+            filters.protocol,
+            filters.status,
+            filters.group,
+            filters.nodeId,
+            filters.abnormalOnly,
+        ]);
     },
-    function debounceKeywordSearch(nextKeyword) {
-        if (nextKeyword === (adminStore.managedNodesFilters?.word || "")) {
-            return;
-        }
-
-        if (keywordDebounceTimer) {
-            clearTimeout(keywordDebounceTimer);
-        }
-
-        keywordDebounceTimer = setTimeout(function runDebouncedSearch() {
-            handleKeywordSearch();
-        }, 450);
+    function resetPageOnFilterChange() {
+        clientPage.value = 1;
     },
 );
-
-const pagination = computed(function pagination() {
-    const storePagination =
-        adminStore.managedNodesPagination || fallbackPagination;
-
-    return {
-        page: Number(storePagination.page || 1),
-        limit: Number(storePagination.limit || 10),
-        total: Number(storePagination.total || 0),
-    };
-});
 
 const protocolOptions = ref([
     "shadowsocks",
@@ -407,9 +373,11 @@ const routeGroupOptions = computed(function routeGroupOptions() {
     });
 });
 
-const filteredNodes = computed(function filteredNodes() {
-    // 后端 server/manage/getNodes 接口忽略 word/type/status 参数，直接返回全部节点。
-    // 因此关键词、协议、状态都必须在前端做模糊匹配，否则筛选条件等于失效。
+// 除「状态」以外的全部筛选维度。单独拆出来是为了让顶部状态汇总标签
+// （在线 N / 异常 N / 离线 N）按其余条件计数 —— 它本身就是状态筛选器，
+// 用它自己的结果去算数字会让计数恒等于当前可见行，失去"点过去会有几条"的意义；
+// 而用完全未过滤的全量去算，又会和表格里的行数对不上。
+const nodesBeforeStatusFilter = computed(function nodesBeforeStatusFilter() {
     const keywordTokens = String(filters.keyword || "")
         .toLowerCase()
         .split(/\s+/)
@@ -420,9 +388,6 @@ const filteredNodes = computed(function filteredNodes() {
     const protocolFilter = String(filters.protocol || "all").toLowerCase();
 
     return nodeList.value.filter(function filterNode(node) {
-        const expectedStatus = resolveStatusLabel(filters.status);
-        const matchesStatus =
-            filters.status === "all" || node.status === expectedStatus;
         const matchesProtocol =
             protocolFilter === "all" ||
             String(node.type || "").toLowerCase() === protocolFilter;
@@ -474,7 +439,6 @@ const filteredNodes = computed(function filteredNodes() {
         }
 
         return (
-            matchesStatus &&
             matchesProtocol &&
             matchesGroup &&
             matchesAbnormal &&
@@ -484,13 +448,58 @@ const filteredNodes = computed(function filteredNodes() {
     });
 });
 
+const filteredNodes = computed(function filteredNodes() {
+    if (filters.status === "all") {
+        return nodesBeforeStatusFilter.value;
+    }
+    const expectedStatus = resolveStatusLabel(filters.status);
+    return nodesBeforeStatusFilter.value.filter(function byStatus(node) {
+        return node.status === expectedStatus;
+    });
+});
+
+// 分页完全在前端：total 取自过滤后的结果，与表格实际渲染的行数严格一致。
+// 必须放在 filteredNodes 之后 —— 下面 watch 的 getter 在 setup 阶段就会跑一次。
+const pagination = computed(function pagination() {
+    return {
+        page: clientPage.value,
+        limit: clientPageSize.value,
+        total: filteredNodes.value.length,
+    };
+});
+
+// 过滤后总数缩到当前页之前时把页码收回来（同 NodeRoutesPage 的 clamp）。
+watch(
+    function watchFilteredTotal() {
+        return filteredNodes.value.length;
+    },
+    function clampPage(total) {
+        const maxPage = Math.max(Math.ceil(total / clientPageSize.value), 1);
+        if (clientPage.value > maxPage) {
+            clientPage.value = maxPage;
+        }
+    },
+);
+
+// 表格真正渲染的那一页。
+const displayNodes = computed(function displayNodes() {
+    const start = (clientPage.value - 1) * clientPageSize.value;
+    return filteredNodes.value.slice(start, start + clientPageSize.value);
+});
+
+// 全量拉取靠 limit=NODE_FETCH_LIMIT 兜住。真顶到上限时必须说出来 ——
+// 悄悄截断会让"搜不到某个节点"看起来像筛选坏了。
+const nodeListMaybeTruncated = computed(function nodeListMaybeTruncated() {
+    return nodeList.value.length >= NODE_FETCH_LIMIT;
+});
+
 // 把原本两个 computed 共 6 次全表 filter 合并为一次单遍计数 —— 大量节点时显著省 CPU。
 const stats = computed(function stats() {
     const counts = { total: 0, healthy: 0, idle: 0, offline: 0 };
     const onlineLabel = t("nodes.statusOnline");
     const abnormalLabel = t("nodes.statusAbnormal");
     const offlineLabel = t("nodes.statusOffline");
-    for (const node of nodeList.value) {
+    for (const node of nodesBeforeStatusFilter.value) {
         counts.total += 1;
         if (node.status === onlineLabel) counts.healthy += 1;
         else if (node.status === abnormalLabel) counts.idle += 1;
@@ -617,15 +626,7 @@ function handleCreateNodeCommand(protocol) {
 }
 
 function runBatchHealthCheck() {
-    adminStore.loadManagedNodes({
-        page: pagination.value.page,
-        limit: pagination.value.limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status: filters.status,
-        },
-    });
+    reloadNodes();
     ElMessage.success(t("nodes.messages.listRefreshed"));
 }
 
@@ -673,15 +674,7 @@ async function handleDeleteNode(node) {
             },
         );
         await adminStore.deleteManagedNodeItem(node?.id);
-        await adminStore.loadManagedNodes({
-            page: pagination.value.page,
-            limit: pagination.value.limit,
-            filters: {
-                type: filters.protocol,
-                word: filters.keyword,
-                status: filters.status,
-            },
-        });
+        await reloadNodes();
         ElMessage.success(t("nodes.messages.deleteSuccess"));
     } catch (error) {
         if (error === "cancel") {
@@ -698,15 +691,7 @@ async function handleDeleteNode(node) {
 async function handleCopyNode(node) {
     try {
         await adminStore.copyManagedNodeItem(node?.id);
-        await adminStore.loadManagedNodes({
-            page: pagination.value.page,
-            limit: pagination.value.limit,
-            filters: {
-                type: filters.protocol,
-                word: filters.keyword,
-                status: filters.status,
-            },
-        });
+        await reloadNodes();
         ElMessage.success(t("nodes.messages.copySuccess"));
     } catch (error) {
         ElMessage.error(
@@ -1076,15 +1061,7 @@ async function handleNodeDialogSubmit(payload) {
                   },
         );
 
-        await adminStore.loadManagedNodes({
-            page: pagination.value.page,
-            limit: pagination.value.limit,
-            filters: {
-                type: filters.protocol,
-                word: filters.keyword,
-                status: filters.status,
-            },
-        });
+        await reloadNodes();
 
         nodeDialogVisible.value = false;
         activeNode.value = null;
@@ -1107,60 +1084,38 @@ async function handleNodeDialogSubmit(payload) {
     }
 }
 
+// 六个筛选维度全部是纯前端的（filteredNodes），改动它们不需要任何请求 ——
+// 页码归 1 由 watchAllFilters 统一负责，这里各 handler 只管自己那点副作用。
+// 之前每次改筛选（包括每敲一个关键字）都要打一次后端忽略参数的全量请求，
+// 还顺手把用户所在页码悄悄重置掉。
 function applyQuickStatus(status) {
     filters.status = status;
-    handleStatusChange(status);
-}
-
-function handleProtocolChange(protocol) {
-    adminStore.loadManagedNodes({
-        page: 1,
-        limit: pagination.value.limit,
-        filters: {
-            type: protocol,
-            word: filters.keyword,
-            status: filters.status,
-        },
-    });
+    syncStatusToRoute(status);
 }
 
 function handleStatusChange(status) {
     syncStatusToRoute(status);
-    adminStore.loadManagedNodes({
-        page: 1,
-        limit: pagination.value.limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status,
-        },
-    });
 }
 
-function handleKeywordSearch() {
-    if (keywordDebounceTimer) {
-        clearTimeout(keywordDebounceTimer);
-        keywordDebounceTimer = null;
-    }
-
-    // 后端忽略 word 参数，关键字筛选实际在 filteredNodes 里完成。
-    // 这里仍同步一次 store 的 filters，便于其它分支（如刷新、自动轮询）
-    // 携带相同条件，silent:true 避免 loading 闪烁。
-    adminStore.loadManagedNodes({
-        page: 1,
-        limit: pagination.value.limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status: filters.status,
-        },
-        silent: true,
-    });
+function handleResetFilters() {
+    filters.keyword = "";
+    filters.protocol = "all";
+    filters.status = "all";
+    filters.group = "all";
+    filters.nodeId = "";
+    filters.abnormalOnly = false;
+    syncStatusToRoute("all");
 }
 
-function handleKeywordClear() {
-    handleKeywordSearch();
-}
+// 「清空筛选」只在真的有筛选时出现 —— 六个维度里任一非默认值都算。
+const hasActiveNodeFilter = computed(function hasActiveNodeFilter() {
+    return Boolean(filters.keyword)
+        || Boolean(filters.nodeId)
+        || filters.abnormalOnly
+        || filters.protocol !== "all"
+        || filters.status !== "all"
+        || filters.group !== "all";
+});
 
 async function handleShowToggle(node, value) {
     const nextValue = Boolean(value);
@@ -1199,37 +1154,19 @@ async function handleShowToggle(node, value) {
     }
 }
 
+// 翻页/改每页条数都只动本地状态，不再请求后端 —— 全量数据已经在手上。
 function handlePageSizeChange(limit) {
-    if (limit === pagination.value.limit) return;
-    adminStore.loadManagedNodes({
-        page: 1,
-        limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status: filters.status,
-        },
-    });
+    if (limit === clientPageSize.value) return;
+    clientPageSize.value = limit;
+    clientPage.value = 1;
 }
 
 function handlePageChange(page) {
-    if (page === pagination.value.page) return;
-    adminStore.loadManagedNodes({
-        page,
-        limit: pagination.value.limit,
-        filters: {
-            type: filters.protocol,
-            word: filters.keyword,
-            status: filters.status,
-        },
-    });
+    if (page === clientPage.value) return;
+    clientPage.value = page;
 }
 
-onUnmounted(function clearDebounceOnUnmount() {
-    if (keywordDebounceTimer) {
-        clearTimeout(keywordDebounceTimer);
-        keywordDebounceTimer = null;
-    }
+onUnmounted(function clearTimersOnUnmount() {
     if (autoRefreshTimer) {
         clearInterval(autoRefreshTimer);
         autoRefreshTimer = null;
@@ -1317,8 +1254,6 @@ onUnmounted(function clearDebounceOnUnmount() {
                     clearable
                     :placeholder="t('nodes.searchPlaceholder')"
                     class="node-search"
-                    @keyup.enter="handleKeywordSearch"
-                    @clear="handleKeywordClear"
                 >
                     <template #prefix>
                         <el-icon><Search /></el-icon>
@@ -1329,7 +1264,6 @@ onUnmounted(function clearDebounceOnUnmount() {
                     v-model="filters.protocol"
                     class="node-select"
                     :placeholder="t('nodes.protocolPlaceholder')"
-                    @change="handleProtocolChange"
                 >
                     <el-option :label="t('nodes.protocolAll')" value="all" />
                     <el-option
@@ -1365,10 +1299,28 @@ onUnmounted(function clearDebounceOnUnmount() {
                     <el-option :label="t('nodes.statusAbnormal')" value="2" />
                     <el-option :label="t('nodes.statusOffline')" value="0" />
                 </el-select>
+
+                <el-button
+                    v-if="hasActiveNodeFilter"
+                    plain
+                    class="ghost-btn small"
+                    @click="handleResetFilters"
+                >
+                    清空筛选
+                </el-button>
             </div>
 
+            <el-alert
+                v-if="nodeListMaybeTruncated"
+                type="warning"
+                :closable="false"
+                show-icon
+                :title="`节点数已达单次拉取上限 ${NODE_FETCH_LIMIT} 条，筛选可能未覆盖全部节点`"
+                style="margin-bottom: 12px"
+            />
+
             <el-table
-                :data="filteredNodes"
+                :data="displayNodes"
                 row-key="id"
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"

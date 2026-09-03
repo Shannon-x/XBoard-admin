@@ -57,8 +57,9 @@ export function toPlan(id) {
 }
 
 /**
- * 跳转到「优惠券管理」并按名称筛选（后端仅支持名称 LIKE，券码不可搜，
- * 因此优先用名称；只有券码时退而传券码当关键词）。
+ * 跳转到「优惠券管理」并筛选。优先用名称；只有券码时传 coupon_code，
+ * 目标页会把搜索字段一并切到 code —— 两者是不同的 filter 列，
+ * 传哪个 query 键就必须搜对应的列，否则必然 0 条。
  */
 export function toCoupon(name, code) {
   if (isLinkable(name)) return { name: 'coupons', query: { coupon_name: String(name) } }

@@ -92,7 +92,10 @@ async function loadOrders() {
   errorMsg.value = ''
   try {
     const filter = []
-    if (searchKeyword.value.trim() && !userIdFilter.value) {
+    // trade_no 与 user_id 是两个不同字段，可以同时成立。之前这里写了
+    // `&& !userIdFilter.value`，从用户页带 user_id 跳过来后搜索框输入的
+    // 订单号会被静默丢弃 —— 输入框里明明有字却不生效。两者一律 AND。
+    if (searchKeyword.value.trim()) {
       filter.push({ id: 'trade_no', value: searchKeyword.value.trim() })
     }
     if (statusFilter.value !== '') {
@@ -138,6 +141,28 @@ function handlePageSizeChange(size) {
 function handleSearch() {
   pagination.value.page = 1
   loadOrders()
+}
+
+// 「全部」标签必须清空*所有*筛选维度（含搜索框与支付方式），否则用户点了
+// 「全部」却还有残留条件在生效。判断高亮同理 —— 只要任一维度非空，
+// 「全部」就不该显示为选中态。
+const FILTER_DIMENSIONS = [
+  searchKeyword,
+  statusFilter,
+  commissionStatusFilter,
+  paymentFilter,
+  userIdFilter,
+]
+
+const hasActiveFilter = computed(function hasActiveFilter() {
+  return isCommission.value || FILTER_DIMENSIONS.some(dim => dim.value !== '')
+})
+
+function resetAllFilters() {
+  FILTER_DIMENSIONS.forEach(dim => { dim.value = '' })
+  isCommission.value = false
+  userEmailDisplay.value = ''
+  handleSearch()
 }
 
 async function openDetail(order) {
@@ -364,9 +389,9 @@ onMounted(function onMount() {
       <div class="order-filter-bar">
         <el-space wrap :size="6">
           <el-tag
-            :effect="statusFilter === '' && !isCommission && !userIdFilter ? 'dark' : 'plain'"
+            :effect="hasActiveFilter ? 'plain' : 'dark'"
             class="order-filter-tag"
-            @click="statusFilter = ''; isCommission = false; commissionStatusFilter = ''; userIdFilter = ''; userEmailDisplay = ''; handleSearch()"
+            @click="resetAllFilters"
           >全部</el-tag>
           <el-tag
             v-for="opt in statusOptions.slice(1)"

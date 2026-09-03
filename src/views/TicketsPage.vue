@@ -121,8 +121,11 @@ async function loadTickets() {
     if (emailSearch.value.trim()) {
       options.email = emailSearch.value.trim()
     }
+    // push 而不是整体赋值：直接 `options.filter = [...]` 会静默吃掉之后
+    // 任何人再往 filter 里加的条件。这一页目前只有 level 一项，但语义上
+    // filter 是可累加的条件数组。
     if (priorityFilter.value !== '') {
-      options.filter = [{ id: 'level', value: `eq:${priorityFilter.value}` }]
+      options.filter = [...(options.filter || []), { id: 'level', value: `eq:${priorityFilter.value}` }]
     }
     const result = await fetchManagedTickets(options)
     if (!ticketsSeq.isCurrent(my)) return
