@@ -417,8 +417,8 @@ export default {
       },
       ticketAttachmentS3Endpoint: {
         label: 'S3 Endpoint',
-        description: '留空使用 AWS 官方地址（按 Region 拼接）。R2 填 https://<account>.r2.cloudflarestorage.com，MinIO 填自建地址。',
-        placeholder: 'https://<account>.r2.cloudflarestorage.com',
+        description: '留空使用 AWS 官方地址（按 Region 拼接）。R2 填 https://账号ID.r2.cloudflarestorage.com，MinIO 填自建地址。',
+        placeholder: 'https://ACCOUNT_ID.r2.cloudflarestorage.com',
       },
       ticketAttachmentS3Region: {
         label: 'Region',
@@ -440,7 +440,7 @@ export default {
       },
       ticketAttachmentS3PathStyle: {
         label: '路径式访问（Path-style）',
-        description: '开启为 {endpoint}/{bucket}/{key}，关闭为 {bucket}.{host}/{key}。R2 / MinIO 建议开启。',
+        description: '开启后对象地址形如「端点 / 存储桶 / 对象键」，关闭则为「存储桶.端点 / 对象键」。R2 / MinIO 建议开启。',
       },
       ticketAttachmentS3Prefix: {
         label: '对象前缀',
@@ -449,7 +449,7 @@ export default {
       },
       ticketAttachmentS3PublicUrl: {
         label: '公开访问地址（可选）',
-        description: '桶已公开读或前置了 CDN 时填写，下载直接跳转到 {地址}/{key}；留空则使用预签名链接。',
+        description: '桶已公开读或前置了 CDN 时填写，下载将直接跳转到「该地址 + 对象键」；留空则使用有效期 10 分钟的预签名链接。',
         placeholder: 'https://files.example.com',
       },
       ticketAttachmentStorageTestAction: {
@@ -627,7 +627,7 @@ export default {
       },
       subscribePath: {
         label: '订阅路径',
-        description: '订阅路径，修改后将会改变原有的 subscribe 路径。当前订阅路径格式：{path}/xxxxxxxxxx，修改订阅路径后，可能需要重启服务才能生效。',
+        description: '订阅路径，修改后将会改变原有的 subscribe 路径。当前订阅路径格式：「订阅路径/xxxxxxxxxx」，修改订阅路径后，可能需要重启服务才能生效。',
         placeholder: '请输入订阅路径',
       },
       showInfoToServerEnable: {
