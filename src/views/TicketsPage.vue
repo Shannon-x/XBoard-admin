@@ -514,6 +514,11 @@ onMounted(function onMount() {
     emailSearch.value = String(route.query.user_email)
   }
   loadTickets()
+  // 从「佣金提现」等页面带 ticket_id 跳过来时直接打开该工单
+  const ticketIdFromQuery = Number(route.query.ticket_id || 0)
+  if (ticketIdFromQuery > 0) {
+    openDetail({ id: ticketIdFromQuery })
+  }
   loadAttachmentConfig()
   fetchManagedPlans()
     .then(list => { userPlans.value = list })

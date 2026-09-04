@@ -199,6 +199,7 @@ export const useAdminStore = defineStore("admin", () => {
       items: [
         { labelKey: "nav.users", icon: Users, routeName: "users" },
         { labelKey: "nav.tickets", icon: MessageSquare, routeName: "tickets" },
+        { labelKey: "nav.withdrawals", icon: BadgeDollarSign, routeName: "withdrawals" },
       ],
     },
   ];
@@ -797,6 +798,45 @@ export const useAdminStore = defineStore("admin", () => {
           labelKey: "systemSettings.fields.commissionWithdrawMethod.label",
           descriptionKey: "systemSettings.fields.commissionWithdrawMethod.description",
           placeholderKey: "systemSettings.fields.commissionWithdrawMethod.placeholder",
+          type: "textarea",
+          autosize: {
+            minRows: 3,
+            maxRows: 6,
+          },
+        },
+        {
+          key: "commissionWithdrawChains",
+          labelKey: "systemSettings.fields.commissionWithdrawChains.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawChains.description",
+          type: "withdrawChains",
+        },
+        {
+          key: "commissionWithdrawMax",
+          labelKey: "systemSettings.fields.commissionWithdrawMax.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawMax.description",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "commissionWithdrawUsdtRate",
+          labelKey: "systemSettings.fields.commissionWithdrawUsdtRate.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawUsdtRate.description",
+          type: "number",
+          min: 0,
+          step: 0.01,
+        },
+        {
+          key: "commissionWithdrawRequireQrcode",
+          labelKey: "systemSettings.fields.commissionWithdrawRequireQrcode.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawRequireQrcode.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "commissionWithdrawThanks",
+          labelKey: "systemSettings.fields.commissionWithdrawThanks.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawThanks.description",
+          placeholderKey: "systemSettings.fields.commissionWithdrawThanks.placeholder",
           type: "textarea",
           autosize: {
             minRows: 3,

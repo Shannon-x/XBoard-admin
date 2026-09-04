@@ -66,6 +66,14 @@ export function createEmptySiteSettings() {
     commissionAutoCheckEnable: false,
     commissionWithdrawLimit: 0,
     commissionWithdrawMethod: '',
+    // 提现工作流（链列表 / 单笔上限 / USDT 参考汇率 / 是否必须二维码 / 结算感谢语）
+    commissionWithdrawChains: [],
+    commissionWithdrawMax: 0,
+    commissionWithdrawUsdtRate: 7.2,
+    commissionWithdrawRequireQrcode: false,
+    commissionWithdrawThanks: '',
+    // 只读：后端提供的地址格式预设
+    commissionWithdrawPresets: [],
     withdrawCloseEnable: false,
     commissionDistributionEnable: false,
     commissionDistributionL1: null,
@@ -575,6 +583,12 @@ function normalizeInviteSettings(invite) {
       commissionAutoCheckEnable: fallback.commissionAutoCheckEnable,
       commissionWithdrawLimit: fallback.commissionWithdrawLimit,
       commissionWithdrawMethod: fallback.commissionWithdrawMethod,
+      commissionWithdrawChains: fallback.commissionWithdrawChains,
+      commissionWithdrawMax: fallback.commissionWithdrawMax,
+      commissionWithdrawUsdtRate: fallback.commissionWithdrawUsdtRate,
+      commissionWithdrawRequireQrcode: fallback.commissionWithdrawRequireQrcode,
+      commissionWithdrawThanks: fallback.commissionWithdrawThanks,
+      commissionWithdrawPresets: fallback.commissionWithdrawPresets,
       withdrawCloseEnable: fallback.withdrawCloseEnable,
       commissionDistributionEnable: fallback.commissionDistributionEnable,
       commissionDistributionL1: fallback.commissionDistributionL1,
@@ -595,6 +609,14 @@ function normalizeInviteSettings(invite) {
     commissionWithdrawMethod: Array.isArray(invite.commission_withdraw_method)
       ? invite.commission_withdraw_method.join(',')
       : String(invite.commission_withdraw_method || ''),
+    commissionWithdrawChains: normalizeWithdrawChains(invite.commission_withdraw_chains),
+    commissionWithdrawMax: Number(invite.commission_withdraw_max ?? 0) || 0,
+    commissionWithdrawUsdtRate: Number(invite.commission_withdraw_usdt_rate ?? fallback.commissionWithdrawUsdtRate) || 0,
+    commissionWithdrawRequireQrcode: Boolean(Number(invite.commission_withdraw_require_qrcode ?? 0)),
+    commissionWithdrawThanks: String(invite.commission_withdraw_thanks ?? ''),
+    commissionWithdrawPresets: Array.isArray(invite.commission_withdraw_presets)
+      ? invite.commission_withdraw_presets
+      : fallback.commissionWithdrawPresets,
     withdrawCloseEnable: Boolean(invite.withdraw_close_enable),
     commissionDistributionEnable: Boolean(invite.commission_distribution_enable),
     commissionDistributionL1:
@@ -627,6 +649,20 @@ function createInviteSettingsPayload(settings = {}) {
         return item.trim()
       })
       .filter(Boolean),
+    // 预设列表是只读的，不回传；链列表只发有效行
+    commission_withdraw_chains: normalizeWithdrawChains(settings.commissionWithdrawChains).map(function toPayload(chain) {
+      return {
+        code: chain.code,
+        name: chain.name,
+        network: chain.network,
+        preset: chain.preset,
+        explorer_tx: chain.explorerTx,
+      }
+    }),
+    commission_withdraw_max: Number(settings.commissionWithdrawMax || 0),
+    commission_withdraw_usdt_rate: Number(settings.commissionWithdrawUsdtRate || 0),
+    commission_withdraw_require_qrcode: settings.commissionWithdrawRequireQrcode ? 1 : 0,
+    commission_withdraw_thanks: String(settings.commissionWithdrawThanks || '').trim(),
     withdraw_close_enable: settings.withdrawCloseEnable ? 1 : 0,
     commission_distribution_enable: settings.commissionDistributionEnable ? 1 : 0,
     commission_distribution_l1:
@@ -917,4 +953,43 @@ function createTicketAttachmentSettingsPayload(settings = {}) {
     ticket_attachment_s3_prefix: String(settings.ticketAttachmentS3Prefix || '').trim(),
     ticket_attachment_s3_public_url: String(settings.ticketAttachmentS3PublicUrl || '').trim(),
   }
+}
+
+/**
+ * 提现链列表归一化：后端 / 表单两种形态都收（explorer_tx ↔ explorerTx），
+ * 丢掉没有名称的空行；code 为空时按名称+网络自动生成，与后端 WithdrawalConfig::slug 一致。
+ */
+export function normalizeWithdrawChains(raw) {
+  const list = Array.isArray(raw) ? raw : []
+  const seen = new Set()
+
+  return list
+    .map(function mapChain(item) {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const name = String(item.name || '').trim()
+      const network = String(item.network || '').trim()
+      const code = slugifyChainCode(String(item.code || '').trim() || `${name} ${network}`)
+      if (!name || !code || seen.has(code)) {
+        return null
+      }
+      seen.add(code)
+      return {
+        code,
+        name,
+        network,
+        preset: String(item.preset || 'none'),
+        explorerTx: String(item.explorer_tx ?? item.explorerTx ?? '').trim(),
+      }
+    })
+    .filter(Boolean)
+}
+
+export function slugifyChainCode(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 32)
 }

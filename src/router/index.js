@@ -23,6 +23,7 @@ const SystemLogsPage = () => import('../views/SystemLogsPage.vue')
 const ThemeConfigPage = () => import('../views/ThemeConfigPage.vue')
 const TicketsPage = () => import('../views/TicketsPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
+const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
 
 const ROUTE_META_KEYS = {
   login: {
@@ -64,6 +65,10 @@ const ROUTE_META_KEYS = {
   tickets: {
     title: 'routes.tickets.title',
     eyebrow: 'routes.tickets.eyebrow',
+  },
+  withdrawals: {
+    title: 'routes.withdrawals.title',
+    eyebrow: 'routes.withdrawals.eyebrow',
   },
   notices: {
     title: 'routes.notices.title',
@@ -196,6 +201,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.tickets.title,
           eyebrowKey: ROUTE_META_KEYS.tickets.eyebrow,
+        },
+      },
+      {
+        path: 'withdrawals',
+        name: 'withdrawals',
+        component: WithdrawalsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.withdrawals.title,
+          eyebrowKey: ROUTE_META_KEYS.withdrawals.eyebrow,
         },
       },
       {
