@@ -818,12 +818,17 @@ export const useAdminStore = defineStore("admin", () => {
           min: 0,
         },
         {
+          key: "commissionWithdrawRateSource",
+          labelKey: "systemSettings.fields.commissionWithdrawRateSource.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawRateSource.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.commissionWithdrawRateSource",
+        },
+        {
           key: "commissionWithdrawUsdtRate",
           labelKey: "systemSettings.fields.commissionWithdrawUsdtRate.label",
           descriptionKey: "systemSettings.fields.commissionWithdrawUsdtRate.description",
-          type: "number",
-          min: 0,
-          step: 0.01,
+          type: "withdrawRate",
         },
         {
           key: "commissionWithdrawRequireQrcode",

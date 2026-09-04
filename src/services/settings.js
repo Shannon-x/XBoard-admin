@@ -69,11 +69,13 @@ export function createEmptySiteSettings() {
     // 提现工作流（链列表 / 单笔上限 / USDT 参考汇率 / 是否必须二维码 / 结算感谢语）
     commissionWithdrawChains: [],
     commissionWithdrawMax: 0,
-    commissionWithdrawUsdtRate: 7.2,
+    commissionWithdrawRateSource: 'auto',
+    commissionWithdrawUsdtRate: 0,
     commissionWithdrawRequireQrcode: false,
     commissionWithdrawThanks: '',
     // 只读：后端提供的地址格式预设
     commissionWithdrawPresets: [],
+    commissionWithdrawNetworks: [],
     withdrawCloseEnable: false,
     commissionDistributionEnable: false,
     commissionDistributionL1: null,
@@ -585,10 +587,12 @@ function normalizeInviteSettings(invite) {
       commissionWithdrawMethod: fallback.commissionWithdrawMethod,
       commissionWithdrawChains: fallback.commissionWithdrawChains,
       commissionWithdrawMax: fallback.commissionWithdrawMax,
+      commissionWithdrawRateSource: fallback.commissionWithdrawRateSource,
       commissionWithdrawUsdtRate: fallback.commissionWithdrawUsdtRate,
       commissionWithdrawRequireQrcode: fallback.commissionWithdrawRequireQrcode,
       commissionWithdrawThanks: fallback.commissionWithdrawThanks,
       commissionWithdrawPresets: fallback.commissionWithdrawPresets,
+      commissionWithdrawNetworks: fallback.commissionWithdrawNetworks,
       withdrawCloseEnable: fallback.withdrawCloseEnable,
       commissionDistributionEnable: fallback.commissionDistributionEnable,
       commissionDistributionL1: fallback.commissionDistributionL1,
@@ -611,9 +615,14 @@ function normalizeInviteSettings(invite) {
       : String(invite.commission_withdraw_method || ''),
     commissionWithdrawChains: normalizeWithdrawChains(invite.commission_withdraw_chains),
     commissionWithdrawMax: Number(invite.commission_withdraw_max ?? 0) || 0,
+    commissionWithdrawRateSource:
+      invite.commission_withdraw_rate_source === 'manual' ? 'manual' : 'auto',
     commissionWithdrawUsdtRate: Number(invite.commission_withdraw_usdt_rate ?? fallback.commissionWithdrawUsdtRate) || 0,
     commissionWithdrawRequireQrcode: Boolean(Number(invite.commission_withdraw_require_qrcode ?? 0)),
     commissionWithdrawThanks: String(invite.commission_withdraw_thanks ?? ''),
+    commissionWithdrawNetworks: Array.isArray(invite.commission_withdraw_networks)
+      ? invite.commission_withdraw_networks
+      : fallback.commissionWithdrawNetworks,
     commissionWithdrawPresets: Array.isArray(invite.commission_withdraw_presets)
       ? invite.commission_withdraw_presets
       : fallback.commissionWithdrawPresets,
@@ -654,12 +663,16 @@ function createInviteSettingsPayload(settings = {}) {
       return {
         code: chain.code,
         name: chain.name,
+        network_key: chain.networkKey,
         network: chain.network,
         preset: chain.preset,
         explorer_tx: chain.explorerTx,
+        fee: chain.fee,
       }
     }),
     commission_withdraw_max: Number(settings.commissionWithdrawMax || 0),
+    commission_withdraw_rate_source:
+      settings.commissionWithdrawRateSource === 'manual' ? 'manual' : 'auto',
     commission_withdraw_usdt_rate: Number(settings.commissionWithdrawUsdtRate || 0),
     commission_withdraw_require_qrcode: settings.commissionWithdrawRequireQrcode ? 1 : 0,
     commission_withdraw_thanks: String(settings.commissionWithdrawThanks || '').trim(),
@@ -970,7 +983,11 @@ export function normalizeWithdrawChains(raw) {
       }
       const name = String(item.name || '').trim()
       const network = String(item.network || '').trim()
-      const code = slugifyChainCode(String(item.code || '').trim() || `${name} ${network}`)
+      const networkKey = String(item.network_key ?? item.networkKey ?? '').trim() || 'custom'
+      // code 跟随网络 key 而不是展示名：展示名随时可能改，而 code 写进了每条提现记录
+      const auto =
+        networkKey && networkKey !== 'custom' ? `${name}_${networkKey}` : `${name} ${network}`
+      const code = slugifyChainCode(String(item.code || '').trim() || auto)
       if (!name || !code || seen.has(code)) {
         return null
       }
@@ -978,9 +995,11 @@ export function normalizeWithdrawChains(raw) {
       return {
         code,
         name,
+        networkKey,
         network,
         preset: String(item.preset || 'none'),
         explorerTx: String(item.explorer_tx ?? item.explorerTx ?? '').trim(),
+        fee: Number(item.fee ?? 0) || 0,
       }
     })
     .filter(Boolean)

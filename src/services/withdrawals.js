@@ -46,8 +46,13 @@ export function normalizeWithdrawal(raw) {
     chainLabel: network ? `${chainName} · ${network}` : chainName,
     address: String(raw?.address || ''),
     usdtRate: raw?.usdt_rate ?? null,
+    usdtFee: raw?.usdt_fee ?? null,
     usdtAmount: raw?.usdt_amount ?? null,
     paidUsdt: raw?.paid_usdt ?? null,
+    settleRate: raw?.settle_rate ?? null,
+    rateSource: String(raw?.rate_source || ''),
+    // 只有详情接口才有：按当前实时汇率重算的报价
+    liveQuote: raw?.live_quote ? normalizeQuote(raw.live_quote) : null,
     status,
     statusText: statusInfo.text,
     statusType: statusInfo.type,
@@ -63,6 +68,44 @@ export function normalizeWithdrawal(raw) {
     // 风控参考：同地址 / 同用户历史成功打款次数（仅详情接口返回）
     sameAddressPaidCount: raw?.same_address_paid_count ?? null,
     userPaidCount: raw?.user_paid_count ?? null,
+  }
+}
+
+function normalizeQuote(raw) {
+  return {
+    rate: raw?.rate ?? null,
+    gross: raw?.gross ?? null,
+    fee: raw?.fee ?? null,
+    net: raw?.net ?? null,
+  }
+}
+
+/**
+ * 当前实时汇率。带 id 时后端顺便按最新行情把这笔申请重算一遍，
+ * 结算弹窗用它预填实付金额——管理员不用自己按计算器。
+ */
+export async function fetchWithdrawalRate({ id = null, force = false } = {}) {
+  const query = []
+  if (id) {
+    query.push(['id', id])
+  }
+  if (force) {
+    query.push(['force', 1])
+  }
+  const payload = await requestDashboardApi(buildSecureV2ApiUrl('withdraw/rate', query))
+  const data = payload?.data ?? {}
+  return {
+    rate: data.rate ?? null,
+    source: String(data.source || ''),
+    sourceLabel: String(data.source_label || ''),
+    fetchedAt: data.fetched_at ?? null,
+    isLive: Boolean(data.is_live),
+    isStale: Boolean(data.is_stale),
+    currency: String(data.currency || ''),
+    currencySymbol: String(data.currency_symbol || ''),
+    rateSourceMode: String(data.rate_source_mode || 'auto'),
+    error: data.error ? String(data.error) : '',
+    quote: data.quote ? normalizeQuote(data.quote) : null,
   }
 }
 

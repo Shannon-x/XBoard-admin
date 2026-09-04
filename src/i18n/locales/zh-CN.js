@@ -697,15 +697,22 @@ export default {
       },
       commissionWithdrawChains: {
         label: '提现链',
-        description: '用户可选的收款链。地址格式预设会在前端即时校验并在后端二次校验；区块浏览器链接用于结算后展示交易，写法见编辑器内提示。',
+        description:
+          '用户可选的收款链。选定网络后，地址格式、区块浏览器链接、通道费会自动按该网络填好，无需逐项手填；地址格式在用户端即时校验并在服务端二次校验。通道费以 USDT 计，会从用户的到账金额中扣除并在前端明示。',
       },
       commissionWithdrawMax: {
         label: '单笔提现上限',
         description: '单位为站点货币，0 表示不限制。',
       },
+      commissionWithdrawRateSource: {
+        label: '汇率来源',
+        description:
+          '自动获取时，系统每 10 分钟从公开行情接口取一次 USDT 价格（人民币优先取币安 C2C 场外价），申请与结算都按当时的实时汇率折算，无需人工维护。',
+      },
       commissionWithdrawUsdtRate: {
-        label: 'USDT 参考汇率',
-        description: '1 USDT 折合多少站点货币，用于在申请与结算时估算 USDT 数量；0 表示不显示估算。',
+        label: 'USDT 汇率',
+        description:
+          '用于把佣金金额折算成 USDT。默认自动获取实时行情；下面的兜底汇率只在行情接口全部不可用、或来源选为手动时才会用到。',
       },
       commissionWithdrawRequireQrcode: {
         label: '必须上传收款二维码',
@@ -899,6 +906,10 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      commissionWithdrawRateSource: {
+        auto: '自动获取实时行情（推荐）',
+        manual: '手动固定汇率',
+      },
       ticketAttachmentDriver: {
         local: '本地存储',
         s3: 'S3 兼容对象存储',

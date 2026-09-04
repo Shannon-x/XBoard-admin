@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 
 import MonacoTemplateEditor from './MonacoTemplateEditor.vue'
 import WithdrawChainsEditor from './WithdrawChainsEditor.vue'
+import WithdrawRateField from './WithdrawRateField.vue'
 
 const props = defineProps({
   activeGroupKey: {
@@ -279,7 +280,7 @@ function resolveSelectOptions(field) {
             class="settings-field"
             :class="{
               'settings-field--code-tabs': field.type === 'codeTabs',
-              'settings-field--block': field.type === 'withdrawChains',
+              'settings-field--block': field.type === 'withdrawChains' || field.type === 'withdrawRate',
               'settings-field--switch': field.type === 'switch',
               'settings-field--compact': field.tone === 'compact',
             }"
@@ -339,6 +340,14 @@ function resolveSelectOptions(field) {
                 v-else-if="field.type === 'withdrawChains'"
                 :model-value="resolveFieldValue(field)"
                 :presets="props.form?.commissionWithdrawPresets || []"
+                :networks="props.form?.commissionWithdrawNetworks || []"
+                @update:model-value="updateFieldValue(field, $event)"
+              />
+
+              <WithdrawRateField
+                v-else-if="field.type === 'withdrawRate'"
+                :model-value="resolveFieldValue(field)"
+                :source="props.form?.commissionWithdrawRateSource || 'auto'"
                 @update:model-value="updateFieldValue(field, $event)"
               />
 

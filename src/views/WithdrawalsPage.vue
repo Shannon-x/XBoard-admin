@@ -9,6 +9,7 @@ import {
   createEmptyWithdrawalsPagination,
   fetchManagedWithdrawals,
   fetchWithdrawalDetail,
+  fetchWithdrawalRate,
   fetchWithdrawalStats,
   rejectWithdrawal,
   settleWithdrawal,
@@ -138,13 +139,37 @@ const settleVisible = ref(false)
 const settleTarget = ref(null)
 const settleSubmitting = ref(false)
 const settleForm = reactive({ txid: '', paidUsdt: '', remark: '' })
+// 打款那一刻的实时报价：申请可能是几小时前提的，行情早变了
+const settleQuote = ref(null)
+const settleQuoteLoading = ref(false)
+
+async function loadSettleQuote(force) {
+  if (!settleTarget.value) {
+    return
+  }
+  settleQuoteLoading.value = true
+  try {
+    const snapshot = await fetchWithdrawalRate({ id: settleTarget.value.id, force })
+    settleQuote.value = snapshot
+    if (snapshot.quote?.net) {
+      settleForm.paidUsdt = String(snapshot.quote.net)
+    }
+  } catch (err) {
+    settleQuote.value = null
+  } finally {
+    settleQuoteLoading.value = false
+  }
+}
 
 function openSettle(row) {
   settleTarget.value = row
   settleForm.txid = ''
+  // 先用申请时的估算兜底，实时报价回来后覆盖
   settleForm.paidUsdt = row?.usdtAmount ? String(row.usdtAmount) : ''
   settleForm.remark = ''
+  settleQuote.value = null
   settleVisible.value = true
+  loadSettleQuote(false)
 }
 
 async function submitSettle() {
@@ -254,6 +279,7 @@ onMounted(function onMount() {
           <template #default="{ row }">
             <span v-if="row.paidUsdt">{{ row.paidUsdt }} <el-tag size="small" type="success" effect="plain">实付</el-tag></span>
             <span v-else-if="row.usdtAmount" class="muted">{{ row.usdtAmount }}</span>
+            <div v-if="Number(row.usdtFee) > 0" class="muted small">含通道费 {{ row.usdtFee }} USDT</div>
             <span v-else class="muted">--</span>
           </template>
         </el-table-column>
@@ -395,11 +421,40 @@ onMounted(function onMount() {
           {{ settleTarget.address }}
           <el-button link size="small" :icon="Copy" @click="handleCopy(settleTarget.address, '地址已复制')">复制地址</el-button>
         </div>
+        <div class="settle-quote">
+          <div class="settle-quote__head">
+            <span>按当前实时汇率折算</span>
+            <el-button link size="small" :icon="RefreshCw" :loading="settleQuoteLoading" @click="loadSettleQuote(true)">
+              刷新行情
+            </el-button>
+          </div>
+          <template v-if="settleQuote && settleQuote.quote && settleQuote.quote.net">
+            <div class="settle-quote__row">
+              <span>汇率</span>
+              <span class="mono">1 USDT ≈ {{ settleQuote.currencySymbol }}{{ settleQuote.quote.rate }}</span>
+              <el-tag size="small" type="info" effect="plain">{{ settleQuote.sourceLabel }}</el-tag>
+            </div>
+            <div class="settle-quote__row">
+              <span>折算</span>
+              <span class="mono">{{ settleQuote.quote.gross }} USDT</span>
+            </div>
+            <div class="settle-quote__row">
+              <span>通道费</span>
+              <span class="mono">- {{ settleQuote.quote.fee }} USDT</span>
+            </div>
+            <div class="settle-quote__row settle-quote__row--total">
+              <span>应打款</span>
+              <span class="mono">{{ settleQuote.quote.net }} USDT</span>
+            </div>
+          </template>
+          <p v-else-if="settleQuoteLoading" class="settle-quote__muted">正在获取实时行情…</p>
+          <p v-else class="settle-quote__muted">暂时取不到实时行情，请按申请时的估算或自行核算后填写。</p>
+        </div>
         <el-form label-position="top">
           <el-form-item label="交易哈希 / TXID（可选，用户可在前端点击查看）">
             <el-input v-model="settleForm.txid" placeholder="0x… 或链上交易 ID" clearable />
           </el-form-item>
-          <el-form-item label="实付 USDT 数量（可选）">
+          <el-form-item label="实付 USDT 数量（留空则按上面的实时折算自动记录）">
             <el-input v-model="settleForm.paidUsdt" placeholder="如 13.8889" clearable />
           </el-form-item>
           <el-form-item label="管理员备注（仅后台可见）">
@@ -430,6 +485,55 @@ onMounted(function onMount() {
   color: var(--el-text-color-secondary);
   font-size: 12px;
   margin-left: 4px;
+}
+
+.muted.small {
+  margin-left: 0;
+  font-size: 11px;
+}
+
+.settle-quote {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  background: var(--el-fill-color-lighter);
+}
+
+.settle-quote__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 6px;
+}
+
+.settle-quote__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  line-height: 1.9;
+}
+
+.settle-quote__row > span:first-child {
+  width: 62px;
+  color: var(--el-text-color-secondary);
+}
+
+.settle-quote__row--total {
+  font-weight: 600;
+  border-top: 1px dashed var(--el-border-color);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.settle-quote__muted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
 }
 
 .withdraw-detail {
