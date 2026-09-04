@@ -1,8 +1,11 @@
 import {
+  buildOriginUrl,
   buildSecureV2ApiUrl,
   requestDashboardApi,
   requestDashboardMutation,
+  requestDashboardUpload,
 } from './api'
+import { formatBytes } from '../utils/format'
 
 export function createEmptyManagedTickets() {
   return []
@@ -56,6 +59,28 @@ function formatTimestamp(value) {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
+/**
+ * 后端两种形态都收：admin ticket/fetch 里的 messages[].attachments[]（模型 toArray，
+ * 带 download_path / download_url / original_name），以及 attachment/upload 返回的
+ * TicketAttachmentResource（path / url / name）。
+ */
+export function normalizeAttachment(raw) {
+  const path = raw?.download_path || raw?.path || ''
+  return {
+    id: Number(raw?.id ?? 0),
+    name: String(raw?.original_name || raw?.name || '附件'),
+    size: Number(raw?.size ?? 0),
+    sizeText: formatBytes(Number(raw?.size ?? 0)),
+    mime: String(raw?.mime || ''),
+    isImage: Boolean(raw?.is_image),
+    width: Number(raw?.width ?? 0) || null,
+    height: Number(raw?.height ?? 0) || null,
+    // 优先用相对路径拼后台正在访问的后端 origin —— 后端按 app_url 拼的绝对地址在
+    // 内网 / 备用域名下打开后台时不一定可达
+    url: path ? buildOriginUrl(path) : String(raw?.download_url || raw?.url || ''),
+  }
+}
+
 function normalizeTicket(ticket) {
   const status = Number(ticket?.status ?? 0)
   const statusInfo = TICKET_STATUS[status] || { text: '未知', type: 'info' }
@@ -91,6 +116,7 @@ function normalizeTicket(ticket) {
         message: String(msg?.message || ''),
         createdAt: formatTimestamp(msg?.created_at),
         isAdmin,
+        attachments: (Array.isArray(msg?.attachments) ? msg.attachments : []).map(normalizeAttachment),
       }
     }),
   }
@@ -155,12 +181,33 @@ export async function fetchTicketDetail(id) {
   return normalizeTicket(ticket)
 }
 
-export async function replyTicket(id, message) {
+export async function replyTicket(id, message, attachmentIds = []) {
   const apiUrl = buildSecureV2ApiUrl('ticket/reply')
-  return requestDashboardMutation(apiUrl, {
+  const body = {
     id: Number(id),
-    message: String(message),
-  })
+    message: String(message ?? ''),
+  }
+  const ids = (Array.isArray(attachmentIds) ? attachmentIds : [])
+    .map(function toNumber(value) { return Number(value) })
+    .filter(function isPositive(value) { return value > 0 })
+  if (ids.length) {
+    body.attachment_ids = ids
+  }
+  return requestDashboardMutation(apiUrl, body)
+}
+
+/**
+ * 上传一个待绑定附件（multipart）。返回归一化后的附件对象，id 随后放进 replyTicket 的 attachmentIds。
+ */
+export async function uploadTicketAttachment(file) {
+  const formData = new FormData()
+  formData.append('file', file, file.name)
+  const payload = await requestDashboardUpload(buildSecureV2ApiUrl('ticket/attachment/upload'), formData)
+  return normalizeAttachment(payload?.data)
+}
+
+export async function deleteTicketAttachment(id) {
+  return requestDashboardMutation(buildSecureV2ApiUrl('ticket/attachment/delete'), { id: Number(id) })
 }
 
 export async function closeTicket(id) {

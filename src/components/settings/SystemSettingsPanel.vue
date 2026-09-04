@@ -29,7 +29,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['change-group', 'testMail', 'setupTelegramWebhook'])
+const emit = defineEmits(['change-group', 'testMail', 'setupTelegramWebhook', 'testTicketStorage'])
 
 const { t, tm } = useI18n()
 const activeCodeTab = ref('subscribeTemplateSingbox')
@@ -109,6 +109,10 @@ function resolveActionLoading(field) {
 
   if (field.actionKey === 'setupTelegramWebhook') {
     return Boolean(props.form?.telegramWebhookSetting || props.dynamicOptions.telegramWebhookSetting)
+  }
+
+  if (field.actionKey === 'testTicketStorage') {
+    return Boolean(props.dynamicOptions.ticketStorageTesting)
   }
 
   return false
