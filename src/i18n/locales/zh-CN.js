@@ -380,8 +380,82 @@ export default {
         title: '订阅模板',
         description: '配置各个客户端的订阅模板。',
       },
+      ticketAttachment: {
+        title: '工单附件',
+        description: '用户与客服在工单里互发截图 / 文件。支持剪贴板粘贴与拖拽上传，存储可选本地或 S3 兼容对象存储，并按保留期自动清理。',
+      },
     },
     fields: {
+      ticketAttachmentEnable: {
+        label: '启用工单附件',
+        description: '关闭后用户前端不显示上传入口，已有附件仍可查看。',
+      },
+      ticketAttachmentMaxSizeMb: {
+        label: '单个附件上限（MB）',
+        description: '1–20。超过 20 会被 Swoole / PHP 的请求体上限直接掐断，前端只能看到网络错误。',
+      },
+      ticketAttachmentMaxCount: {
+        label: '每条消息附件数',
+        description: '1–10。同时也是单个用户「已上传但未发送」附件的囤积上限。',
+      },
+      ticketAttachmentAllowedExtensions: {
+        label: '允许的扩展名',
+        description: '逗号分隔。图片按内容识别（粘贴的截图文件名不可靠），非图片会校验内容 MIME 与扩展名相符；SVG / HTML 即便允许也只会以下载方式提供。',
+        placeholder: 'jpg,jpeg,png,gif,webp,pdf,txt,log,zip',
+      },
+      ticketAttachmentDailyQuotaMb: {
+        label: '单用户每日额度（MB）',
+        description: '24 小时内上传总量，0 = 不限制。管理员回复不受此限。',
+      },
+      ticketAttachmentRetentionDays: {
+        label: '自动清理',
+        description: '超过保留期的附件由每日计划任务删除文件与记录；未随消息发出的附件 24 小时后一并回收。',
+      },
+      ticketAttachmentDriver: {
+        label: '存储位置',
+        description: '本地存放在 storage/app/ticket-attachments（不经 storage:link 公开）；S3 兼容 Cloudflare R2、MinIO、Backblaze B2、阿里云 OSS 等。切换后旧附件仍按上传时的位置读取。',
+      },
+      ticketAttachmentS3Endpoint: {
+        label: 'S3 Endpoint',
+        description: '留空使用 AWS 官方地址（按 Region 拼接）。R2 填 https://<account>.r2.cloudflarestorage.com，MinIO 填自建地址。',
+        placeholder: 'https://<account>.r2.cloudflarestorage.com',
+      },
+      ticketAttachmentS3Region: {
+        label: 'Region',
+        description: 'R2 填 auto，AWS 填真实区域如 ap-northeast-1，MinIO 一般填 us-east-1。',
+        placeholder: 'auto',
+      },
+      ticketAttachmentS3Bucket: {
+        label: 'Bucket',
+        description: '存储桶名称。桶不需要公开读，下载走 10 分钟有效的预签名链接。',
+        placeholder: 'xboard-tickets',
+      },
+      ticketAttachmentS3AccessKey: {
+        label: 'Access Key ID',
+        description: '仅需对该桶的读写删权限。',
+      },
+      ticketAttachmentS3SecretKey: {
+        label: 'Secret Access Key',
+        description: '只在服务端使用，不会下发给任何前端。',
+      },
+      ticketAttachmentS3PathStyle: {
+        label: '路径式访问（Path-style）',
+        description: '开启为 {endpoint}/{bucket}/{key}，关闭为 {bucket}.{host}/{key}。R2 / MinIO 建议开启。',
+      },
+      ticketAttachmentS3Prefix: {
+        label: '对象前缀',
+        description: '对象 key 的目录前缀，方便与桶内其它文件隔离。',
+        placeholder: 'ticket-attachments',
+      },
+      ticketAttachmentS3PublicUrl: {
+        label: '公开访问地址（可选）',
+        description: '桶已公开读或前置了 CDN 时填写，下载直接跳转到 {地址}/{key}；留空则使用预签名链接。',
+        placeholder: 'https://files.example.com',
+      },
+      ticketAttachmentStorageTestAction: {
+        label: '测试存储连接',
+        description: '用上方当前填写的配置（无需先保存）写入、读回并删除一个探针文件。',
+      },
       appName: {
         label: '站点名称',
         description: '用于显示需要站点名称的地方。',
@@ -799,6 +873,17 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      ticketAttachmentDriver: {
+        local: '本地存储',
+        s3: 'S3 兼容对象存储',
+      },
+      ticketAttachmentRetentionDays: {
+        0: '永久保留',
+        180: '保留半年',
+        365: '保留一年',
+        730: '保留两年',
+        1095: '保留三年',
+      },
       captchaType: {
         recaptcha: 'Google reCAPTCHA v2',
         'recaptcha-v3': 'Google reCAPTCHA v3',
@@ -861,6 +946,8 @@ export default {
       testMailFailed: '发送测试邮件失败',
       telegramWebhookSuccess: 'Telegram Webhook 设置成功',
       telegramWebhookFailed: 'Telegram Webhook 设置失败',
+      testTicketStorageSuccess: '附件存储读写正常',
+      testTicketStorageFailed: '附件存储测试失败',
     },
     testMail: {
       title: '发送测试邮件',

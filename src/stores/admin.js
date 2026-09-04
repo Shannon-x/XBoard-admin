@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Package,
   Palette,
+  Paperclip,
   Puzzle,
   Route,
   Server,
@@ -85,6 +86,7 @@ import {
   saveSiteSettings,
   setupTelegramWebhook,
   testSendMail,
+  testTicketAttachmentStorage,
 } from "../services/settings";
 
 export const useAdminStore = defineStore("admin", () => {
@@ -150,6 +152,7 @@ export const useAdminStore = defineStore("admin", () => {
   const siteSettingsError = ref("");
   const mailTestSending = ref(false);
   const telegramWebhookSetting = ref(false);
+  const ticketStorageTesting = ref(false);
   const emailTemplateOptions = ref([]);
 
   const navigationGroups = [
@@ -1073,6 +1076,137 @@ export const useAdminStore = defineStore("admin", () => {
       badgeKey: "systemSettings.badges.live",
     },
     {
+      key: "ticketAttachment",
+      icon: Paperclip,
+      titleKey: "systemSettings.groups.ticketAttachment.title",
+      descriptionKey: "systemSettings.groups.ticketAttachment.description",
+      fields: [
+        {
+          key: "ticketAttachmentEnable",
+          labelKey: "systemSettings.fields.ticketAttachmentEnable.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "ticketAttachmentMaxSizeMb",
+          labelKey: "systemSettings.fields.ticketAttachmentMaxSizeMb.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentMaxSizeMb.description",
+          type: "number",
+          min: 1,
+          max: 20,
+        },
+        {
+          key: "ticketAttachmentMaxCount",
+          labelKey: "systemSettings.fields.ticketAttachmentMaxCount.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentMaxCount.description",
+          type: "number",
+          min: 1,
+          max: 10,
+        },
+        {
+          key: "ticketAttachmentAllowedExtensions",
+          labelKey: "systemSettings.fields.ticketAttachmentAllowedExtensions.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentAllowedExtensions.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentAllowedExtensions.placeholder",
+          type: "text",
+        },
+        {
+          key: "ticketAttachmentDailyQuotaMb",
+          labelKey: "systemSettings.fields.ticketAttachmentDailyQuotaMb.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentDailyQuotaMb.description",
+          type: "number",
+          min: 0,
+          max: 10240,
+        },
+        {
+          key: "ticketAttachmentRetentionDays",
+          labelKey: "systemSettings.fields.ticketAttachmentRetentionDays.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentRetentionDays.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.ticketAttachmentRetentionDays",
+          valueType: "number",
+        },
+        {
+          key: "ticketAttachmentDriver",
+          labelKey: "systemSettings.fields.ticketAttachmentDriver.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentDriver.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.ticketAttachmentDriver",
+        },
+        {
+          key: "ticketAttachmentS3Endpoint",
+          labelKey: "systemSettings.fields.ticketAttachmentS3Endpoint.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3Endpoint.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentS3Endpoint.placeholder",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3Region",
+          labelKey: "systemSettings.fields.ticketAttachmentS3Region.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3Region.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentS3Region.placeholder",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3Bucket",
+          labelKey: "systemSettings.fields.ticketAttachmentS3Bucket.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3Bucket.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentS3Bucket.placeholder",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3AccessKey",
+          labelKey: "systemSettings.fields.ticketAttachmentS3AccessKey.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3AccessKey.description",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3SecretKey",
+          labelKey: "systemSettings.fields.ticketAttachmentS3SecretKey.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3SecretKey.description",
+          type: "password",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3PathStyle",
+          labelKey: "systemSettings.fields.ticketAttachmentS3PathStyle.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3PathStyle.description",
+          type: "switch",
+          tone: "compact",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3Prefix",
+          labelKey: "systemSettings.fields.ticketAttachmentS3Prefix.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3Prefix.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentS3Prefix.placeholder",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentS3PublicUrl",
+          labelKey: "systemSettings.fields.ticketAttachmentS3PublicUrl.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentS3PublicUrl.description",
+          placeholderKey: "systemSettings.fields.ticketAttachmentS3PublicUrl.placeholder",
+          type: "text",
+          visibleWhen: { key: "ticketAttachmentDriver", equals: "s3" },
+        },
+        {
+          key: "ticketAttachmentStorageTestAction",
+          labelKey: "systemSettings.fields.ticketAttachmentStorageTestAction.label",
+          descriptionKey: "systemSettings.fields.ticketAttachmentStorageTestAction.description",
+          type: "action",
+          actionKey: "testTicketStorage",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
       key: "subscribeTemplate",
       icon: FileText,
       titleKey: "systemSettings.groups.subscribeTemplate.title",
@@ -1444,6 +1578,17 @@ export const useAdminStore = defineStore("admin", () => {
       return await setupTelegramWebhook();
     } finally {
       telegramWebhookSetting.value = false;
+    }
+  }
+
+  async function testTicketAttachmentStorageItem() {
+    ticketStorageTesting.value = true;
+
+    try {
+      // 用表单当前值探测，站长不必先保存一份可能是错的 S3 配置
+      return await testTicketAttachmentStorage(siteSettings.value);
+    } finally {
+      ticketStorageTesting.value = false;
     }
   }
 
@@ -1839,6 +1984,8 @@ export const useAdminStore = defineStore("admin", () => {
     saveSiteSettings: saveSiteSettingsItem,
     setupTelegramWebhook: setupTelegramWebhookItem,
     testSendMail: testSendMailItem,
+    ticketStorageTesting,
+    testTicketAttachmentStorage: testTicketAttachmentStorageItem,
     systemStatus,
     systemStatusError,
     systemStatusLoading,

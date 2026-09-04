@@ -100,6 +100,24 @@ export function createEmptySiteSettings() {
     subscribeTemplateStash: '',
     subscribeTemplateSurge: '',
     subscribeTemplateSurfboard: '',
+    ticketAttachmentEnable: false,
+    ticketAttachmentDriver: 'local',
+    ticketAttachmentMaxSizeMb: 5,
+    ticketAttachmentMaxCount: 5,
+    ticketAttachmentAllowedExtensions: 'jpg,jpeg,png,gif,webp,pdf,txt,log,zip',
+    ticketAttachmentDailyQuotaMb: 30,
+    ticketAttachmentRetentionDays: 365,
+    ticketAttachmentS3Endpoint: '',
+    ticketAttachmentS3Region: 'auto',
+    ticketAttachmentS3Bucket: '',
+    ticketAttachmentS3AccessKey: '',
+    ticketAttachmentS3SecretKey: '',
+    ticketAttachmentS3PathStyle: true,
+    ticketAttachmentS3Prefix: 'ticket-attachments',
+    ticketAttachmentS3PublicUrl: '',
+    // 只读：后端硬上限，表单用来限制输入范围
+    ticketAttachmentHardMaxSizeMb: 20,
+    ticketAttachmentHardMaxCount: 10,
   }
 }
 
@@ -149,6 +167,11 @@ const SETTINGS_GROUP_CONFIG = {
     normalize: normalizeSubscribeTemplateSettings,
     createPayload: createSubscribeTemplateSettingsPayload,
   },
+  ticketAttachment: {
+    fetchKey: 'ticket',
+    normalize: normalizeTicketAttachmentSettings,
+    createPayload: createTicketAttachmentSettingsPayload,
+  },
 }
 
 export function createEmptySiteSettingsGroup(groupKey) {
@@ -171,7 +194,7 @@ export async function fetchSiteSettingsGroup(groupKey) {
 }
 
 export async function fetchSiteSettings() {
-  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload] = await Promise.all([
+  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload] = await Promise.all([
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'site']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'safe']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe']])),
@@ -181,6 +204,7 @@ export async function fetchSiteSettings() {
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'telegram']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'app']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe_template']])),
+    requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'ticket']])),
   ])
   const site = sitePayload?.data?.site
   const safe = safePayload?.data?.safe
@@ -191,6 +215,7 @@ export async function fetchSiteSettings() {
   const telegram = telegramPayload?.data?.telegram
   const app = appPayload?.data?.app
   const subscribeTemplate = subscribeTemplatePayload?.data?.subscribe_template
+  const ticket = ticketPayload?.data?.ticket
 
   return {
     ...normalizeSiteSettings(site),
@@ -202,6 +227,7 @@ export async function fetchSiteSettings() {
     ...normalizeTelegramSettings(telegram),
     ...normalizeAppSettings(app),
     ...normalizeSubscribeTemplateSettings(subscribeTemplate),
+    ...normalizeTicketAttachmentSettings(ticket),
   }
 }
 
@@ -301,6 +327,20 @@ export async function fetchEmailTemplateOptions() {
 
 export async function testSendMail() {
   const payload = await requestDashboardMutation(buildSecureV2ApiUrl('config/testSendMail'), null, 'POST')
+
+  return payload?.data || {}
+}
+
+/**
+ * 工单附件「测试存储连接」：把表单里当前的附件配置（可能尚未保存）一起发过去，
+ * 后端用它们覆盖已保存的值做写入 → 读回 → 删除探针。
+ */
+export async function testTicketAttachmentStorage(settings = {}) {
+  const payload = await requestDashboardMutation(
+    buildSecureV2ApiUrl('config/testTicketAttachmentStorage'),
+    createTicketAttachmentSettingsPayload(settings),
+    'POST'
+  )
 
   return payload?.data || {}
 }
@@ -802,4 +842,79 @@ function normalizeEmailEncryption(value) {
   }
 
   return 'none'
+}
+
+function normalizeTicketAttachmentSettings(ticket) {
+  const fallback = createEmptySiteSettings()
+  const pick = function pick(key) {
+    return fallback[key]
+  }
+
+  if (!ticket || typeof ticket !== 'object') {
+    return {
+      ticketAttachmentEnable: pick('ticketAttachmentEnable'),
+      ticketAttachmentDriver: pick('ticketAttachmentDriver'),
+      ticketAttachmentMaxSizeMb: pick('ticketAttachmentMaxSizeMb'),
+      ticketAttachmentMaxCount: pick('ticketAttachmentMaxCount'),
+      ticketAttachmentAllowedExtensions: pick('ticketAttachmentAllowedExtensions'),
+      ticketAttachmentDailyQuotaMb: pick('ticketAttachmentDailyQuotaMb'),
+      ticketAttachmentRetentionDays: pick('ticketAttachmentRetentionDays'),
+      ticketAttachmentS3Endpoint: pick('ticketAttachmentS3Endpoint'),
+      ticketAttachmentS3Region: pick('ticketAttachmentS3Region'),
+      ticketAttachmentS3Bucket: pick('ticketAttachmentS3Bucket'),
+      ticketAttachmentS3AccessKey: pick('ticketAttachmentS3AccessKey'),
+      ticketAttachmentS3SecretKey: pick('ticketAttachmentS3SecretKey'),
+      ticketAttachmentS3PathStyle: pick('ticketAttachmentS3PathStyle'),
+      ticketAttachmentS3Prefix: pick('ticketAttachmentS3Prefix'),
+      ticketAttachmentS3PublicUrl: pick('ticketAttachmentS3PublicUrl'),
+      ticketAttachmentHardMaxSizeMb: pick('ticketAttachmentHardMaxSizeMb'),
+      ticketAttachmentHardMaxCount: pick('ticketAttachmentHardMaxCount'),
+    }
+  }
+
+  const numberOr = function numberOr(value, defaultValue) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : defaultValue
+  }
+
+  return {
+    ticketAttachmentEnable: Boolean(Number(ticket.ticket_attachment_enable ?? 0)),
+    ticketAttachmentDriver: ticket.ticket_attachment_driver === 's3' ? 's3' : 'local',
+    ticketAttachmentMaxSizeMb: numberOr(ticket.ticket_attachment_max_size_mb, pick('ticketAttachmentMaxSizeMb')),
+    ticketAttachmentMaxCount: numberOr(ticket.ticket_attachment_max_count, pick('ticketAttachmentMaxCount')),
+    ticketAttachmentAllowedExtensions: String(ticket.ticket_attachment_allowed_extensions ?? pick('ticketAttachmentAllowedExtensions')),
+    ticketAttachmentDailyQuotaMb: numberOr(ticket.ticket_attachment_daily_quota_mb, pick('ticketAttachmentDailyQuotaMb')),
+    ticketAttachmentRetentionDays: numberOr(ticket.ticket_attachment_retention_days, pick('ticketAttachmentRetentionDays')),
+    ticketAttachmentS3Endpoint: String(ticket.ticket_attachment_s3_endpoint ?? ''),
+    ticketAttachmentS3Region: String(ticket.ticket_attachment_s3_region ?? 'auto'),
+    ticketAttachmentS3Bucket: String(ticket.ticket_attachment_s3_bucket ?? ''),
+    ticketAttachmentS3AccessKey: String(ticket.ticket_attachment_s3_access_key ?? ''),
+    ticketAttachmentS3SecretKey: String(ticket.ticket_attachment_s3_secret_key ?? ''),
+    ticketAttachmentS3PathStyle: Boolean(Number(ticket.ticket_attachment_s3_path_style ?? 1)),
+    ticketAttachmentS3Prefix: String(ticket.ticket_attachment_s3_prefix ?? 'ticket-attachments'),
+    ticketAttachmentS3PublicUrl: String(ticket.ticket_attachment_s3_public_url ?? ''),
+    ticketAttachmentHardMaxSizeMb: numberOr(ticket.ticket_attachment_hard_max_size_mb, pick('ticketAttachmentHardMaxSizeMb')),
+    ticketAttachmentHardMaxCount: numberOr(ticket.ticket_attachment_hard_max_count, pick('ticketAttachmentHardMaxCount')),
+  }
+}
+
+function createTicketAttachmentSettingsPayload(settings = {}) {
+  // hard max 两个键是只读的，不回传
+  return {
+    ticket_attachment_enable: settings.ticketAttachmentEnable ? 1 : 0,
+    ticket_attachment_driver: settings.ticketAttachmentDriver === 's3' ? 's3' : 'local',
+    ticket_attachment_max_size_mb: Number(settings.ticketAttachmentMaxSizeMb || 1),
+    ticket_attachment_max_count: Number(settings.ticketAttachmentMaxCount || 1),
+    ticket_attachment_allowed_extensions: String(settings.ticketAttachmentAllowedExtensions || '').trim(),
+    ticket_attachment_daily_quota_mb: Number(settings.ticketAttachmentDailyQuotaMb || 0),
+    ticket_attachment_retention_days: Number(settings.ticketAttachmentRetentionDays || 0),
+    ticket_attachment_s3_endpoint: String(settings.ticketAttachmentS3Endpoint || '').trim(),
+    ticket_attachment_s3_region: String(settings.ticketAttachmentS3Region || '').trim(),
+    ticket_attachment_s3_bucket: String(settings.ticketAttachmentS3Bucket || '').trim(),
+    ticket_attachment_s3_access_key: String(settings.ticketAttachmentS3AccessKey || '').trim(),
+    ticket_attachment_s3_secret_key: String(settings.ticketAttachmentS3SecretKey || '').trim(),
+    ticket_attachment_s3_path_style: settings.ticketAttachmentS3PathStyle ? 1 : 0,
+    ticket_attachment_s3_prefix: String(settings.ticketAttachmentS3Prefix || '').trim(),
+    ticket_attachment_s3_public_url: String(settings.ticketAttachmentS3PublicUrl || '').trim(),
+  }
 }

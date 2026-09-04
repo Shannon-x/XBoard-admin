@@ -215,3 +215,16 @@ function resolveMessage(key, values) {
   // 字典默默兜底。之前的中文 fallback 重复了 zh-CN.js 里的字面量，永远不会触发。
   return key;
 }
+
+/**
+ * 拼接一个不带 /api 前缀、不带 cache-buster 的后端绝对地址。
+ * 用于后端返回的相对资源路径（如工单附件的 download_path）：这类地址会直接进 <img src>
+ * 或 <a href>，附加 `t=` 参数会破坏 CDN 缓存，而且它们不一定在 /api/v1 之下。
+ */
+export function buildOriginUrl(path) {
+  const normalizedPath = String(path || "");
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+  return `${getNormalizedApiOrigin()}/${normalizedPath.replace(/^\//, "")}`;
+}

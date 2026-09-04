@@ -2,15 +2,18 @@
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, RefreshCw, MessageCircle, X } from 'lucide-vue-next'
+import { Search, RefreshCw, MessageCircle, Paperclip, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchManagedTickets,
   fetchTicketDetail,
   replyTicket,
   closeTicket,
+  uploadTicketAttachment,
+  deleteTicketAttachment,
   createEmptyManagedTicketsPagination,
 } from '../services/tickets'
+import { fetchSiteSettingsGroup } from '../services/settings'
 import { createSequence } from '../utils/sequence'
 import {
   getUserInfoById,
@@ -36,6 +39,133 @@ const detailData = ref(null)
 const detailLoading = ref(false)
 const replyMessage = ref('')
 const replySending = ref(false)
+
+// ===== 附件 =====
+// 待发送的附件先上传拿 id、随回复一起绑定；关 dialog / 发送成功后清空。
+// 配置（开关 / 上限 / 扩展名）从系统设置的 ticket 组取，用于隐藏入口与本地预检。
+const attachmentConfig = ref(null)
+const pendingAttachments = ref([])
+const attachmentUploading = ref(false)
+const attachmentInputRef = ref(null)
+
+const attachmentEnabled = computed(function attachmentEnabled() {
+  return Boolean(attachmentConfig.value?.ticketAttachmentEnable)
+})
+
+const attachmentAccept = computed(function attachmentAccept() {
+  return String(attachmentConfig.value?.ticketAttachmentAllowedExtensions || '')
+    .split(/[\s,，;]+/)
+    .filter(Boolean)
+    .map(function toAccept(ext) { return `.${ext.replace(/^\./, '')}` })
+    .join(',')
+})
+
+async function loadAttachmentConfig() {
+  try {
+    attachmentConfig.value = await fetchSiteSettingsGroup('ticketAttachment')
+  } catch (err) {
+    console.warn('[TicketsPage] 加载附件配置失败', err)
+    attachmentConfig.value = null
+  }
+}
+
+async function uploadFiles(fileList) {
+  const files = Array.from(fileList || []).filter(Boolean)
+  if (!files.length || !attachmentEnabled.value) return
+  const maxCount = Number(attachmentConfig.value?.ticketAttachmentMaxCount || 5)
+  const maxSizeMb = Number(attachmentConfig.value?.ticketAttachmentMaxSizeMb || 5)
+  const maxBytes = maxSizeMb * 1024 * 1024
+
+  attachmentUploading.value = true
+  try {
+    for (const file of files) {
+      if (pendingAttachments.value.length >= maxCount) {
+        ElMessage.warning(`每条回复最多 ${maxCount} 个附件`)
+        break
+      }
+      if (file.size > maxBytes) {
+        ElMessage.warning(`${file.name || '文件'} 超过 ${maxSizeMb} MB 上限`)
+        continue
+      }
+      try {
+        const attachment = await uploadTicketAttachment(file)
+        pendingAttachments.value = [
+          ...pendingAttachments.value,
+          { ...attachment, previewUrl: attachment.isImage ? URL.createObjectURL(file) : '' },
+        ]
+      } catch (err) {
+        ElMessage.error(err?.message || `${file.name || '文件'} 上传失败`)
+      }
+    }
+  } finally {
+    attachmentUploading.value = false
+  }
+}
+
+function handleAttachmentPick(event) {
+  uploadFiles(event.target.files)
+  event.target.value = ''
+}
+
+// 剪贴板里有文件（截图）就走上传，纯文本照常粘贴
+function handleReplyPaste(event) {
+  const files = Array.from(event.clipboardData?.items || [])
+    .filter(function isFile(item) { return item.kind === 'file' })
+    .map(function toFile(item) { return item.getAsFile() })
+    .filter(Boolean)
+  if (!files.length) return
+  event.preventDefault()
+  uploadFiles(files)
+}
+
+function handleReplyDrop(event) {
+  const files = event.dataTransfer?.files
+  if (files?.length) uploadFiles(files)
+}
+
+async function removePendingAttachment(attachment) {
+  try {
+    await deleteTicketAttachment(attachment.id)
+  } catch (err) {
+    // 撤回失败也从列表移除：未绑定的附件 24h 后由后端清理任务回收
+    console.warn('[TicketsPage] 撤回附件失败', err)
+  }
+  if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl)
+  pendingAttachments.value = pendingAttachments.value.filter(function keep(item) {
+    return item.id !== attachment.id
+  })
+}
+
+function clearPendingAttachments() {
+  for (const item of pendingAttachments.value) {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+  }
+  pendingAttachments.value = []
+}
+
+// 删除用户已发出的附件（违规内容处理）
+async function handleDeleteMessageAttachment(attachment) {
+  try {
+    await deleteTicketAttachment(attachment.id)
+    ElMessage.success('附件已删除')
+    if (detailData.value) {
+      detailData.value = await fetchTicketDetail(detailData.value.id)
+    }
+  } catch (err) {
+    ElMessage.error(err?.message || '删除失败')
+  }
+}
+
+function imageUrlsOf(msg) {
+  return (msg.attachments || [])
+    .filter(function isImage(item) { return item.isImage })
+    .map(function toUrl(item) { return item.url })
+}
+
+function imageIndexOf(msg, attachment) {
+  const index = imageUrlsOf(msg).indexOf(attachment.url)
+  return index < 0 ? 0 : index
+}
 
 // 工单作者的用户信息：随 detailData 一起拉取，关 dialog 时清空。
 // 用 token 序列号防止快速切换工单时旧请求覆盖新数据。
@@ -176,20 +306,28 @@ async function openDetail(ticket) {
 
 function handleDetailDialogClosed() {
   clearTicketUser()
+  clearPendingAttachments()
   detailData.value = null
 }
 
 async function handleReply() {
-  if (!replyMessage.value.trim()) {
-    ElMessage.warning('请输入回复内容')
+  const text = replyMessage.value.trim()
+  const attachmentIds = pendingAttachments.value.map(function toId(item) { return item.id })
+  if (!text && !attachmentIds.length) {
+    ElMessage.warning('请输入回复内容或添加附件')
+    return
+  }
+  if (attachmentUploading.value) {
+    ElMessage.warning('附件还在上传中，请稍候')
     return
   }
 
   replySending.value = true
   try {
-    await replyTicket(detailData.value.id, replyMessage.value.trim())
+    await replyTicket(detailData.value.id, text, attachmentIds)
     ElMessage.success('回复成功')
     replyMessage.value = ''
+    clearPendingAttachments()
     detailData.value = await fetchTicketDetail(detailData.value.id)
     await nextTick()
     scrollToBottom()
@@ -376,6 +514,7 @@ onMounted(function onMount() {
     emailSearch.value = String(route.query.user_email)
   }
   loadTickets()
+  loadAttachmentConfig()
   fetchManagedPlans()
     .then(list => { userPlans.value = list })
     .catch(err => { console.warn('[TicketsPage] 加载套餐列表失败', err) })
@@ -631,7 +770,49 @@ onMounted(function onMount() {
             :class="['chat-bubble-wrapper', msg.isAdmin ? 'chat-admin' : 'chat-user']"
           >
             <div class="chat-bubble">
-              <div class="chat-bubble__content">{{ msg.message }}</div>
+              <div v-if="msg.message" class="chat-bubble__content">{{ msg.message }}</div>
+              <div v-if="msg.attachments?.length" class="chat-attachments">
+                <div
+                  v-for="att in msg.attachments"
+                  :key="att.id"
+                  :class="['chat-attachment', att.isImage ? 'chat-attachment--image' : 'chat-attachment--file']"
+                >
+                  <el-image
+                    v-if="att.isImage"
+                    class="chat-attachment__image"
+                    :src="att.url"
+                    :alt="att.name"
+                    :preview-src-list="imageUrlsOf(msg)"
+                    :initial-index="imageIndexOf(msg, att)"
+                    fit="cover"
+                    loading="lazy"
+                    preview-teleported
+                  />
+                  <a
+                    v-else
+                    class="chat-attachment__file"
+                    :href="att.url"
+                    :title="att.name"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <el-icon><Paperclip /></el-icon>
+                    <span class="chat-attachment__name">{{ att.name }}</span>
+                    <span class="chat-attachment__size">{{ att.sizeText }}</span>
+                  </a>
+                  <el-popconfirm
+                    title="删除该附件？文件将从存储中移除。"
+                    confirm-button-text="删除"
+                    cancel-button-text="取消"
+                    width="240"
+                    @confirm="handleDeleteMessageAttachment(att)"
+                  >
+                    <template #reference>
+                      <button type="button" class="chat-attachment__remove" title="删除附件">×</button>
+                    </template>
+                  </el-popconfirm>
+                </div>
+              </div>
               <div class="chat-bubble__time">{{ msg.createdAt }}</div>
             </div>
           </div>
@@ -641,23 +822,69 @@ onMounted(function onMount() {
         </div>
 
         <!-- 回复输入区 -->
-        <div v-if="detailData && detailData.status === 0" class="ticket-reply-bar">
-          <el-input
-            v-model="replyMessage"
-            class="ticket-reply-input"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 8 }"
-            resize="none"
-            placeholder="输入回复内容，按 Enter 换行，Ctrl/⌘ + Enter 发送"
-            @keydown.enter.ctrl.exact.prevent="handleReply"
-            @keydown.enter.meta.exact.prevent="handleReply"
-          />
-          <el-button
-            :loading="replySending"
-            type="primary"
-            class="ticket-reply-send"
-            @click="handleReply"
-          >发送</el-button>
+        <div
+          v-if="detailData && detailData.status === 0"
+          class="ticket-reply-area"
+          @dragover.prevent
+          @drop.prevent="handleReplyDrop"
+        >
+          <div v-if="pendingAttachments.length" class="ticket-pending-attachments">
+            <div
+              v-for="att in pendingAttachments"
+              :key="att.id"
+              class="ticket-pending-attachment"
+              :title="att.name"
+            >
+              <img v-if="att.previewUrl" class="ticket-pending-attachment__thumb" :src="att.previewUrl" :alt="att.name" />
+              <el-icon v-else class="ticket-pending-attachment__icon"><Paperclip /></el-icon>
+              <span class="ticket-pending-attachment__name">{{ att.name }}</span>
+              <span class="ticket-pending-attachment__size">{{ att.sizeText }}</span>
+              <button
+                type="button"
+                class="ticket-pending-attachment__remove"
+                title="移除"
+                @click="removePendingAttachment(att)"
+              >×</button>
+            </div>
+          </div>
+          <div class="ticket-reply-bar">
+            <template v-if="attachmentEnabled">
+              <el-tooltip content="添加附件（也可直接粘贴截图或拖入文件）" placement="top">
+                <el-button
+                  class="ticket-reply-attach"
+                  :icon="Paperclip"
+                  :loading="attachmentUploading"
+                  text
+                  @click="attachmentInputRef?.click()"
+                />
+              </el-tooltip>
+              <input
+                ref="attachmentInputRef"
+                type="file"
+                multiple
+                hidden
+                :accept="attachmentAccept"
+                @change="handleAttachmentPick"
+              />
+            </template>
+            <el-input
+              v-model="replyMessage"
+              class="ticket-reply-input"
+              type="textarea"
+              :autosize="{ minRows: 2, maxRows: 8 }"
+              resize="none"
+              :placeholder="attachmentEnabled ? '输入回复内容，可直接粘贴截图；Ctrl/⌘ + Enter 发送' : '输入回复内容，按 Enter 换行，Ctrl/⌘ + Enter 发送'"
+              @keydown.enter.ctrl.exact.prevent="handleReply"
+              @keydown.enter.meta.exact.prevent="handleReply"
+              @paste="handleReplyPaste"
+            />
+            <el-button
+              :loading="replySending"
+              type="primary"
+              class="ticket-reply-send"
+              @click="handleReply"
+            >发送</el-button>
+          </div>
         </div>
         <div v-else-if="detailData" class="ticket-closed-bar">
           此工单已关闭
@@ -850,12 +1077,146 @@ onMounted(function onMount() {
   padding: 60px 0;
 }
 
+.ticket-reply-area {
+  padding: 12px 0 0;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
 .ticket-reply-bar {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.ticket-reply-attach {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 8px;
+}
+
+.ticket-pending-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ticket-pending-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  font-size: 12px;
+}
+
+.ticket-pending-attachment__thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.ticket-pending-attachment__icon {
+  width: 32px;
+  height: 32px;
+  color: var(--el-text-color-secondary);
+}
+
+.ticket-pending-attachment__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.ticket-pending-attachment__size,
+.chat-attachment__size {
+  color: var(--el-text-color-placeholder);
+  white-space: nowrap;
+}
+
+.ticket-pending-attachment__remove,
+.chat-attachment__remove {
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.ticket-pending-attachment__remove:hover,
+.chat-attachment__remove:hover {
+  color: var(--el-color-danger);
+}
+
+.chat-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chat-bubble__content + .chat-attachments {
+  margin-top: 8px;
+}
+
+.chat-attachment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chat-attachment__image {
+  width: 160px;
+  height: 120px;
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-lighter);
+  cursor: zoom-in;
+}
+
+.chat-attachment__file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+  padding: 6px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+  color: var(--el-color-primary);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.chat-attachment__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--el-bg-color);
+  box-shadow: var(--el-box-shadow-lighter);
+  font-size: 13px;
+}
+
+.chat-attachment:hover .chat-attachment__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ticket-reply-input {
