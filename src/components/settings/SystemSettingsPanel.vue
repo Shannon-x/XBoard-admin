@@ -34,6 +34,31 @@ const emit = defineEmits(['change-group', 'testMail', 'setupTelegramWebhook', 't
 const { t, tm } = useI18n()
 const activeCodeTab = ref('subscribeTemplateSingbox')
 
+/**
+ * 数据驱动文案的安全取值。
+ *
+ * 本面板的 label/description/placeholder 全部来自 systemSettingsGroups 里的 key，
+ * 由 t() 无参渲染。vue-i18n 在**生产构建**下把消息编译错误包装成 `new SyntaxError(String(错误码))`
+ * 并直接抛出（dev 只打一条 console 错误），于是一条写错的文案会冒泡到 App.vue 的全局错误边界，
+ * 让整张设置页打不开——2026-09 就因为一句描述里写了 `{地址}`（中文标识符占位符）触发过。
+ *
+ * 这里兜底：单条文案坏掉就退化成显示 key 本身，其余字段照常可用。
+ * 真正的防线是构建期的 scripts/check-i18n.mjs，这只是最后一道。
+ */
+function safeT(key) {
+  if (!key) {
+    return ''
+  }
+
+  try {
+    return t(key)
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[systemSettings] i18n 文案编译失败，已降级显示 key：', key, error)
+    return key
+  }
+}
+
 const activeGroup = computed(function resolveActiveGroup() {
   const matchedGroup = props.groups.find(function findGroup(group) {
     return group.key === props.activeGroupKey
@@ -224,7 +249,7 @@ function resolveSelectOptions(field) {
 
         <div class="settings-sidebar-item__content">
           <div class="settings-sidebar-item__row">
-            <div class="settings-sidebar-item__title">{{ t(group.titleKey) }}</div>
+            <div class="settings-sidebar-item__title">{{ safeT(group.titleKey) }}</div>
           </div>
         </div>
       </button>
@@ -238,8 +263,8 @@ function resolveSelectOptions(field) {
               <el-icon><component :is="activeGroup.icon" /></el-icon>
             </div>
             <div>
-              <h3>{{ t(activeGroup.titleKey) }}</h3>
-              <p>{{ t(activeGroup.descriptionKey) }}</p>
+              <h3>{{ safeT(activeGroup.titleKey) }}</h3>
+              <p>{{ safeT(activeGroup.descriptionKey) }}</p>
             </div>
           </div>
         </div>
@@ -258,9 +283,9 @@ function resolveSelectOptions(field) {
             }"
           >
             <div v-if="field.type !== 'codeTabs'" class="settings-field__meta">
-              <label class="settings-field__label">{{ t(field.labelKey) }}</label>
+              <label class="settings-field__label">{{ safeT(field.labelKey) }}</label>
               <p v-if="field.descriptionKey" class="settings-field__description">
-                {{ t(field.descriptionKey) }}
+                {{ safeT(field.descriptionKey) }}
               </p>
             </div>
 
@@ -272,7 +297,7 @@ function resolveSelectOptions(field) {
                 :loading="resolveActionLoading(field)"
                 @click="handleFieldAction(field)"
               >
-                {{ t(field.labelKey) }}
+                {{ safeT(field.labelKey) }}
               </el-button>
 
               <el-switch
@@ -287,7 +312,7 @@ function resolveSelectOptions(field) {
                   <el-tab-pane
                     v-for="tab in field.tabs"
                     :key="tab.key"
-                    :label="t(tab.labelKey)"
+                    :label="safeT(tab.labelKey)"
                     :name="tab.key"
                   />
                 </el-tabs>
@@ -298,7 +323,7 @@ function resolveSelectOptions(field) {
                   :key="`${tab.key}-panel`"
                   class="settings-code-tabs__panel"
                 >
-                  <h4 class="settings-code-tabs__title">{{ t(tab.labelKey) }}</h4>
+                  <h4 class="settings-code-tabs__title">{{ safeT(tab.labelKey) }}</h4>
                   <MonacoTemplateEditor
                     :language="resolveCodeLanguage(tab.key)"
                     :min-height="520"
@@ -337,7 +362,7 @@ function resolveSelectOptions(field) {
                 v-else
                 :model-value="resolveFieldValue(field)"
                 :autosize="field.autosize"
-                :placeholder="field.placeholderKey ? t(field.placeholderKey) : ''"
+                :placeholder="field.placeholderKey ? safeT(field.placeholderKey) : ''"
                 :show-password="field.type === 'password'"
                 :type="field.type === 'textarea' ? 'textarea' : field.type === 'password' ? 'password' : 'text'"
                 @update:model-value="updateFieldValue(field, $event)"
@@ -354,8 +379,8 @@ function resolveSelectOptions(field) {
               <el-icon><component :is="activeGroup.icon" /></el-icon>
             </div>
             <div>
-              <h4>{{ t(activeGroup.titleKey) }}</h4>
-              <p>{{ t(activeGroup.descriptionKey) }}</p>
+              <h4>{{ safeT(activeGroup.titleKey) }}</h4>
+              <p>{{ safeT(activeGroup.descriptionKey) }}</p>
             </div>
           </div>
 
@@ -365,8 +390,8 @@ function resolveSelectOptions(field) {
               :key="item.labelKey"
               class="settings-placeholder-item"
             >
-              <span>{{ t(item.labelKey) }}</span>
-              <strong>{{ t(item.valueKey) }}</strong>
+              <span>{{ safeT(item.labelKey) }}</span>
+              <strong>{{ safeT(item.valueKey) }}</strong>
             </div>
           </div>
         </div>
@@ -380,7 +405,7 @@ function resolveSelectOptions(field) {
           @click="previousGroup && selectGroup(previousGroup.key)"
         >
           <span>{{ t('systemSettings.panel.previous') }}</span>
-          <strong>{{ previousGroup ? t(previousGroup.titleKey) : t('systemSettings.panel.first') }}</strong>
+          <strong>{{ previousGroup ? safeT(previousGroup.titleKey) : t('systemSettings.panel.first') }}</strong>
         </button>
 
         <button
@@ -390,7 +415,7 @@ function resolveSelectOptions(field) {
           @click="nextGroup && selectGroup(nextGroup.key)"
         >
           <span>{{ t('systemSettings.panel.next') }}</span>
-          <strong>{{ nextGroup ? t(nextGroup.titleKey) : t('systemSettings.panel.last') }}</strong>
+          <strong>{{ nextGroup ? safeT(nextGroup.titleKey) : t('systemSettings.panel.last') }}</strong>
         </button>
       </footer>
     </div>

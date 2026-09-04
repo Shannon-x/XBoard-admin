@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lint:i18n": "node scripts/check-i18n.mjs",
+    "prebuild": "node scripts/check-i18n.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -24,6 +26,7 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@intlify/message-compiler": "^10.0.8",
     "@vitejs/plugin-vue": "^6.0.1",
     "vite": "^8.0.0"
   }
