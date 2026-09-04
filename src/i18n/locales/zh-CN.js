@@ -61,6 +61,10 @@ export default {
       title: '工单管理',
       eyebrow: '用户支持',
     },
+    withdrawals: {
+      title: '佣金提现',
+      eyebrow: '用户支持',
+    },
     notices: {
       title: '公告管理',
       eyebrow: '内容运营',
@@ -180,6 +184,7 @@ export default {
     orders: '订单管理',
     users: '用户管理',
     tickets: '工单管理',
+    withdrawals: '佣金提现',
     coupons: '优惠券管理',
     giftcards: '礼品卡管理',
     knowledge: '知识库',
@@ -686,9 +691,30 @@ export default {
         placeholder: '请输入提现门槛',
       },
       commissionWithdrawMethod: {
-        label: '提现方式',
-        description: '可以支持的提现方式，多个用逗号分隔。',
+        label: '提现方式（旧版前端）',
+        description: '仅供未升级的旧前端使用，多个用逗号分隔。新前端使用下方的「提现链」列表。',
         placeholder: '请输入提现方式，多个用逗号分隔',
+      },
+      commissionWithdrawChains: {
+        label: '提现链',
+        description: '用户可选的收款链。地址格式预设会在前端即时校验并在后端二次校验；区块浏览器链接用于结算后展示交易，写法见编辑器内提示。',
+      },
+      commissionWithdrawMax: {
+        label: '单笔提现上限',
+        description: '单位为站点货币，0 表示不限制。',
+      },
+      commissionWithdrawUsdtRate: {
+        label: 'USDT 参考汇率',
+        description: '1 USDT 折合多少站点货币，用于在申请与结算时估算 USDT 数量；0 表示不显示估算。',
+      },
+      commissionWithdrawRequireQrcode: {
+        label: '必须上传收款二维码',
+        description: '开启后用户申请时必须附上收款地址二维码图片（依赖「工单附件」功能已开启）。',
+      },
+      commissionWithdrawThanks: {
+        label: '结算感谢语',
+        description: '标记已打款后自动回复到工单并发送邮件给用户的结尾文案。',
+        placeholder: '感谢你对我们的支持！佣金已按你提交的地址打款，请注意查收。',
       },
       withdrawCloseEnable: {
         label: '关闭提现',

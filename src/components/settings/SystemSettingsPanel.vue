@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import MonacoTemplateEditor from './MonacoTemplateEditor.vue'
+import WithdrawChainsEditor from './WithdrawChainsEditor.vue'
 
 const props = defineProps({
   activeGroupKey: {
@@ -278,6 +279,7 @@ function resolveSelectOptions(field) {
             class="settings-field"
             :class="{
               'settings-field--code-tabs': field.type === 'codeTabs',
+              'settings-field--block': field.type === 'withdrawChains',
               'settings-field--switch': field.type === 'switch',
               'settings-field--compact': field.tone === 'compact',
             }"
@@ -332,6 +334,13 @@ function resolveSelectOptions(field) {
                   />
                 </div>
               </div>
+
+              <WithdrawChainsEditor
+                v-else-if="field.type === 'withdrawChains'"
+                :model-value="resolveFieldValue(field)"
+                :presets="props.form?.commissionWithdrawPresets || []"
+                @update:model-value="updateFieldValue(field, $event)"
+              />
 
               <el-select
                 v-else-if="field.type === 'select'"
