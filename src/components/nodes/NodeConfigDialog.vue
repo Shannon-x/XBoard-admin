@@ -70,6 +70,15 @@ const hysteriaVersionOptions = [
 const hysteriaObfsTypeOptions = [
     { label: "Salamander", value: "salamander" },
 ];
+/**
+ * 指纹固定是否生效：cert_mode=remote 且面板已经算出证书指纹。
+ * 此时「允许不安全」不再是管理员的自由开关，而是派生值——
+ * 后端保存时也会强制写 true（见 ManageController::syncCertPinToProtocolSettings）。
+ */
+const certPinActive = computed(function certPinActive() {
+    return form.certMode === 'remote' && Boolean(form.certPinnedPeerCertSha256 || form.certPinnedPublicKeySha256)
+})
+
 const certModeOptions = [
     { label: "自签名", value: "selfSign" },
     { label: "HTTP申请", value: "http" },
@@ -1460,7 +1469,16 @@ onBeforeUnmount(destroyRouteSortable);
                     label="允许不安全?"
                     class="node-config-form__item node-config-form__item--switch"
                 >
-                    <el-switch v-model="form.allowInsecure" />
+                    <el-switch
+                        :model-value="certPinActive ? true : form.allowInsecure"
+                        :disabled="certPinActive"
+                        @update:model-value="form.allowInsecure = $event"
+                    />
+                    <p v-if="certPinActive" class="node-config-form__hint" style="margin: 4px 0 0;">
+                        已启用证书指纹固定，该开关由面板托管。指纹校验的是「必须是这一张证书」，
+                        比证书链校验更严格；但面板自签的证书在任何客户端上都过不了链校验，
+                        所以必须同时跳过链校验，指纹才有机会生效。
+                    </p>
                 </el-form-item>
             </div>
 
@@ -1575,7 +1593,16 @@ onBeforeUnmount(destroyRouteSortable);
                     label="允许不安全?"
                     class="node-config-form__item node-config-form__item--switch"
                 >
-                    <el-switch v-model="form.allowInsecure" />
+                    <el-switch
+                        :model-value="certPinActive ? true : form.allowInsecure"
+                        :disabled="certPinActive"
+                        @update:model-value="form.allowInsecure = $event"
+                    />
+                    <p v-if="certPinActive" class="node-config-form__hint" style="margin: 4px 0 0;">
+                        已启用证书指纹固定，该开关由面板托管。指纹校验的是「必须是这一张证书」，
+                        比证书链校验更严格；但面板自签的证书在任何客户端上都过不了链校验，
+                        所以必须同时跳过链校验，指纹才有机会生效。
+                    </p>
                 </el-form-item>
             </div>
 
@@ -2130,11 +2157,14 @@ onBeforeUnmount(destroyRouteSortable);
 
                 <div v-if="form.certMode === 'remote'" class="cert-config-form__field">
                     <p class="node-config-form__hint" style="margin: 0;">
-                        证书与私钥由面板生成并下发节点，保存不会更换已有证书，SNI 可填伪装域名。指纹固定对 hysteria 官方客户端与 sing-box 1.13+ 生效；其余客户端等效于跳过证书校验（insecure）。
+                        证书与私钥由面板生成并下发节点，保存不会更换已有证书，SNI 可填伪装域名。<br />
+                        证书是面板自签的，<strong>所有客户端的证书链校验都不会通过</strong>，因此「允许不安全」会被自动打开并锁定：
+                        支持指纹固定的客户端（hysteria 官方客户端 / v2rayN / mihomo / Stash / sing-box 1.13+）由指纹完成校验，
+                        不支持的（Shadowrocket / Surge / Loon）会退化成跳过校验，否则该节点在这些客户端上根本连不上。
                     </p>
                 </div>
 
-                <div v-if="form.certPinnedPeerCertSha256" class="cert-config-form__field">
+                <div v-if="certPinActive && form.certPinnedPeerCertSha256" class="cert-config-form__field">
                     <label>证书指纹 pinned_peer_cert_sha256（xray pcs / hysteria pinSHA256）</label>
                     <el-input :model-value="form.certPinnedPeerCertSha256" readonly>
                         <template #append>
@@ -2143,7 +2173,7 @@ onBeforeUnmount(destroyRouteSortable);
                     </el-input>
                 </div>
 
-                <div v-if="form.certPinnedPublicKeySha256" class="cert-config-form__field">
+                <div v-if="certPinActive && form.certPinnedPublicKeySha256" class="cert-config-form__field">
                     <label>公钥指纹 pinned_public_key_sha256（sing-box certificate_public_key_sha256）</label>
                     <el-input :model-value="form.certPinnedPublicKeySha256" readonly>
                         <template #append>
