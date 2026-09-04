@@ -1469,15 +1469,13 @@ onBeforeUnmount(destroyRouteSortable);
                     label="允许不安全?"
                     class="node-config-form__item node-config-form__item--switch"
                 >
-                    <el-switch
-                        :model-value="certPinActive ? true : form.allowInsecure"
-                        :disabled="certPinActive"
-                        @update:model-value="form.allowInsecure = $event"
-                    />
+                    <el-switch v-model="form.allowInsecure" />
                     <p v-if="certPinActive" class="node-config-form__hint" style="margin: 4px 0 0;">
-                        已启用证书指纹固定，该开关由面板托管。指纹校验的是「必须是这一张证书」，
-                        比证书链校验更严格；但面板自签的证书在任何客户端上都过不了链校验，
-                        所以必须同时跳过链校验，指纹才有机会生效。
+                        已配置证书指纹，<strong>通常不需要打开这个开关</strong>：小火箭、mihomo、Stash、
+                        sing-box 1.13+、新版 Xray 都是用指纹<strong>替代</strong>证书链校验的，开了反而可能让它们
+                        跳过指纹校验。面板会自动为下面两类情况补上跳过校验：hysteria 原生内核（v2rayN 等，
+                        它的指纹叠加在链校验之上，必须配合）、以及 Surge / Loon（没有指纹输入口）。
+                        只有当你的客户端两样都不支持、确实连不上时，才需要手动打开。
                     </p>
                 </el-form-item>
             </div>
@@ -1593,15 +1591,13 @@ onBeforeUnmount(destroyRouteSortable);
                     label="允许不安全?"
                     class="node-config-form__item node-config-form__item--switch"
                 >
-                    <el-switch
-                        :model-value="certPinActive ? true : form.allowInsecure"
-                        :disabled="certPinActive"
-                        @update:model-value="form.allowInsecure = $event"
-                    />
+                    <el-switch v-model="form.allowInsecure" />
                     <p v-if="certPinActive" class="node-config-form__hint" style="margin: 4px 0 0;">
-                        已启用证书指纹固定，该开关由面板托管。指纹校验的是「必须是这一张证书」，
-                        比证书链校验更严格；但面板自签的证书在任何客户端上都过不了链校验，
-                        所以必须同时跳过链校验，指纹才有机会生效。
+                        已配置证书指纹，<strong>通常不需要打开这个开关</strong>：小火箭、mihomo、Stash、
+                        sing-box 1.13+、新版 Xray 都是用指纹<strong>替代</strong>证书链校验的，开了反而可能让它们
+                        跳过指纹校验。面板会自动为下面两类情况补上跳过校验：hysteria 原生内核（v2rayN 等，
+                        它的指纹叠加在链校验之上，必须配合）、以及 Surge / Loon（没有指纹输入口）。
+                        只有当你的客户端两样都不支持、确实连不上时，才需要手动打开。
                     </p>
                 </el-form-item>
             </div>
@@ -2158,9 +2154,11 @@ onBeforeUnmount(destroyRouteSortable);
                 <div v-if="form.certMode === 'remote'" class="cert-config-form__field">
                     <p class="node-config-form__hint" style="margin: 0;">
                         证书与私钥由面板生成并下发节点，保存不会更换已有证书，SNI 可填伪装域名。<br />
-                        证书是面板自签的，<strong>所有客户端的证书链校验都不会通过</strong>，因此「允许不安全」会被自动打开并锁定：
-                        支持指纹固定的客户端（hysteria 官方客户端 / v2rayN / mihomo / Stash / sing-box 1.13+）由指纹完成校验，
-                        不支持的（Shadowrocket / Surge / Loon）会退化成跳过校验，否则该节点在这些客户端上根本连不上。
+                        证书是面板自签的，<strong>所有客户端的证书链校验都不会通过</strong>，所以订阅里按客户端分别处理：
+                        小火箭（TLS 设置页的 SHA256）、mihomo / Stash（fingerprint）、sing-box 1.13+
+                        （certificate_public_key_sha256）、新版 Xray（pinnedPeerCertSha256）直接用指纹校验；
+                        hysteria 原生内核（v2rayN 等）的指纹叠加在链校验之上，会额外带 insecure=1；
+                        Surge / Loon 没有指纹输入口，只能退化成跳过校验。
                     </p>
                 </div>
 
