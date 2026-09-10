@@ -93,6 +93,7 @@ function normalizePlan(plan) {
     activeUsersCount: Number(plan?.active_users_count || 0),
     capacityLimit: plan?.capacity_limit || null,
     forceUpdate: false,
+    customization: plan?.customization ?? null,
   }
 }
 
@@ -131,6 +132,10 @@ export async function saveManagedPlan(data) {
     reset_traffic_method: data.resetTrafficMethod === -1 ? null : (data.resetTrafficMethod ?? null),
     capacity_limit: data.capacityLimit ? Number(data.capacityLimit) : null,
     prices: apiPrices,
+    customization: data.customization ?? null,
+    show: Boolean(data.show),
+    sell: Boolean(data.sell),
+    renew: Boolean(data.renew),
   }
 
   if (data.id) {
