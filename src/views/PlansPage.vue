@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
+import PlanCustomizationEditor from '../components/common/PlanCustomizationEditor.vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   fetchManagedPlans,
@@ -37,6 +38,12 @@ const editDialogVisible = ref(false)
 const editForm = ref(createEmptyPlanForm())
 const editSaving = ref(false)
 const isEditing = ref(false)
+const hasSelectableResources = computed(() => {
+  const form = editForm.value
+  const bases = { transfer_enable: form.transferEnableGB, device_limit: form.deviceLimit, speed_limit: form.speedLimit }
+  return Object.entries(form.customization || {}).some(([key, rule]) => rule.mode !== 'fixed'
+    && (rule.mode === 'choices' ? rule.choices?.length > 1 : rule.max > Number(bases[key] || 0)))
+})
 
 function createEmptyPlanForm() {
   return {
@@ -53,6 +60,7 @@ function createEmptyPlanForm() {
     resetTrafficMethod: -1,
     capacityLimit: null,
     forceUpdate: false,
+    customization: null,
     prices: {
       month_price: null,
       quarter_price: null,
@@ -109,6 +117,7 @@ function openEditDialog(plan) {
     capacityLimit: plan.capacityLimit,
     forceUpdate: false,
     prices: { ...plan.prices },
+    customization: plan.customization ? JSON.parse(JSON.stringify(plan.customization)) : null,
   }
   isEditing.value = true
   editDialogVisible.value = true
@@ -418,6 +427,14 @@ onMounted(function onMount() {
           </el-form-item>
         </div>
 
+        <PlanCustomizationEditor
+          v-model="editForm.customization"
+          :traffic="Number(editForm.transferEnableGB)"
+          :devices="Number(editForm.deviceLimit)"
+          :speed="Number(editForm.speedLimit)"
+          :monthly-price="Number(editForm.prices.month_price || editForm.prices.onetime_price || 0)"
+        />
+
         <el-form-item label="流量重置方式">
           <el-select v-model="editForm.resetTrafficMethod" clearable style="width: 100%">
             <el-option
@@ -447,7 +464,7 @@ onMounted(function onMount() {
         </div>
 
         <el-form-item v-if="isEditing" label="强制更新用户">
-          <el-switch v-model="editForm.forceUpdate" />
+          <el-switch v-model="editForm.forceUpdate" :disabled="hasSelectableResources" />
           <span style="margin-left: 8px; color: var(--el-text-color-secondary); font-size: 12px">
             将当前套餐下所有用户的权限组、流量、速率限制同步更新
           </span>
