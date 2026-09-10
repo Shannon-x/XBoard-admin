@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import PlanCustomizationEditor from '../components/common/PlanCustomizationEditor.vue'
@@ -38,6 +38,12 @@ const editDialogVisible = ref(false)
 const editForm = ref(createEmptyPlanForm())
 const editSaving = ref(false)
 const isEditing = ref(false)
+const hasSelectableResources = computed(() => {
+  const form = editForm.value
+  const bases = { transfer_enable: form.transferEnableGB, device_limit: form.deviceLimit, speed_limit: form.speedLimit }
+  return Object.entries(form.customization || {}).some(([key, rule]) => rule.mode !== 'fixed'
+    && (rule.mode === 'choices' ? rule.choices?.length > 1 : rule.max > Number(bases[key] || 0)))
+})
 
 function createEmptyPlanForm() {
   return {
@@ -458,7 +464,7 @@ onMounted(function onMount() {
         </div>
 
         <el-form-item v-if="isEditing" label="强制更新用户">
-          <el-switch v-model="editForm.forceUpdate" :disabled="!!editForm.customization" />
+          <el-switch v-model="editForm.forceUpdate" :disabled="hasSelectableResources" />
           <span style="margin-left: 8px; color: var(--el-text-color-secondary); font-size: 12px">
             将当前套餐下所有用户的权限组、流量、速率限制同步更新
           </span>
