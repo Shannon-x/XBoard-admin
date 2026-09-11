@@ -79,30 +79,9 @@ function setAddonTopupSurcharge(id, yuan) {
   emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], topup_price_per_gb: Math.round((Number(yuan) || 0) * 100) } })
 }
 
-/* ───────── 流量加购包：默认跟随站点设置；本套餐可关闭或自定义单价与上下限 ───────── */
-const topupRule = computed(() => props.modelValue?.traffic_topup ?? null)
-const topupMode = computed(() => topupRule.value?.mode ?? 'inherit')
-function emitTopup(rule) {
-  const value = { ...props.modelValue }
-  if (rule && rule.mode !== 'inherit') value.traffic_topup = rule
-  else delete value.traffic_topup
-  emit('update:modelValue', value)
-}
-function setTopupMode(selectedMode) {
-  if (selectedMode === 'inherit') return emitTopup(null)
-  if (selectedMode === 'off') return emitTopup({ mode: 'off' })
-  const old = topupRule.value || {}
-  const rule = { mode: 'custom', price_per_gb: Number(old.price_per_gb || 100) }
-  if (old.min_gb) rule.min_gb = Number(old.min_gb)
-  if (old.max_gb) rule.max_gb = Number(old.max_gb)
-  emitTopup(rule)
-}
-function setTopupField(key, value) {
-  const next = { ...(topupRule.value || { mode: 'custom' }) }
-  if (value == null || value === '') delete next[key]
-  else next[key] = key === 'price_per_gb' ? Math.max(1, Math.round(Number(value) * 100)) : Math.max(1, Math.round(Number(value)))
-  emitTopup(next)
-}
+/* 流量加购包的套餐级规则（customization.traffic_topup）在 PlansPage 的「价格设置」里配，
+   与流量包 / 重置包并排 —— 它不是自选规格的一部分，不该藏在这个开关后面。这里只保留
+   每个增值组的「加购加价」。toggle(false) 会连同 traffic_topup 一起清掉，PlansPage 那边会兜底重建。 */
 
 const allFixed = computed(() => !optionalAddons.value.length && fields.value.every((field) => !resourceSelectable(field)))
 
@@ -136,7 +115,15 @@ const previewByPeriod = computed(() => {
 function yuan(cents) { return `¥${(cents / 100).toFixed(2)}` }
 
 function toggle(enabled) {
-  emit('update:modelValue', enabled ? Object.fromEntries(fields.value.map((field) => [field.key, { mode: 'fixed' }])) : null)
+  // 关掉自选规格时保留套餐级的加购规则：它由「价格设置」维护，与自选规格无关
+  const topup = props.modelValue?.traffic_topup
+  if (!enabled) {
+    emit('update:modelValue', topup
+      ? { ...Object.fromEntries(fields.value.map((field) => [field.key, { mode: 'fixed' }])), traffic_topup: topup }
+      : null)
+    return
+  }
+  emit('update:modelValue', { ...Object.fromEntries(fields.value.map((field) => [field.key, { mode: 'fixed' }])), ...(topup ? { traffic_topup: topup } : {}) })
 }
 function updateRule(key, rule) {
   emit('update:modelValue', { ...props.modelValue, [key]: rule })
@@ -279,35 +266,6 @@ function updateChoices(field, text) {
             </el-option>
           </el-select>
           <span class="customization-note">可添加 {{ addonCandidates.length }} 个；基础组与已添加的组不在列表里。添加后默认「可选购 ¥5.00/月」，名称与价格都可改。</span>
-        </div>
-      </div>
-
-      <div class="customization-rule" data-resource="traffic_topup">
-        <div class="addon-head">
-          <strong>流量加购包</strong>
-          <span class="customization-note">本周期内按 GB 追加流量；流量清零时一并收回</span>
-        </div>
-        <p class="customization-note" style="margin-top: 6px">
-          默认跟随「系统设置 → 订阅」里的加购单价与上下限，30 个套餐不用逐个填。成本不同的套餐（如 10x）可在这里单独定价或关闭。
-          上方增值组每行的「加购加价」会叠加在单价上，买了 10x 组的用户加购更贵。
-        </p>
-        <el-form-item label="加购规则" style="margin-top: 12px">
-          <el-radio-group :model-value="topupMode" @update:model-value="setTopupMode">
-            <el-radio-button value="inherit">跟随站点设置</el-radio-button>
-            <el-radio-button value="off">本套餐不开放</el-radio-button>
-            <el-radio-button value="custom">自定义</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <div v-if="topupMode === 'custom'" class="customization-inputs">
-          <el-form-item label="单价（元 / GB）">
-            <el-input-number :model-value="Number(topupRule?.price_per_gb || 0) / 100" :min="0.01" :max="1000000" :precision="2" :step="0.1" @update:model-value="setTopupField('price_per_gb', $event)" />
-          </el-form-item>
-          <el-form-item label="最少 GB（留空跟随站点）">
-            <el-input-number :model-value="topupRule?.min_gb ?? undefined" :min="1" :max="100000" :precision="0" placeholder="站点默认" @update:model-value="setTopupField('min_gb', $event)" />
-          </el-form-item>
-          <el-form-item label="最多 GB（留空跟随站点）">
-            <el-input-number :model-value="topupRule?.max_gb ?? undefined" :min="1" :max="100000" :precision="0" placeholder="站点默认" @update:model-value="setTopupField('max_gb', $event)" />
-          </el-form-item>
         </div>
       </div>
 

@@ -18,6 +18,7 @@ import {
   PERIOD_LABEL_MAP,
 } from '../services/orders'
 import { fetchManagedPlans } from '../services/plans'
+import { fetchManagedNodeGroups } from '../services/nodes'
 import { fetchPayments } from '../services/payment'
 import { fetchCouponById } from '../services/coupons'
 
@@ -33,6 +34,16 @@ const statusFilter = ref('')
 const isCommission = ref(false)
 const commissionStatusFilter = ref('')
 const plans = ref([])
+// 权限组名字典：订单快照里只有增值组 id，展示时映射成名称（套餐里设了展示名优先）
+const groups = ref([])
+const groupNameById = computed(() => Object.fromEntries(groups.value.map(g => [String(g.id), g.name])))
+function addonNamesOf(order) {
+  const ids = order?.snapshotGrantedIds?.length ? order.snapshotGrantedIds : (order?.snapshotAddonIds || [])
+  if (!ids.length) return []
+  const plan = plans.value.find(p => String(p.id) === String(order.planId))
+  const rules = plan?.customization?.addon_groups || {}
+  return ids.map(id => rules[String(id)]?.label?.trim() || groupNameById.value[String(id)] || `组 #${id}`)
+}
 const paymentMap = ref({})
 const paymentOptions = ref([])
 const paymentFilter = ref('')
@@ -340,6 +351,7 @@ async function handleCommissionConfirm(row, newStatus) {
 }
 
 onMounted(function onMount() {
+  fetchManagedNodeGroups().then(list => { groups.value = Array.isArray(list) ? list : [] }).catch(() => { groups.value = [] })
   if (route.query.commission === '1') {
     isCommission.value = true
   }
@@ -460,6 +472,8 @@ onMounted(function onMount() {
           <template #default="{ row }">
             <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
             <span v-else>{{ row.planName }}</span>
+            <el-tag v-if="row.topupGb" size="small" type="warning" style="margin-left: 6px">+{{ row.topupGb }} GB</el-tag>
+            <el-tag v-else-if="addonNamesOf(row).length" size="small" type="success" style="margin-left: 6px" :title="addonNamesOf(row).join('、')">含增值组</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="周期" width="80" prop="periodText" />
@@ -560,6 +574,18 @@ onMounted(function onMount() {
             <el-descriptions-item label="套餐" :span="2">
               <span v-if="detailPlanLink" class="x-link" title="在套餐管理中查看" @click="router.push(detailPlanLink)">{{ detailData.planName }}</span>
               <span v-else>{{ detailData.planName }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.topupGb" label="加购流量" :span="2">
+              +{{ detailData.topupGb }} GB（本周期有效，流量清零时收回）
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.snapshotResources" label="规格快照" :span="2">
+              {{ detailData.snapshotResources.transfer ?? '不限' }} GB ·
+              {{ detailData.snapshotResources.devices ?? '不限' }} 台 ·
+              {{ detailData.snapshotResources.speed ?? '不限' }} Mbps
+              <template v-if="addonNamesOf(detailData).length"> · 增值线路：
+                <el-tag v-for="name in addonNamesOf(detailData)" :key="name" size="small" type="success" style="margin-left: 4px">{{ name }}</el-tag>
+              </template>
+              <span v-else style="color: var(--el-text-color-secondary)"> · 无增值线路</span>
             </el-descriptions-item>
             <el-descriptions-item label="金额">{{ detailData.totalAmountText }}</el-descriptions-item>
             <el-descriptions-item label="优惠金额">

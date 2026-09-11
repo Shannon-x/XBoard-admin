@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import PlanCustomizationEditor from '../components/common/PlanCustomizationEditor.vue'
 import SectionCard from '../components/common/SectionCard.vue'
+import { fetchSiteSettingsGroup } from '../services/settings'
 import {
   fetchManagedPlans,
   saveManagedPlan,
@@ -32,6 +33,44 @@ const plans = ref(createEmptyManagedPlans())
 const loading = ref(false)
 const errorMsg = ref('')
 const groups = ref([])
+
+/* ───────── 流量加购（customization.traffic_topup）：与流量包 / 重置包并排配置 ─────────
+   三种「流量产品」放在一起，管理员一眼分清：
+     流量包   = 一次性套餐，永不过期（老功能）
+     重置包   = 把本周期流量清零重来，整份卖（老功能）
+     加购流量 = 按 GB 追加到本周期，流量清零时收回（新）—— 单价默认跟随站点设置 */
+const siteSubscribe = ref(null)
+async function loadSiteTopup() {
+  try { siteSubscribe.value = await fetchSiteSettingsGroup('subscription') } catch { siteSubscribe.value = null }
+}
+const FIXED_RESOURCES = () => ({ transfer_enable: { mode: 'fixed' }, device_limit: { mode: 'fixed' }, speed_limit: { mode: 'fixed' } })
+const topupRule = computed(() => editForm.value.customization?.traffic_topup ?? null)
+function setTopupRule(rule) {
+  // customization 为 null 时要连三项固定规格一起建：后端要求这三个键必须在
+  const next = editForm.value.customization ? { ...editForm.value.customization } : FIXED_RESOURCES()
+  if (rule) next.traffic_topup = rule
+  else delete next.traffic_topup
+  editForm.value.customization = next
+}
+const topupMode = computed({
+  get: () => topupRule.value?.mode ?? 'inherit',
+  set: (mode) => {
+    if (mode === 'inherit') return setTopupRule(null)
+    if (mode === 'off') return setTopupRule({ mode: 'off' })
+    setTopupRule({ mode: 'custom', price_per_gb: Number(topupRule.value?.price_per_gb || 50) })
+  },
+})
+function setTopupPrice(yuan) {
+  setTopupRule({ ...(topupRule.value || { mode: 'custom' }), mode: 'custom', price_per_gb: Math.max(1, Math.round((Number(yuan) || 0) * 100)) })
+}
+const topupHint = computed(() => {
+  const site = Number(siteSubscribe.value?.trafficTopupPricePerGb || 0)
+  if (topupMode.value === 'off') return '本套餐不卖加购流量，用户端不显示入口。'
+  if (topupMode.value === 'custom') return '用户在仪表盘订阅卡「加购流量」购买；持有增值组的用户按组另加价。'
+  return site > 0
+    ? `跟随站点设置：¥${site.toFixed(2)} / GB。用户在仪表盘订阅卡「加购流量」购买。`
+    : '站点还没设单价 → 全站关闭。到「系统设置 → 订阅 → 流量加购单价」填一个即可对所有套餐生效。'
+})
 const sortDialogVisible = ref(false)
 
 const editDialogVisible = ref(false)
@@ -260,6 +299,7 @@ onMounted(function onMount() {
   if (route.query.plan_id) highlightPlanId.value = String(route.query.plan_id)
   loadPlans()
   loadGroups()
+  loadSiteTopup()
 })
 </script>
 
@@ -401,18 +441,37 @@ onMounted(function onMount() {
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 12px">
-          <div class="plan-price-card plan-price-card--special" style="flex:1">
-            <div class="plan-price-card__label">流量包 <span>一次性流量包，无时间限制</span></div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px">
+          <div class="plan-price-card plan-price-card--special" style="flex:1 1 200px">
+            <div class="plan-price-card__label">流量包 <span>一次性套餐，永不过期</span></div>
             <el-input v-model.number="editForm.prices.onetime_price" placeholder="0" type="number">
               <template #prefix>¥</template>
             </el-input>
           </div>
-          <div class="plan-price-card plan-price-card--special" style="flex:1">
-            <div class="plan-price-card__label">重置包 <span>重置流量包，可多次使用</span></div>
+          <div class="plan-price-card plan-price-card--special" style="flex:1 1 200px">
+            <div class="plan-price-card__label">重置包 <span>本周期流量清零重来，整份卖</span></div>
             <el-input v-model.number="editForm.prices.reset_price" placeholder="0" type="number">
               <template #prefix>¥</template>
             </el-input>
+          </div>
+          <div class="plan-price-card plan-price-card--special" style="flex:1 1 240px" data-price="traffic_topup">
+            <div class="plan-price-card__label">加购流量 <span>按 GB 追加到本周期，流量清零时收回</span></div>
+            <el-select v-model="topupMode" style="width: 100%">
+              <el-option label="跟随站点设置" value="inherit" />
+              <el-option label="本套餐不开放" value="off" />
+              <el-option label="自定义单价" value="custom" />
+            </el-select>
+            <el-input
+              v-if="topupMode === 'custom'"
+              :model-value="Number(topupRule?.price_per_gb || 0) / 100"
+              type="number" step="0.01" min="0.01" placeholder="0.50"
+              style="margin-top: 8px"
+              @update:model-value="setTopupPrice($event)"
+            >
+              <template #prefix>¥</template>
+              <template #suffix><span style="color: var(--el-text-color-secondary)">/ GB</span></template>
+            </el-input>
+            <div style="font-size: 12px; line-height: 1.5; color: var(--el-text-color-secondary); margin-top: 6px">{{ topupHint }}</div>
           </div>
         </div>
 
