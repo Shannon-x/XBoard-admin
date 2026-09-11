@@ -41,7 +41,10 @@ const isEditing = ref(false)
 const hasSelectableResources = computed(() => {
   const form = editForm.value
   const bases = { transfer_enable: form.transferEnableGB, device_limit: form.deviceLimit, speed_limit: form.speedLimit }
-  return Object.entries(form.customization || {}).some(([key, rule]) => rule.mode !== 'fixed'
+  const { addon_groups: addons, ...resources } = form.customization || {}
+  // 可选购的增值节点组同样是「客户可选」，与资源规则一并计入
+  if (Object.values(addons || {}).some((rule) => rule?.mode === 'optional')) return true
+  return Object.entries(resources).some(([key, rule]) => rule.mode !== 'fixed'
     && (rule.mode === 'choices' ? rule.choices?.length > 1 : rule.max > Number(bases[key] || 0)))
 })
 
@@ -433,6 +436,8 @@ onMounted(function onMount() {
           :devices="Number(editForm.deviceLimit)"
           :speed="Number(editForm.speedLimit)"
           :monthly-price="Number(editForm.prices.month_price || editForm.prices.onetime_price || 0)"
+          :groups="groups"
+          :base-group-id="editForm.groupId"
         />
 
         <el-form-item label="流量重置方式">
