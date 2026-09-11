@@ -58,6 +58,7 @@ export function createEmptySiteSettings() {
     defaultRemindExpire: false,
     defaultRemindTraffic: false,
     subscribePath: '',
+    addonGroupLabel: '',
     inviteForce: false,
     inviteCommission: 0,
     inviteGenLimit: 0,
@@ -534,6 +535,7 @@ function normalizeSubscribeSettings(subscribe) {
       defaultRemindExpire: fallback.defaultRemindExpire,
       defaultRemindTraffic: fallback.defaultRemindTraffic,
       subscribePath: fallback.subscribePath,
+      addonGroupLabel: fallback.addonGroupLabel,
     }
   }
 
@@ -551,6 +553,8 @@ function normalizeSubscribeSettings(subscribe) {
     defaultRemindExpire: Boolean(subscribe.default_remind_expire),
     defaultRemindTraffic: Boolean(subscribe.default_remind_traffic),
     subscribePath: String(subscribe.subscribe_path ?? ''),
+    // 增值节点组在用户端的区块标题；空 = 前端回落 i18n 默认
+    addonGroupLabel: String(subscribe.addon_group_label ?? ''),
   }
 }
 
@@ -569,6 +573,7 @@ function createSubscribeSettingsPayload(settings = {}) {
     default_remind_expire: settings.defaultRemindExpire ? 1 : 0,
     default_remind_traffic: settings.defaultRemindTraffic ? 1 : 0,
     subscribe_path: String(settings.subscribePath || '').trim(),
+    addon_group_label: String(settings.addonGroupLabel || '').trim().slice(0, 32),
   }
 }
 

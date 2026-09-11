@@ -705,6 +705,13 @@ export const useAdminStore = defineStore("admin", () => {
           type: "text",
         },
         {
+          key: "addonGroupLabel",
+          labelKey: "systemSettings.fields.addonGroupLabel.label",
+          descriptionKey: "systemSettings.fields.addonGroupLabel.description",
+          placeholderKey: "systemSettings.fields.addonGroupLabel.placeholder",
+          type: "text",
+        },
+        {
           key: "showInfoToServerEnable",
           labelKey: "systemSettings.fields.showInfoToServerEnable.label",
           descriptionKey: "systemSettings.fields.showInfoToServerEnable.description",
