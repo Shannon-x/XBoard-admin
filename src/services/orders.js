@@ -37,6 +37,7 @@ const ORDER_TYPE_MAP = {
   2: '续费',
   3: '升级',
   4: '重置流量',
+  5: '流量加购',
 }
 
 const COMMISSION_STATUS_MAP = {
@@ -55,6 +56,8 @@ const PERIOD_LABEL_MAP = {
   three_year_price: '三年付',
   onetime_price: '一次性',
   reset_price: '重置包',
+  // 流量加购包：后端 period 就是这个字符串，没有旧式 *_price 别名
+  traffic_topup: '流量加购',
 }
 
 function formatTimestamp(value) {

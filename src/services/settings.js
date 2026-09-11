@@ -59,6 +59,11 @@ export function createEmptySiteSettings() {
     defaultRemindTraffic: false,
     subscribePath: '',
     addonGroupLabel: '',
+    // 流量加购包站点默认：单价（元/GB，0 = 不开放）、单次 GB 上下限、快捷档位
+    trafficTopupPricePerGb: 0,
+    trafficTopupMinGb: 1,
+    trafficTopupMaxGb: 1000,
+    trafficTopupPresets: '10,50,100,200',
     inviteForce: false,
     inviteCommission: 0,
     inviteGenLimit: 0,
@@ -536,6 +541,10 @@ function normalizeSubscribeSettings(subscribe) {
       defaultRemindTraffic: fallback.defaultRemindTraffic,
       subscribePath: fallback.subscribePath,
       addonGroupLabel: fallback.addonGroupLabel,
+      trafficTopupPricePerGb: fallback.trafficTopupPricePerGb,
+      trafficTopupMinGb: fallback.trafficTopupMinGb,
+      trafficTopupMaxGb: fallback.trafficTopupMaxGb,
+      trafficTopupPresets: fallback.trafficTopupPresets,
     }
   }
 
@@ -555,6 +564,11 @@ function normalizeSubscribeSettings(subscribe) {
     subscribePath: String(subscribe.subscribe_path ?? ''),
     // 增值节点组在用户端的区块标题；空 = 前端回落 i18n 默认
     addonGroupLabel: String(subscribe.addon_group_label ?? ''),
+    // 后端存「分/GB」，界面按「元/GB」编辑
+    trafficTopupPricePerGb: (Number(subscribe.traffic_topup_price_per_gb) || 0) / 100,
+    trafficTopupMinGb: Number(subscribe.traffic_topup_min_gb) || 1,
+    trafficTopupMaxGb: Number(subscribe.traffic_topup_max_gb) || 1000,
+    trafficTopupPresets: String(subscribe.traffic_topup_presets ?? fallback.trafficTopupPresets),
   }
 }
 
@@ -574,6 +588,11 @@ function createSubscribeSettingsPayload(settings = {}) {
     default_remind_traffic: settings.defaultRemindTraffic ? 1 : 0,
     subscribe_path: String(settings.subscribePath || '').trim(),
     addon_group_label: String(settings.addonGroupLabel || '').trim().slice(0, 32),
+    traffic_topup_price_per_gb: Math.max(0, Math.round((Number(settings.trafficTopupPricePerGb) || 0) * 100)),
+    traffic_topup_min_gb: Math.max(1, Math.round(Number(settings.trafficTopupMinGb) || 1)),
+    traffic_topup_max_gb: Math.max(1, Math.round(Number(settings.trafficTopupMaxGb) || 1000)),
+    // 只保留数字与逗号，后端按 ^\d+(,\d+)*$ 校验
+    traffic_topup_presets: String(settings.trafficTopupPresets || '').replace(/[^\d,]/g, '').replace(/,+/g, ',').replace(/^,|,$/g, ''),
   }
 }
 

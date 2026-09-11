@@ -640,6 +640,24 @@ export default {
         description: '用户端套餐页与节点页里增值节点组区块的标题，例如「高级线路」「专线」。留空则用默认文案「增值节点」。每个组自身的名字在套餐编辑器里逐组设置。',
         placeholder: '留空则显示「增值节点」',
       },
+      trafficTopupPricePerGb: {
+        label: '流量加购单价（元 / GB）',
+        description: '用户在本周期内按 GB 加购流量的默认单价，填 0 表示全站不开放。加购的流量只在买它的那个周期有效，任何流量清零（月度重置、重置包、提前周期、换套餐）都会收回。单个套餐可在套餐编辑器里覆盖或关闭；持有增值节点组的用户还会按组加价。',
+        placeholder: '例如 0.50',
+      },
+      trafficTopupMinGb: {
+        label: '单次加购最少 GB',
+        description: '用户一次最少加购多少 GB。',
+      },
+      trafficTopupMaxGb: {
+        label: '单次加购最多 GB',
+        description: '用户一次最多加购多少 GB（上限 100000）。',
+      },
+      trafficTopupPresets: {
+        label: '加购快捷档位',
+        description: '用户端一键选择的 GB 档位，逗号分隔，例如「10,50,100,200」；超出上下限的档位不显示。留空则只提供自填。',
+        placeholder: '10,50,100,200',
+      },
       showInfoToServerEnable: {
         label: '在订阅中展示订阅信息',
         description: '开启后将会在用户订阅中展示订阅信息。',

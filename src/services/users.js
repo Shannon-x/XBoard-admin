@@ -118,6 +118,11 @@ function normalizeUser(user) {
     isAdmin: Boolean(user?.is_admin),
     isStaff: Boolean(user?.is_staff),
     remarks: user?.remarks || '',
+    // 增值节点组三来源：套餐「包含」由套餐决定（页面按 plan_id 查）、已购在 plan_options.addon_groups、
+    // 管理员手动授予在 admin_group_ids；本周期加购流量记账在 transfer_topup（含在 transfer_enable 里）
+    planOptions: user?.plan_options && typeof user.plan_options === 'object' ? user.plan_options : null,
+    adminGroupIds: Array.isArray(user?.admin_group_ids) ? user.admin_group_ids.map(Number).filter(Boolean) : [],
+    transferTopupRaw: Number(user?.transfer_topup || 0),
   }
 }
 
