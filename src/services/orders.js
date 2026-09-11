@@ -106,6 +106,15 @@ function normalizeOrder(order) {
     type,
     typeText: (ORDER_TYPE_MAP[type] || '未知') + (order?.auto_renew ? '·自动' : ''),
     autoRenew: Boolean(order?.auto_renew),
+    // 规格快照：自选套餐 / 增值组订单带 options（含已勾选的增值组 id）；流量加购包带 topup_gb
+    snapshotAddonIds: Array.isArray(order?.plan_snapshot?.options?.addon_groups)
+      ? order.plan_snapshot.options.addon_groups.map(Number).filter(Boolean) : [],
+    snapshotGrantedIds: Array.isArray(order?.plan_snapshot?.granted_groups)
+      ? order.plan_snapshot.granted_groups.map(Number).filter(Boolean) : [],
+    snapshotResources: order?.plan_snapshot?.options
+      ? { transfer: order.plan_snapshot.options.transfer_enable ?? null, devices: order.plan_snapshot.options.device_limit ?? null, speed: order.plan_snapshot.options.speed_limit ?? null }
+      : null,
+    topupGb: Number(order?.plan_snapshot?.topup_gb || 0),
     totalAmount: Number(order?.total_amount ?? 0) / 100,
     totalAmountText: `¥${(Number(order?.total_amount ?? 0) / 100).toFixed(2)}`,
     discountAmount: order?.discount_amount ? Number(order.discount_amount) / 100 : null,
