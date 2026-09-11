@@ -658,6 +658,22 @@ export default {
         description: '用户端一键选择的 GB 档位，逗号分隔，例如「10,50,100,200」；超出上下限的档位不显示。留空则只提供自填。',
         placeholder: '10,50,100,200',
       },
+      autoRenewEnable: {
+        label: '自动续费',
+        description: '全站开关。开启后用户可在仪表盘打开「自动续费」：到期前余额足够时，系统按上次的套餐、周期和配置用余额自动续费（不用优惠券，含专属折扣；余额不够整笔就不扣）。关闭后用户端不显示开关、后台任务不跑。',
+      },
+      autoRenewLeadHours: {
+        label: '自动续费提前小时数',
+        description: '到期前多少小时开始尝试自动续费（每小时检查一次）。',
+      },
+      autoRenewGraceHours: {
+        label: '到期后宽限小时数',
+        description: '到期后多少小时内余额补足了仍会自动续费；0 = 过期即不再尝试。',
+      },
+      renewPromptDays: {
+        label: '快捷续费提醒提前天数',
+        description: '到期前多少天在用户仪表盘显示「一键续费 / 选择其他套餐」提醒卡；0 = 不显示。用户只能按周期暂时收起，没有永久关闭。',
+      },
       showInfoToServerEnable: {
         label: '在订阅中展示订阅信息',
         description: '开启后将会在用户订阅中展示订阅信息。',

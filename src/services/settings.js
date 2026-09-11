@@ -64,6 +64,11 @@ export function createEmptySiteSettings() {
     trafficTopupMinGb: 1,
     trafficTopupMaxGb: 1000,
     trafficTopupPresets: '10,50,100,200',
+    // 续费助手：自动续费开关 / 提前小时 / 宽限小时；仪表盘快捷续费提醒提前天数
+    autoRenewEnable: true,
+    autoRenewLeadHours: 24,
+    autoRenewGraceHours: 72,
+    renewPromptDays: 7,
     inviteForce: false,
     inviteCommission: 0,
     inviteGenLimit: 0,
@@ -545,6 +550,10 @@ function normalizeSubscribeSettings(subscribe) {
       trafficTopupMinGb: fallback.trafficTopupMinGb,
       trafficTopupMaxGb: fallback.trafficTopupMaxGb,
       trafficTopupPresets: fallback.trafficTopupPresets,
+      autoRenewEnable: fallback.autoRenewEnable,
+      autoRenewLeadHours: fallback.autoRenewLeadHours,
+      autoRenewGraceHours: fallback.autoRenewGraceHours,
+      renewPromptDays: fallback.renewPromptDays,
     }
   }
 
@@ -569,6 +578,12 @@ function normalizeSubscribeSettings(subscribe) {
     trafficTopupMinGb: Number(subscribe.traffic_topup_min_gb) || 1,
     trafficTopupMaxGb: Number(subscribe.traffic_topup_max_gb) || 1000,
     trafficTopupPresets: String(subscribe.traffic_topup_presets ?? fallback.trafficTopupPresets),
+    autoRenewEnable: subscribe.auto_renew_enable === undefined ? fallback.autoRenewEnable : Boolean(subscribe.auto_renew_enable),
+    autoRenewLeadHours: Number(subscribe.auto_renew_lead_hours) || fallback.autoRenewLeadHours,
+    autoRenewGraceHours: subscribe.auto_renew_grace_hours === undefined || subscribe.auto_renew_grace_hours === null
+      ? fallback.autoRenewGraceHours : Math.max(0, Number(subscribe.auto_renew_grace_hours) || 0),
+    renewPromptDays: subscribe.renew_prompt_days === undefined || subscribe.renew_prompt_days === null
+      ? fallback.renewPromptDays : Math.max(0, Number(subscribe.renew_prompt_days) || 0),
   }
 }
 
@@ -593,6 +608,10 @@ function createSubscribeSettingsPayload(settings = {}) {
     traffic_topup_max_gb: Math.max(1, Math.round(Number(settings.trafficTopupMaxGb) || 1000)),
     // 只保留数字与逗号，后端按 ^\d+(,\d+)*$ 校验
     traffic_topup_presets: String(settings.trafficTopupPresets || '').replace(/[^\d,]/g, '').replace(/,+/g, ',').replace(/^,|,$/g, ''),
+    auto_renew_enable: settings.autoRenewEnable ? 1 : 0,
+    auto_renew_lead_hours: Math.min(168, Math.max(1, Math.round(Number(settings.autoRenewLeadHours) || 24))),
+    auto_renew_grace_hours: Math.min(720, Math.max(0, Math.round(Number(settings.autoRenewGraceHours) || 0))),
+    renew_prompt_days: Math.min(60, Math.max(0, Math.round(Number(settings.renewPromptDays) || 0))),
   }
 }
 

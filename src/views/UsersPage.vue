@@ -128,6 +128,7 @@ const FILTER_FIELD_STATIC = Object.freeze([
   { id: 'invite_user_id', label: '邀请人ID', type: 'number', operators: ['等于'] },
   { id: 'is_admin', label: '管理员', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
   { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+  { id: 'auto_renew', label: '自动续费', type: 'select', operators: ['等于'], selectOptions: [{ label: '已开启', value: '1' }, { label: '未开启', value: '0' }] },
 ])
 
 const filterFieldOptions = computed(() => {
@@ -970,6 +971,7 @@ onMounted(function onMount() {
           <template #default="{ row }">
             <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
             <span v-else>{{ row.planName }}</span>
+            <el-tag v-if="row.autoRenew" size="small" type="success" title="用户已开启自动续费" style="margin-left: 6px">自动续费</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="增值组" min-width="150">

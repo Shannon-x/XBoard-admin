@@ -123,6 +123,7 @@ function normalizeUser(user) {
     planOptions: user?.plan_options && typeof user.plan_options === 'object' ? user.plan_options : null,
     adminGroupIds: Array.isArray(user?.admin_group_ids) ? user.admin_group_ids.map(Number).filter(Boolean) : [],
     transferTopupRaw: Number(user?.transfer_topup || 0),
+    autoRenew: Boolean(user?.auto_renew),
   }
 }
 
