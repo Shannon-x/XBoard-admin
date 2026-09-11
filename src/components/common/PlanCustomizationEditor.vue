@@ -52,7 +52,7 @@ function emitAddons(next) {
 function addGroup(id) {
   if (!id) return
   // 添加后默认「可选购 ¥5.00/月」，名称与价格都可改
-  emitAddons({ ...addonRules.value, [String(id)]: { mode: 'optional', price: 500, label: '' } })
+  emitAddons({ ...addonRules.value, [String(id)]: { mode: 'optional', price: 500, label: '', topup_price_per_gb: 0 } })
   pendingAdd.value = null
 }
 function removeGroup(id) {
@@ -62,9 +62,10 @@ function removeGroup(id) {
 }
 function setAddonMode(id, selectedMode) {
   const old = addonRules.value[id] || {}
+  const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0) }
   const rule = selectedMode === 'included'
-    ? { mode: 'included', label: old.label || '' }
-    : { mode: 'optional', price: Number(old.price || 0), label: old.label || '' }
+    ? { mode: 'included', ...keep }
+    : { mode: 'optional', price: Number(old.price || 0), ...keep }
   emitAddons({ ...addonRules.value, [id]: rule })
 }
 function setAddonPrice(id, yuan) {
@@ -72,6 +73,35 @@ function setAddonPrice(id, yuan) {
 }
 function setAddonLabel(id, text) {
   emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], label: String(text || '').slice(0, 32) } })
+}
+/** 持有该组的用户加购流量时每 GB 额外加价（分）：同一套餐买了 10x 组的人与没买的人，加购单价就此拉开。 */
+function setAddonTopupSurcharge(id, yuan) {
+  emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], topup_price_per_gb: Math.round((Number(yuan) || 0) * 100) } })
+}
+
+/* ───────── 流量加购包：默认跟随站点设置；本套餐可关闭或自定义单价与上下限 ───────── */
+const topupRule = computed(() => props.modelValue?.traffic_topup ?? null)
+const topupMode = computed(() => topupRule.value?.mode ?? 'inherit')
+function emitTopup(rule) {
+  const value = { ...props.modelValue }
+  if (rule && rule.mode !== 'inherit') value.traffic_topup = rule
+  else delete value.traffic_topup
+  emit('update:modelValue', value)
+}
+function setTopupMode(selectedMode) {
+  if (selectedMode === 'inherit') return emitTopup(null)
+  if (selectedMode === 'off') return emitTopup({ mode: 'off' })
+  const old = topupRule.value || {}
+  const rule = { mode: 'custom', price_per_gb: Number(old.price_per_gb || 100) }
+  if (old.min_gb) rule.min_gb = Number(old.min_gb)
+  if (old.max_gb) rule.max_gb = Number(old.max_gb)
+  emitTopup(rule)
+}
+function setTopupField(key, value) {
+  const next = { ...(topupRule.value || { mode: 'custom' }) }
+  if (value == null || value === '') delete next[key]
+  else next[key] = key === 'price_per_gb' ? Math.max(1, Math.round(Number(value) * 100)) : Math.max(1, Math.round(Number(value)))
+  emitTopup(next)
 }
 
 const allFixed = computed(() => !optionalAddons.value.length && fields.value.every((field) => !resourceSelectable(field)))
@@ -219,6 +249,15 @@ function updateChoices(field, text) {
                 clearable
                 @update:model-value="setAddonLabel(item.id, $event)"
               />
+              <span class="addon-topup-surcharge">
+                <span>持有本组的用户加购流量每 GB 加价</span>
+                <el-input-number
+                  :model-value="Number(item.rule?.topup_price_per_gb || 0) / 100"
+                  :min="0" :max="1000000" :precision="2" :step="0.1" size="small"
+                  @update:model-value="setAddonTopupSurcharge(item.id, $event)"
+                />
+                <span>元</span>
+              </span>
             </label>
           </li>
         </ul>
@@ -240,6 +279,35 @@ function updateChoices(field, text) {
             </el-option>
           </el-select>
           <span class="customization-note">可添加 {{ addonCandidates.length }} 个；基础组与已添加的组不在列表里。添加后默认「可选购 ¥5.00/月」，名称与价格都可改。</span>
+        </div>
+      </div>
+
+      <div class="customization-rule" data-resource="traffic_topup">
+        <div class="addon-head">
+          <strong>流量加购包</strong>
+          <span class="customization-note">本周期内按 GB 追加流量；流量清零时一并收回</span>
+        </div>
+        <p class="customization-note" style="margin-top: 6px">
+          默认跟随「系统设置 → 订阅」里的加购单价与上下限，30 个套餐不用逐个填。成本不同的套餐（如 10x）可在这里单独定价或关闭。
+          上方增值组每行的「加购加价」会叠加在单价上，买了 10x 组的用户加购更贵。
+        </p>
+        <el-form-item label="加购规则" style="margin-top: 12px">
+          <el-radio-group :model-value="topupMode" @update:model-value="setTopupMode">
+            <el-radio-button value="inherit">跟随站点设置</el-radio-button>
+            <el-radio-button value="off">本套餐不开放</el-radio-button>
+            <el-radio-button value="custom">自定义</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <div v-if="topupMode === 'custom'" class="customization-inputs">
+          <el-form-item label="单价（元 / GB）">
+            <el-input-number :model-value="Number(topupRule?.price_per_gb || 0) / 100" :min="0.01" :max="1000000" :precision="2" :step="0.1" @update:model-value="setTopupField('price_per_gb', $event)" />
+          </el-form-item>
+          <el-form-item label="最少 GB（留空跟随站点）">
+            <el-input-number :model-value="topupRule?.min_gb ?? undefined" :min="1" :max="100000" :precision="0" placeholder="站点默认" @update:model-value="setTopupField('min_gb', $event)" />
+          </el-form-item>
+          <el-form-item label="最多 GB（留空跟随站点）">
+            <el-input-number :model-value="topupRule?.max_gb ?? undefined" :min="1" :max="100000" :precision="0" placeholder="站点默认" @update:model-value="setTopupField('max_gb', $event)" />
+          </el-form-item>
         </div>
       </div>
 
@@ -276,6 +344,7 @@ function updateChoices(field, text) {
 .addon-remove { margin-left: auto; }
 .addon-label { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--el-border-color-lighter); font-size: 12px; color: var(--el-text-color-secondary); }
 .addon-label :deep(.el-input) { flex: 1 1 200px; }
+.addon-topup-surcharge { flex: 1 1 100%; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .addon-empty { margin-top: 12px; padding: 18px; border: 1px dashed var(--el-border-color); border-radius: 6px; text-align: center; color: var(--el-text-color-secondary); font-size: 13px; }
 .addon-adder { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .addon-opt-count { float: right; color: var(--el-text-color-secondary); font-size: 12px; }

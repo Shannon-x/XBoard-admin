@@ -640,6 +640,40 @@ export default {
         description: '用户端套餐页与节点页里增值节点组区块的标题，例如「高级线路」「专线」。留空则用默认文案「增值节点」。每个组自身的名字在套餐编辑器里逐组设置。',
         placeholder: '留空则显示「增值节点」',
       },
+      trafficTopupPricePerGb: {
+        label: '流量加购单价（元 / GB）',
+        description: '用户在本周期内按 GB 加购流量的默认单价，填 0 表示全站不开放。加购的流量只在买它的那个周期有效，任何流量清零（月度重置、重置包、提前周期、换套餐）都会收回。单个套餐可在套餐编辑器里覆盖或关闭；持有增值节点组的用户还会按组加价。',
+        placeholder: '例如 0.50',
+      },
+      trafficTopupMinGb: {
+        label: '单次加购最少 GB',
+        description: '用户一次最少加购多少 GB。',
+      },
+      trafficTopupMaxGb: {
+        label: '单次加购最多 GB',
+        description: '用户一次最多加购多少 GB（上限 100000）。',
+      },
+      trafficTopupPresets: {
+        label: '加购快捷档位',
+        description: '用户端一键选择的 GB 档位，逗号分隔，例如「10,50,100,200」；超出上下限的档位不显示。留空则只提供自填。',
+        placeholder: '10,50,100,200',
+      },
+      autoRenewEnable: {
+        label: '自动续费',
+        description: '全站开关。开启后用户可在仪表盘打开「自动续费」：到期前余额足够时，系统按上次的套餐、周期和配置用余额自动续费（不用优惠券，含专属折扣；余额不够整笔就不扣）。关闭后用户端不显示开关、后台任务不跑。',
+      },
+      autoRenewLeadHours: {
+        label: '自动续费提前小时数',
+        description: '到期前多少小时开始尝试自动续费（每小时检查一次）。',
+      },
+      autoRenewGraceHours: {
+        label: '到期后宽限小时数',
+        description: '到期后多少小时内余额补足了仍会自动续费；0 = 过期即不再尝试。',
+      },
+      renewPromptDays: {
+        label: '快捷续费提醒提前天数',
+        description: '到期前多少天在用户仪表盘显示「一键续费 / 选择其他套餐」提醒卡；0 = 不显示。用户只能按周期暂时收起，没有永久关闭。',
+      },
       showInfoToServerEnable: {
         label: '在订阅中展示订阅信息',
         description: '开启后将会在用户订阅中展示订阅信息。',

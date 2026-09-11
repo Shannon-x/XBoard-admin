@@ -18,6 +18,7 @@ import {
   fetchUserTrafficStats,
 } from '../services/users'
 import { fetchManagedPlans, PERIOD_LABELS } from '../services/plans'
+import { fetchManagedNodeGroups } from '../services/nodes'
 import { assignOrder } from '../services/orders'
 import { createSequence } from '../utils/sequence'
 import { copyText } from '../utils/clipboard'
@@ -127,6 +128,7 @@ const FILTER_FIELD_STATIC = Object.freeze([
   { id: 'invite_user_id', label: '邀请人ID', type: 'number', operators: ['等于'] },
   { id: 'is_admin', label: '管理员', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
   { id: 'is_staff', label: '员工', type: 'select', operators: ['等于'], selectOptions: [{ label: '是', value: '1' }, { label: '否', value: '0' }] },
+  { id: 'auto_renew', label: '自动续费', type: 'select', operators: ['等于'], selectOptions: [{ label: '已开启', value: '1' }, { label: '未开启', value: '0' }] },
 ])
 
 const filterFieldOptions = computed(() => {
@@ -137,9 +139,45 @@ const filterFieldOptions = computed(() => {
     operators: ['等于'],
     selectOptions: plans.value.map(p => ({ label: p.name, value: String(p.id) })),
   }
+  // 后端虚拟字段：拥有某增值组的用户 = 套餐包含 ∪ 已购 ∪ 管理员授予
+  const addonEntry = {
+    id: 'addon_group',
+    label: '增值节点组',
+    type: 'select',
+    operators: ['等于'],
+    selectOptions: groups.value.map(g => ({ label: g.name, value: String(g.id) })),
+  }
   // 插在 'id' 之后（保留原先位置）
-  return [FILTER_FIELD_STATIC[0], FILTER_FIELD_STATIC[1], planEntry, ...FILTER_FIELD_STATIC.slice(2)]
+  return [FILTER_FIELD_STATIC[0], FILTER_FIELD_STATIC[1], planEntry, addonEntry, ...FILTER_FIELD_STATIC.slice(2)]
 })
+
+/* ───────── 增值节点组：权限组名字典 + 用户此刻生效的组（与后端 effectiveAddonGroupIds 同口径） ───────── */
+const groups = ref([])
+const groupNameById = computed(() => Object.fromEntries(groups.value.map(g => [String(g.id), g.name])))
+async function loadGroups() {
+  try {
+    const list = await fetchManagedNodeGroups()
+    groups.value = Array.isArray(list) ? list : []
+  } catch {
+    groups.value = []
+  }
+}
+const ADDON_SOURCE_TEXT = { included: '套餐包含', purchased: '已购买', admin: '管理员授予' }
+function addonChipsOf(row) {
+  const plan = plans.value.find(p => String(p.id) === String(row.planId))
+  const rules = plan?.customization?.addon_groups || {}
+  const chips = new Map()
+  const push = (id, source) => {
+    const key = String(id)
+    if (chips.has(key)) return
+    chips.set(key, { id: key, source, title: ADDON_SOURCE_TEXT[source], name: rules[key]?.label?.trim() || groupNameById.value[key] || `组 #${key}` })
+  }
+  Object.entries(rules).forEach(([id, rule]) => { if (rule?.mode === 'included') push(id, 'included') })
+  ;(row.planOptions?.addon_groups || []).forEach(id => push(id, 'purchased'))
+  ;(row.adminGroupIds || []).forEach(id => push(id, 'admin'))
+  return [...chips.values()]
+}
+const ADDON_TAG_TYPE = { included: 'info', purchased: 'success', admin: 'warning' }
 
 function getFieldDef(fieldId) {
   return filterFieldOptions.value.find(f => f.id === fieldId)
@@ -465,6 +503,8 @@ function openEditDialog(user) {
     next_reset_at_display: user.nextResetAt,
     last_reset_at_display: user.lastResetAt,
     plan_id: user.planId,
+    admin_group_ids: [...(user.adminGroupIds || [])],
+    addon_chips: addonChipsOf(user),
     banned: user.banned,
     is_admin: user.isAdmin ? 1 : 0,
     is_staff: user.isStaff ? 1 : 0,
@@ -484,6 +524,7 @@ async function saveEditForm() {
   editSaving.value = true
   try {
     const payload = { ...editForm.value }
+    delete payload.addon_chips // 仅展示用
     if (!payload.password) {
       delete payload.password
     }
@@ -816,6 +857,7 @@ onMounted(function onMount() {
   fetchManagedPlans()
     .then(list => { plans.value = list })
     .catch(err => { console.warn('[UsersPage] 加载订阅计划失败', err) })
+  loadGroups()
 })
 </script>
 
@@ -929,6 +971,20 @@ onMounted(function onMount() {
           <template #default="{ row }">
             <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
             <span v-else>{{ row.planName }}</span>
+            <el-tag v-if="row.autoRenew" size="small" type="success" title="用户已开启自动续费" style="margin-left: 6px">自动续费</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="增值组" min-width="150">
+          <template #default="{ row }">
+            <span v-if="!addonChipsOf(row).length" style="color: var(--el-text-color-secondary)">—</span>
+            <el-tag
+              v-for="chip in addonChipsOf(row)"
+              :key="chip.id"
+              size="small"
+              :type="ADDON_TAG_TYPE[chip.source]"
+              :title="chip.title"
+              style="margin: 1px 4px 1px 0"
+            >{{ chip.name }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="已用/总量" min-width="140" prop="totalUsedRaw" sortable="custom">
@@ -1100,6 +1156,30 @@ onMounted(function onMount() {
             <el-option :label="'无'" :value="null" />
             <el-option v-for="p in plans" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="增值节点组">
+          <div style="width:100%">
+            <div v-if="editForm.addon_chips?.length" style="margin-bottom: 6px">
+              <el-tag v-for="chip in editForm.addon_chips" :key="chip.id" size="small" :type="ADDON_TAG_TYPE[chip.source]" style="margin: 1px 4px 1px 0">
+                {{ chip.name }} · {{ chip.title }}
+              </el-tag>
+            </div>
+            <el-select
+              v-model="editForm.admin_group_ids"
+              multiple
+              filterable
+              collapse-tags
+              collapse-tags-tooltip
+              placeholder="手动授予（赔偿 / 工单处理）…"
+              style="width:100%"
+            >
+              <el-option v-for="g in groups" :key="g.id" :label="g.name" :value="Number(g.id)" />
+            </el-select>
+            <div style="color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.5; margin-top: 4px">
+              手动授予的组与套餐无关、不参与续费报价、换套餐也保留，只能在这里撤销。套餐「包含」的组随套餐配置实时生效，已购的组随订单，这两类不在此处改。
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item label="账户状态">
