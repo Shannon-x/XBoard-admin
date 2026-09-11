@@ -635,6 +635,11 @@ export default {
         description: '订阅路径，修改后将会改变原有的 subscribe 路径。当前订阅路径格式：「订阅路径/xxxxxxxxxx」，修改订阅路径后，可能需要重启服务才能生效。',
         placeholder: '请输入订阅路径',
       },
+      addonGroupLabel: {
+        label: '增值节点组显示名',
+        description: '用户端套餐页与节点页里增值节点组区块的标题，例如「高级线路」「专线」。留空则用默认文案「增值节点」。每个组自身的名字在套餐编辑器里逐组设置。',
+        placeholder: '留空则显示「增值节点」',
+      },
       showInfoToServerEnable: {
         label: '在订阅中展示订阅信息',
         description: '开启后将会在用户订阅中展示订阅信息。',

@@ -436,6 +436,7 @@ onMounted(function onMount() {
           :devices="Number(editForm.deviceLimit)"
           :speed="Number(editForm.speedLimit)"
           :monthly-price="Number(editForm.prices.month_price || editForm.prices.onetime_price || 0)"
+          :prices="editForm.prices"
           :groups="groups"
           :base-group-id="editForm.groupId"
         />
