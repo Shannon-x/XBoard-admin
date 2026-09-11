@@ -720,6 +720,20 @@ export const useAdminStore = defineStore("admin", () => {
           min: 0,
         },
         {
+          key: "trafficTopupSelection",
+          labelKey: "systemSettings.fields.trafficTopupSelection.label",
+          descriptionKey: "systemSettings.fields.trafficTopupSelection.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.trafficTopupSelection",
+        },
+        {
+          key: "trafficTopupStepGb",
+          labelKey: "systemSettings.fields.trafficTopupStepGb.label",
+          descriptionKey: "systemSettings.fields.trafficTopupStepGb.description",
+          type: "number",
+          min: 1,
+        },
+        {
           key: "trafficTopupMinGb",
           labelKey: "systemSettings.fields.trafficTopupMinGb.label",
           descriptionKey: "systemSettings.fields.trafficTopupMinGb.description",

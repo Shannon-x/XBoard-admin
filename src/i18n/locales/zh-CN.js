@@ -653,10 +653,18 @@ export default {
         label: '单次加购最多 GB',
         description: '用户一次最多加购多少 GB（上限 100000）。',
       },
+      trafficTopupSelection: {
+        label: '加购选购方式',
+        description: '「范围滑杆」：用户在最少～最多 GB 之间拖滑杆或自填，按步长递增，金额 = GB × 单价，下面的档位只作快捷按钮。「指定档位」：只能买下面列出的几档，每档可单独定价（大包更便宜）。单个套餐可在套餐编辑器里覆盖。',
+      },
+      trafficTopupStepGb: {
+        label: '滑杆步长（GB）',
+        description: '范围滑杆模式下每次递增的 GB 数，例如 10 = 只能买 10、20、30…',
+      },
       trafficTopupPresets: {
-        label: '加购快捷档位',
-        description: '用户端一键选择的 GB 档位，逗号分隔，例如「10,50,100,200」；超出上下限的档位不显示。留空则只提供自填。',
-        placeholder: '10,50,100,200',
+        label: '加购档位',
+        description: '逗号分隔。「10,50,100,200」按单价计价；「10,50:22.5,100:40」给档位定专价（GB:元），未定价的档仍按单价。范围滑杆模式下只作快捷按钮，指定档位模式下就是可买的几档。',
+        placeholder: '10,50:22.5,100:40',
       },
       autoRenewEnable: {
         label: '自动续费',
@@ -945,6 +953,10 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      trafficTopupSelection: {
+        range: '范围滑杆（按步长自选 GB）',
+        choices: '指定档位（只能买列出的几档）',
+      },
       commissionWithdrawRateSource: {
         auto: '自动获取实时行情（推荐）',
         manual: '手动固定汇率',

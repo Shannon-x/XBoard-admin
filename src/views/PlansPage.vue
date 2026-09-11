@@ -63,6 +63,38 @@ const topupMode = computed({
 function setTopupPrice(yuan) {
   setTopupRule({ ...(topupRule.value || { mode: 'custom' }), mode: 'custom', price_per_gb: Math.max(1, Math.round((Number(yuan) || 0) * 100)) })
 }
+/* 自定义时的选购方式：range = 滑杆（min/max/step），choices = 指定档位（每档可专价） */
+const topupSelection = computed({
+  get: () => topupRule.value?.selection === 'choices' ? 'choices' : 'range',
+  set: (sel) => {
+    const next = { ...(topupRule.value || { mode: 'custom', price_per_gb: 50 }), mode: 'custom', selection: sel }
+    if (sel === 'choices' && !Array.isArray(next.choices)) next.choices = [{ gb: 10 }, { gb: 50 }, { gb: 100 }]
+    setTopupRule(next)
+  },
+})
+function setTopupInt(key, value) {
+  const next = { ...(topupRule.value || { mode: 'custom' }), mode: 'custom' }
+  if (value == null || value === '') delete next[key]
+  else next[key] = Math.max(1, Math.round(Number(value)))
+  setTopupRule(next)
+}
+const choicesDraft = ref(null)
+const choicesText = computed(() => (topupRule.value?.choices || [])
+  .map((c) => (c.price != null ? `${c.gb}:${(c.price / 100).toFixed(2).replace(/\.?0+$/, '')}` : String(c.gb))).join(', '))
+function commitChoices(text) {
+  // 「10, 50:22.5, 100:40」→ [{gb:10},{gb:50,price:2250},{gb:100,price:4000}]；非法项丢掉，留给后端再校验一次
+  const seen = new Set()
+  const choices = String(text || '').split(/[\s,，、;；]+/).map((entry) => {
+    const m = entry.match(/^(\d+)(?::(\d+(?:\.\d{1,2})?))?$/)
+    if (!m) return null
+    const gb = Number(m[1])
+    if (gb < 1 || seen.has(gb)) return null
+    seen.add(gb)
+    return m[2] != null ? { gb, price: Math.round(Number(m[2]) * 100) } : { gb }
+  }).filter(Boolean).sort((a, b) => a.gb - b.gb)
+  choicesDraft.value = null
+  setTopupRule({ ...(topupRule.value || { mode: 'custom' }), mode: 'custom', selection: 'choices', choices })
+}
 const topupHint = computed(() => {
   const site = Number(siteSubscribe.value?.trafficTopupPricePerGb || 0)
   if (topupMode.value === 'off') return '本套餐不卖加购流量，用户端不显示入口。'
@@ -461,17 +493,38 @@ onMounted(function onMount() {
               <el-option label="本套餐不开放" value="off" />
               <el-option label="自定义单价" value="custom" />
             </el-select>
-            <el-input
-              v-if="topupMode === 'custom'"
-              :model-value="Number(topupRule?.price_per_gb || 0) / 100"
-              type="number" step="0.01" min="0.01" placeholder="0.50"
-              style="margin-top: 8px"
-              @update:model-value="setTopupPrice($event)"
-            >
-              <template #prefix>¥</template>
-              <template #suffix><span style="color: var(--el-text-color-secondary)">/ GB</span></template>
-            </el-input>
-            <div style="font-size: 12px; line-height: 1.5; color: var(--el-text-color-secondary); margin-top: 6px">{{ topupHint }}</div>
+            <template v-if="topupMode === 'custom'">
+              <el-input
+                :model-value="Number(topupRule?.price_per_gb || 0) / 100"
+                type="number" step="0.01" min="0.01" placeholder="0.50"
+                style="margin-top: 8px"
+                @update:model-value="setTopupPrice($event)"
+              >
+                <template #prefix>¥</template>
+                <template #suffix><span style="color: var(--el-text-color-secondary)">/ GB</span></template>
+              </el-input>
+              <el-radio-group v-model="topupSelection" size="small" style="margin-top: 8px">
+                <el-radio-button value="range">范围滑杆</el-radio-button>
+                <el-radio-button value="choices">指定档位</el-radio-button>
+              </el-radio-group>
+              <div v-if="topupSelection === 'range'" style="display: flex; gap: 6px; margin-top: 8px">
+                <el-input :model-value="topupRule?.min_gb ?? ''" type="number" min="1" placeholder="最少" @update:model-value="setTopupInt('min_gb', $event)"><template #suffix>GB</template></el-input>
+                <el-input :model-value="topupRule?.max_gb ?? ''" type="number" min="1" placeholder="最多" @update:model-value="setTopupInt('max_gb', $event)"><template #suffix>GB</template></el-input>
+                <el-input :model-value="topupRule?.step_gb ?? ''" type="number" min="1" placeholder="步长" @update:model-value="setTopupInt('step_gb', $event)"><template #suffix>GB</template></el-input>
+              </div>
+              <el-input
+                v-else
+                :model-value="choicesDraft ?? choicesText"
+                placeholder="10, 50:22.5, 100:40（GB 或 GB:元）"
+                style="margin-top: 8px"
+                @update:model-value="choicesDraft = $event"
+                @change="commitChoices($event)"
+              />
+            </template>
+            <div style="font-size: 12px; line-height: 1.5; color: var(--el-text-color-secondary); margin-top: 6px">
+              {{ topupHint }}
+              <template v-if="topupMode === 'custom'">{{ topupSelection === 'range' ? ' 留空的上下限 / 步长跟随站点。' : ' 档位写 GB:元 可定专价，大包更便宜；不写价按单价。' }}</template>
+            </div>
           </div>
         </div>
 
