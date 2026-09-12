@@ -4,7 +4,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshCw } from 'lucide-vue-next'
 import PlanCustomizationEditor from '../components/common/PlanCustomizationEditor.vue'
 import SectionCard from '../components/common/SectionCard.vue'
-import { fetchSiteSettingsGroup } from '../services/settings'
 import {
   fetchManagedPlans,
   saveManagedPlan,
@@ -34,17 +33,32 @@ const loading = ref(false)
 const errorMsg = ref('')
 const groups = ref([])
 
-/* ───────── 流量加购（customization.traffic_topup）：与流量包 / 重置包并排配置 ─────────
+/* ───────── 流量加购（customization.traffic_topup）：套餐级、默认关闭、没有站点级默认 ─────────
    三种「流量产品」放在一起，管理员一眼分清：
      流量包   = 一次性套餐，永不过期（老功能）
      重置包   = 把本周期流量清零重来，整份卖（老功能）
-     加购流量 = 按 GB 追加到本周期，流量清零时收回（新）—— 单价默认跟随站点设置 */
-const siteSubscribe = ref(null)
-async function loadSiteTopup() {
-  try { siteSubscribe.value = await fetchSiteSettingsGroup('subscription') } catch { siteSubscribe.value = null }
-}
+     加购流量 = 按 GB 追加到本周期，流量清零时收回（新）
+   单价硬下限 = 本套餐每 GB 到手价（与后端 topupPriceFloor 同口径）：
+   低于它，用户买最低档再加购就比直接买大档便宜。开启时单价直接预填成下限。 */
 const FIXED_RESOURCES = () => ({ transfer_enable: { mode: 'fixed' }, device_limit: { mode: 'fixed' }, speed_limit: { mode: 'fixed' } })
 const topupRule = computed(() => editForm.value.customization?.traffic_topup ?? null)
+const topupFloorCents = computed(() => {
+  const gb = Number(editForm.value.transferEnableGB || 0)
+  if (gb < 1) return 0
+  const prices = editForm.value.prices || {}
+  let monthly = null
+  for (const [key, months] of [['month_price', 1], ['quarter_price', 3], ['half_year_price', 6], ['year_price', 12], ['two_year_price', 24], ['three_year_price', 36], ['onetime_price', 1]]) {
+    const v = Number(prices[key])
+    if (v > 0) { monthly = v / months; break }
+  }
+  if (monthly === null) return 0
+  let floor = Math.ceil(monthly * 100 / gb)
+  const r = editForm.value.customization?.transfer_enable
+  if (r && r.mode && r.mode !== 'fixed' && Number(r.step) > 0 && r.price_per_step != null) {
+    floor = Math.max(floor, Math.ceil(Number(r.price_per_step) / Number(r.step)))
+  }
+  return floor
+})
 function setTopupRule(rule) {
   // customization 为 null 时要连三项固定规格一起建：后端要求这三个键必须在
   const next = editForm.value.customization ? { ...editForm.value.customization } : FIXED_RESOURCES()
@@ -52,28 +66,27 @@ function setTopupRule(rule) {
   else delete next.traffic_topup
   editForm.value.customization = next
 }
-const topupMode = computed({
-  get: () => topupRule.value?.mode ?? 'inherit',
-  set: (mode) => {
-    if (mode === 'inherit') return setTopupRule(null)
-    if (mode === 'off') return setTopupRule({ mode: 'off' })
-    setTopupRule({ mode: 'custom', price_per_gb: Number(topupRule.value?.price_per_gb || 50) })
+const topupOn = computed({
+  get: () => ['on', 'custom'].includes(topupRule.value?.mode),
+  set: (on) => {
+    if (!on) return setTopupRule(null)
+    setTopupRule({ ...(topupRule.value || {}), mode: 'on', price_per_gb: Number(topupRule.value?.price_per_gb || Math.max(1, topupFloorCents.value)) })
   },
 })
 function setTopupPrice(yuan) {
-  setTopupRule({ ...(topupRule.value || { mode: 'custom' }), mode: 'custom', price_per_gb: Math.max(1, Math.round((Number(yuan) || 0) * 100)) })
+  setTopupRule({ ...(topupRule.value || {}), mode: 'on', price_per_gb: Math.max(1, Math.round((Number(yuan) || 0) * 100)) })
 }
-/* 自定义时的选购方式：range = 滑杆（min/max/step），choices = 指定档位（每档可专价） */
+/* 选购方式：range = 滑杆（min/max/step），choices = 指定档位（每档可专价） */
 const topupSelection = computed({
   get: () => topupRule.value?.selection === 'choices' ? 'choices' : 'range',
   set: (sel) => {
-    const next = { ...(topupRule.value || { mode: 'custom', price_per_gb: 50 }), mode: 'custom', selection: sel }
+    const next = { ...(topupRule.value || { price_per_gb: Math.max(1, topupFloorCents.value) }), mode: 'on', selection: sel }
     if (sel === 'choices' && !Array.isArray(next.choices)) next.choices = [{ gb: 10 }, { gb: 50 }, { gb: 100 }]
     setTopupRule(next)
   },
 })
 function setTopupInt(key, value) {
-  const next = { ...(topupRule.value || { mode: 'custom' }), mode: 'custom' }
+  const next = { ...(topupRule.value || {}), mode: 'on' }
   if (value == null || value === '') delete next[key]
   else next[key] = Math.max(1, Math.round(Number(value)))
   setTopupRule(next)
@@ -93,15 +106,14 @@ function commitChoices(text) {
     return m[2] != null ? { gb, price: Math.round(Number(m[2]) * 100) } : { gb }
   }).filter(Boolean).sort((a, b) => a.gb - b.gb)
   choicesDraft.value = null
-  setTopupRule({ ...(topupRule.value || { mode: 'custom' }), mode: 'custom', selection: 'choices', choices })
+  setTopupRule({ ...(topupRule.value || {}), mode: 'on', selection: 'choices', choices })
 }
+const topupPriceTooLow = computed(() => topupOn.value && topupFloorCents.value > 0 && Number(topupRule.value?.price_per_gb || 0) < topupFloorCents.value)
 const topupHint = computed(() => {
-  const site = Number(siteSubscribe.value?.trafficTopupPricePerGb || 0)
-  if (topupMode.value === 'off') return '本套餐不卖加购流量，用户端不显示入口。'
-  if (topupMode.value === 'custom') return '用户在仪表盘订阅卡「加购流量」购买；持有增值组的用户按组另加价。'
-  return site > 0
-    ? `跟随站点设置：¥${site.toFixed(2)} / GB。用户在仪表盘订阅卡「加购流量」购买。`
-    : '站点还没设单价 → 全站关闭。到「系统设置 → 订阅 → 流量加购单价」填一个即可对所有套餐生效。'
+  const floor = topupFloorCents.value
+  if (!topupOn.value) return '本套餐不卖加购流量，用户端不显示入口。开启后单价会预填为本套餐每 GB 到手价。'
+  return (floor > 0 ? `本套餐每 GB 到手价 ¥${(floor / 100).toFixed(2)}，加购单价不能低于它——否则用户买最低档再加购比直接买大档便宜。` : '')
+    + '用户在仪表盘订阅卡「加购流量」购买；持有增值组的用户按组另加价。'
 })
 const sortDialogVisible = ref(false)
 
@@ -331,7 +343,6 @@ onMounted(function onMount() {
   if (route.query.plan_id) highlightPlanId.value = String(route.query.plan_id)
   loadPlans()
   loadGroups()
-  loadSiteTopup()
 })
 </script>
 
@@ -488,12 +499,11 @@ onMounted(function onMount() {
           </div>
           <div class="plan-price-card plan-price-card--special" style="flex:1 1 240px" data-price="traffic_topup">
             <div class="plan-price-card__label">加购流量 <span>按 GB 追加到本周期，流量清零时收回</span></div>
-            <el-select v-model="topupMode" style="width: 100%">
-              <el-option label="跟随站点设置" value="inherit" />
-              <el-option label="本套餐不开放" value="off" />
-              <el-option label="自定义单价" value="custom" />
-            </el-select>
-            <template v-if="topupMode === 'custom'">
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px">
+              <el-switch v-model="topupOn" />
+              <span style="font-size: 12.5px; color: var(--el-text-color-regular)">{{ topupOn ? '已开启' : '未开启' }}</span>
+            </div>
+            <template v-if="topupOn">
               <el-input
                 :model-value="Number(topupRule?.price_per_gb || 0) / 100"
                 type="number" step="0.01" min="0.01" placeholder="0.50"
@@ -503,6 +513,7 @@ onMounted(function onMount() {
                 <template #prefix>¥</template>
                 <template #suffix><span style="color: var(--el-text-color-secondary)">/ GB</span></template>
               </el-input>
+              <div v-if="topupPriceTooLow" style="font-size: 12px; color: var(--el-color-danger); margin-top: 4px">低于每 GB 到手价 ¥{{ (topupFloorCents / 100).toFixed(2) }}，保存会被拒绝</div>
               <el-radio-group v-model="topupSelection" size="small" style="margin-top: 8px">
                 <el-radio-button value="range">范围滑杆</el-radio-button>
                 <el-radio-button value="choices">指定档位</el-radio-button>
@@ -523,7 +534,7 @@ onMounted(function onMount() {
             </template>
             <div style="font-size: 12px; line-height: 1.5; color: var(--el-text-color-secondary); margin-top: 6px">
               {{ topupHint }}
-              <template v-if="topupMode === 'custom'">{{ topupSelection === 'range' ? ' 留空的上下限 / 步长跟随站点。' : ' 档位写 GB:元 可定专价，大包更便宜；不写价按单价。' }}</template>
+              <template v-if="topupOn">{{ topupSelection === 'range' ? ' 留空的上下限 / 步长跟随站点。' : ' 档位写 GB:元 可定专价，大包更便宜；不写价按单价。' }}</template>
             </div>
           </div>
         </div>

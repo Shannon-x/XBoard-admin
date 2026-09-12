@@ -640,32 +640,6 @@ export default {
         description: '用户端套餐页与节点页里增值节点组区块的标题，例如「高级线路」「专线」。留空则用默认文案「增值节点」。每个组自身的名字在套餐编辑器里逐组设置。',
         placeholder: '留空则显示「增值节点」',
       },
-      trafficTopupPricePerGb: {
-        label: '流量加购单价（元 / GB）',
-        description: '用户在本周期内按 GB 加购流量的默认单价，填 0 表示全站不开放。加购的流量只在买它的那个周期有效，任何流量清零（月度重置、重置包、提前周期、换套餐）都会收回。单个套餐可在套餐编辑器里覆盖或关闭；持有增值节点组的用户还会按组加价。',
-        placeholder: '例如 0.50',
-      },
-      trafficTopupMinGb: {
-        label: '单次加购最少 GB',
-        description: '用户一次最少加购多少 GB。',
-      },
-      trafficTopupMaxGb: {
-        label: '单次加购最多 GB',
-        description: '用户一次最多加购多少 GB（上限 100000）。',
-      },
-      trafficTopupSelection: {
-        label: '加购选购方式',
-        description: '「范围滑杆」：用户在最少～最多 GB 之间拖滑杆或自填，按步长递增，金额 = GB × 单价，下面的档位只作快捷按钮。「指定档位」：只能买下面列出的几档，每档可单独定价（大包更便宜）。单个套餐可在套餐编辑器里覆盖。',
-      },
-      trafficTopupStepGb: {
-        label: '滑杆步长（GB）',
-        description: '范围滑杆模式下每次递增的 GB 数，例如 10 = 只能买 10、20、30…',
-      },
-      trafficTopupPresets: {
-        label: '加购档位',
-        description: '逗号分隔。「10,50,100,200」按单价计价；「10,50:22.5,100:40」给档位定专价（GB:元），未定价的档仍按单价。范围滑杆模式下只作快捷按钮，指定档位模式下就是可买的几档。',
-        placeholder: '10,50:22.5,100:40',
-      },
       autoRenewEnable: {
         label: '自动续费',
         description: '全站开关。开启后用户可在仪表盘打开「自动续费」：到期前余额足够时，系统按上次的套餐、周期和配置用余额自动续费（不用优惠券，含专属折扣；余额不够整笔就不扣）。关闭后用户端不显示开关、后台任务不跑。',
@@ -953,10 +927,6 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
-      trafficTopupSelection: {
-        range: '范围滑杆（按步长自选 GB）',
-        choices: '指定档位（只能买列出的几档）',
-      },
       commissionWithdrawRateSource: {
         auto: '自动获取实时行情（推荐）',
         manual: '手动固定汇率',
