@@ -115,13 +115,13 @@ const topupSurchargeTooLow = computed(() => {
   const selectable = transfer && (transfer.mode === 'choices' ? transfer.choices?.length > 1
     : transfer.mode !== 'fixed' && Number(transfer.max) > Number(editForm.value.transferEnableGB))
   return topupOn.value && selectable && Object.values(config?.addon_groups || {}).some((a) =>
-    Number(a.topup_price_per_gb || 0) < Number(a.transfer_price_per_gb || 0))
+    a.topup_final_price_per_gb == null && Number(a.topup_price_per_gb || 0) < Number(a.transfer_price_per_gb || 0))
 })
 const topupHint = computed(() => {
   const floor = topupFloorCents.value
   if (!topupOn.value) return '本套餐不卖加购流量，用户端不显示入口。开启后单价会预填为本套餐每 GB 到手价。'
   return (floor > 0 ? `本套餐每 GB 到手价 ¥${(floor / 100).toFixed(2)}，加购单价不能低于它——否则用户买最低档再加购比直接买大档便宜。` : '')
-    + '用户在仪表盘订阅卡「加购流量」购买；持有增值组的用户按组另加价。'
+    + '用户在仪表盘订阅卡「加购流量」购买；线路组可另设附加价或最终价，最终价只影响持有该组的用户。'
 })
 const sortDialogVisible = ref(false)
 
