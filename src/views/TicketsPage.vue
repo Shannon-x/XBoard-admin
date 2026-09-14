@@ -241,10 +241,10 @@ async function loadTickets() {
     }
     if (statusFilter.value === 'pending') {
       options.status = 0
-      options.replyStatus = [1]
+      options.replyStatus = [0]
     } else if (statusFilter.value === 'replied') {
       options.status = 0
-      options.replyStatus = [0]
+      options.replyStatus = [1]
     } else if (statusFilter.value === 'closed') {
       options.status = 1
     }
