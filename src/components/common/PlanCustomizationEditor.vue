@@ -62,7 +62,7 @@ function removeGroup(id) {
 }
 function setAddonMode(id, selectedMode) {
   const old = addonRules.value[id] || {}
-  const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0), transfer_price_per_gb: Number(old.transfer_price_per_gb || 0) }
+  const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0), transfer_price_per_gb: Number(old.transfer_price_per_gb || 0), ...(old.topup_final_price_per_gb != null ? { topup_final_price_per_gb: old.topup_final_price_per_gb } : {}) }
   const rule = selectedMode === 'included'
     ? { mode: 'included', ...keep }
     : { mode: 'optional', price: Number(old.price || 0), ...keep }
@@ -81,6 +81,28 @@ function setAddonTopupSurcharge(id, yuan) {
 function setAddonTransferSurcharge(id, yuan) {
   emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], transfer_price_per_gb: Math.round((Number(yuan) || 0) * 100) } })
 }
+function setAddonFinalMode(id, enabled) {
+  const rule = { ...addonRules.value[id] }
+  if (enabled) {
+    rule.topup_final_price_per_gb = Math.max(1, Number(props.modelValue?.traffic_topup?.price_per_gb || 1) + Number(rule.topup_price_per_gb || 0))
+    rule.topup_price_per_gb = 0
+  } else delete rule.topup_final_price_per_gb
+  emitAddons({ ...addonRules.value, [id]: rule })
+}
+function setAddonFinalPrice(id, value) {
+  emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], topup_final_price_per_gb: Math.round(Number(value || 0) * 100), topup_price_per_gb: 0 } })
+}
+const pricingOnlyGroups = computed(() => props.modelValue?.traffic_topup?.group_prices || {})
+const pricingOnlyCandidates = computed(() => addonCandidates.value.filter(g => pricingOnlyGroups.value[String(g.id)] == null))
+function setPricingOnlyGroup(id, value) {
+  const next = { ...pricingOnlyGroups.value }
+  if (value === null) delete next[id]
+  else next[id] = Math.round(Number(value || 0) * 100)
+  const topup = { ...props.modelValue.traffic_topup }
+  if (Object.keys(next).length) topup.group_prices = next
+  else delete topup.group_prices
+  emit('update:modelValue', { ...props.modelValue, traffic_topup: topup })
+}
 
 const trafficPriceRows = computed(() => {
   const transfer = props.modelValue?.transfer_enable
@@ -89,9 +111,14 @@ const trafficPriceRows = computed(() => {
   const topupBase = ['on', 'custom'].includes(topup?.mode) ? Number(topup.price_per_gb || 0) : null
   const included = configuredAddons.value.filter((a) => a.rule.mode === 'included')
   const sum = (items, key) => items.reduce((total, a) => total + Number(a.rule[key] || 0), 0)
+  const topupPrice = (items) => {
+    const fixed = items.filter(a => a.rule.topup_final_price_per_gb != null)
+    return (fixed.length ? Math.max(...fixed.map(a => Number(a.rule.topup_final_price_per_gb))) : topupBase)
+      + sum(items.filter(a => a.rule.topup_final_price_per_gb == null), 'topup_price_per_gb')
+  }
   const row = (label, items) => ({ label,
     transfer: base === null ? '未开放' : `${yuan(base + sum(items, 'transfer_price_per_gb'))} / GB`,
-    topup: topupBase === null ? '未开放' : `${yuan(topupBase + sum(items, 'topup_price_per_gb'))} / GB`,
+    topup: topupBase === null ? '未开放' : `${yuan(topupPrice(items))} / GB`,
   })
   return [row(included.length ? '基础选择（含赠送线路）' : '普通线路', included),
     ...optionalAddons.value.map((a) => row(`另选 ${a.rule.label?.trim() || a.group?.name || a.id}`, [...included, a]))]
@@ -266,6 +293,14 @@ function updateChoices(field, text) {
                 <span>元 / 月或次</span>
               </span>
               <span class="addon-topup-surcharge">
+                <el-switch :model-value="item.rule?.topup_final_price_per_gb != null" active-text="流量包使用最终单价" @change="setAddonFinalMode(item.id, $event)" />
+              </span>
+              <span v-if="item.rule?.topup_final_price_per_gb != null" class="addon-topup-surcharge">
+                <span>本周期流量包最终单价</span>
+                <el-input-number :model-value="Number(item.rule.topup_final_price_per_gb) / 100" :min="0.01" :max="1000000" :precision="2" :step="0.01" size="small" @update:model-value="setAddonFinalPrice(item.id, $event)" />
+                <span>元 / GB（不是附加价）</span>
+              </span>
+              <span v-else class="addon-topup-surcharge">
                 <span>本周期流量包每 GB 附加价</span>
                 <el-input-number
                   :model-value="Number(item.rule?.topup_price_per_gb || 0) / 100"
@@ -284,7 +319,21 @@ function updateChoices(field, text) {
           <el-table-column prop="transfer" label="套餐额外流量（月 / 次）" min-width="180" />
           <el-table-column prop="topup" label="本周期流量包" min-width="160" />
         </el-table>
-        <p class="customization-note">上述 GB 均为面板额度，节点倍率不变。附加价是差价，不是最终单价；流量包档位专价仍需加上线路差价。多个增值组同时持有时差价累加，固定线路费另计。</p>
+        <p class="customization-note">GB 均为面板额度。最终价替换普通价和档位专价，不重复收同组附加价、不叠加优惠券或会员折扣，也不会改变套餐价格或长期加量价。多个最终价取最高，再加其它未设最终价组的差价。该额度也可用于普通节点；此设置允许低于套餐原加购下限，请自行确认成本。</p>
+
+        <div v-if="modelValue.traffic_topup" class="customization-rule" data-pricing-only-groups>
+          <strong>历史授权组加购最终价（仅计价，不授权、不上架）</strong>
+          <p class="customization-note">用于本套餐未出售、但用户被管理员授予的线路组。不会改变任何用户权限。已有增值组请在上方设置。</p>
+          <div v-for="(price, id) in pricingOnlyGroups" :key="id" class="addon-topup-surcharge">
+            <span>{{ groupById[id]?.name || `权限组 #${id}` }}</span>
+            <el-input-number :model-value="Number(price) / 100" :min="0.01" :max="1000000" :precision="2" :step="0.01" size="small" @update:model-value="setPricingOnlyGroup(id, $event)" />
+            <span>元 / GB</span>
+            <el-button text type="danger" size="small" @click="setPricingOnlyGroup(id, null)">移除计价规则</el-button>
+          </div>
+          <el-select :model-value="null" filterable placeholder="添加仅计价的授权组…" style="width: 300px" @change="setPricingOnlyGroup(String($event), Number(modelValue.traffic_topup.price_per_gb || 1) / 100)">
+            <el-option v-for="g in pricingOnlyCandidates" :key="g.id" :label="g.name" :value="g.id" />
+          </el-select>
+        </div>
 
         <div class="addon-adder">
           <el-select
