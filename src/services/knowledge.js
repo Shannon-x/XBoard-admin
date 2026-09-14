@@ -3,6 +3,12 @@ import {
   requestDashboardApi,
   requestDashboardMutation,
 } from './api'
+import {
+  assertKnowledgeMutation,
+  buildKnowledgePayload,
+  normalizeKnowledgeCapabilities,
+  validateKnowledgePublication,
+} from './knowledge-publication'
 
 function normalizeArticle(raw) {
   const category = raw.category ?? raw.category_id ?? ''
@@ -17,12 +23,21 @@ function normalizeArticle(raw) {
     categoryName,
     title: raw.title || '',
     body: raw.body || '',
-    show: Boolean(raw.show),
+    show: raw.show === true || raw.show === 1 || raw.show === '1',
     sort: raw.sort ?? 0,
     language: raw.language || '',
+    visibility: raw.visibility === undefined ? 'members' : raw.visibility,
+    slug: raw.slug || '',
+    summary: raw.summary || '',
+    publishedAt: raw.published_at ?? null,
     createdAt: raw.created_at ?? null,
     updatedAt: raw.updated_at ?? null,
   }
+}
+
+export async function fetchKnowledgeCapabilities() {
+  const payload = await requestDashboardApi(buildDashboardApiUrl('knowledge/capabilities'))
+  return normalizeKnowledgeCapabilities(payload)
 }
 
 function normalizeCategory(raw, index) {
@@ -81,29 +96,27 @@ export async function fetchKnowledgeCategories() {
 }
 
 export async function saveKnowledgeArticle(formData) {
+  const snapshot = { ...formData }
+  await fetchKnowledgeCapabilities()
+  const validationError = validateKnowledgePublication(snapshot)
+  if (validationError) throw new Error(validationError)
   const apiUrl = buildDashboardApiUrl('knowledge/save')
-  return requestDashboardMutation(apiUrl, {
-    id: formData.id || null,
-    category: formData.categoryId,
-    title: formData.title,
-    body: formData.body,
-    language: formData.language || '',
-    show: formData.show ? 1 : 0,
-    sort: formData.sort ?? 0,
-  })
+  return assertKnowledgeMutation(await requestDashboardMutation(apiUrl, buildKnowledgePayload(snapshot)))
 }
 
-export async function toggleKnowledgeShow(id) {
+export async function toggleKnowledgeShow(id, expectedShow) {
+  if (typeof expectedShow !== 'boolean') throw new Error('请明确指定文章的发布状态，刷新列表后重试。')
+  await fetchKnowledgeCapabilities()
   const apiUrl = buildDashboardApiUrl('knowledge/show')
-  return requestDashboardMutation(apiUrl, { id })
+  return assertKnowledgeMutation(await requestDashboardMutation(apiUrl, { id, show: expectedShow }))
 }
 
 export async function deleteKnowledgeArticle(id) {
   const apiUrl = buildDashboardApiUrl('knowledge/drop')
-  return requestDashboardMutation(apiUrl, { id })
+  return assertKnowledgeMutation(await requestDashboardMutation(apiUrl, { id }))
 }
 
 export async function sortKnowledgeArticles(ids) {
   const apiUrl = buildDashboardApiUrl('knowledge/sort')
-  return requestDashboardMutation(apiUrl, { ids })
+  return assertKnowledgeMutation(await requestDashboardMutation(apiUrl, { ids }))
 }
