@@ -109,6 +109,14 @@ function commitChoices(text) {
   setTopupRule({ ...(topupRule.value || {}), mode: 'on', selection: 'choices', choices })
 }
 const topupPriceTooLow = computed(() => topupOn.value && topupFloorCents.value > 0 && Number(topupRule.value?.price_per_gb || 0) < topupFloorCents.value)
+const topupSurchargeTooLow = computed(() => {
+  const config = editForm.value.customization
+  const transfer = config?.transfer_enable
+  const selectable = transfer && (transfer.mode === 'choices' ? transfer.choices?.length > 1
+    : transfer.mode !== 'fixed' && Number(transfer.max) > Number(editForm.value.transferEnableGB))
+  return topupOn.value && selectable && Object.values(config?.addon_groups || {}).some((a) =>
+    Number(a.topup_price_per_gb || 0) < Number(a.transfer_price_per_gb || 0))
+})
 const topupHint = computed(() => {
   const floor = topupFloorCents.value
   if (!topupOn.value) return '本套餐不卖加购流量，用户端不显示入口。开启后单价会预填为本套餐每 GB 到手价。'
@@ -504,6 +512,7 @@ onMounted(function onMount() {
               <span style="font-size: 12.5px; color: var(--el-text-color-regular)">{{ topupOn ? '已开启' : '未开启' }}</span>
             </div>
             <template v-if="topupOn">
+              <div style="margin-top: 8px; font-size: 12px">普通流量包基础单价（增值线路差价在下方增值组中设置）</div>
               <el-input
                 :model-value="Number(topupRule?.price_per_gb || 0) / 100"
                 type="number" step="0.01" min="0.01" placeholder="0.50"
@@ -514,6 +523,7 @@ onMounted(function onMount() {
                 <template #suffix><span style="color: var(--el-text-color-secondary)">/ GB</span></template>
               </el-input>
               <div v-if="topupPriceTooLow" style="font-size: 12px; color: var(--el-color-danger); margin-top: 4px">低于每 GB 到手价 ¥{{ (topupFloorCents / 100).toFixed(2) }}，保存会被拒绝</div>
+              <div v-if="topupSurchargeTooLow" style="font-size: 12px; color: var(--el-color-danger); margin-top: 4px">流量包的线路附加价不能低于套餐加量的线路附加价，请调整下方增值组设置。</div>
               <el-radio-group v-model="topupSelection" size="small" style="margin-top: 8px">
                 <el-radio-button value="range">范围滑杆</el-radio-button>
                 <el-radio-button value="choices">指定档位</el-radio-button>
