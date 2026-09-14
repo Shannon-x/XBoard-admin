@@ -52,7 +52,7 @@ function emitAddons(next) {
 function addGroup(id) {
   if (!id) return
   // 添加后默认「可选购 ¥5.00/月」，名称与价格都可改
-  emitAddons({ ...addonRules.value, [String(id)]: { mode: 'optional', price: 500, label: '', topup_price_per_gb: 0 } })
+  emitAddons({ ...addonRules.value, [String(id)]: { mode: 'optional', price: 500, label: '', topup_price_per_gb: 0, transfer_price_per_gb: 0 } })
   pendingAdd.value = null
 }
 function removeGroup(id) {
@@ -62,7 +62,7 @@ function removeGroup(id) {
 }
 function setAddonMode(id, selectedMode) {
   const old = addonRules.value[id] || {}
-  const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0) }
+  const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0), transfer_price_per_gb: Number(old.transfer_price_per_gb || 0) }
   const rule = selectedMode === 'included'
     ? { mode: 'included', ...keep }
     : { mode: 'optional', price: Number(old.price || 0), ...keep }
@@ -78,6 +78,24 @@ function setAddonLabel(id, text) {
 function setAddonTopupSurcharge(id, yuan) {
   emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], topup_price_per_gb: Math.round((Number(yuan) || 0) * 100) } })
 }
+function setAddonTransferSurcharge(id, yuan) {
+  emitAddons({ ...addonRules.value, [id]: { ...addonRules.value[id], transfer_price_per_gb: Math.round((Number(yuan) || 0) * 100) } })
+}
+
+const trafficPriceRows = computed(() => {
+  const transfer = props.modelValue?.transfer_enable
+  const base = resourceSelectable(fields.value[0]) ? Number(transfer.price_per_step || 0) / Math.max(1, Number(transfer.step)) : null
+  const topup = props.modelValue?.traffic_topup
+  const topupBase = ['on', 'custom'].includes(topup?.mode) ? Number(topup.price_per_gb || 0) : null
+  const included = configuredAddons.value.filter((a) => a.rule.mode === 'included')
+  const sum = (items, key) => items.reduce((total, a) => total + Number(a.rule[key] || 0), 0)
+  const row = (label, items) => ({ label,
+    transfer: base === null ? '未开放' : `${yuan(base + sum(items, 'transfer_price_per_gb'))} / GB`,
+    topup: topupBase === null ? '未开放' : `${yuan(topupBase + sum(items, 'topup_price_per_gb'))} / GB`,
+  })
+  return [row(included.length ? '基础选择（含赠送线路）' : '普通线路', included),
+    ...optionalAddons.value.map((a) => row(`另选 ${a.rule.label?.trim() || a.group?.name || a.id}`, [...included, a]))]
+})
 
 /* 流量加购包的套餐级规则（customization.traffic_topup）在 PlansPage 的「价格设置」里配，
    与流量包 / 重置包并排 —— 它不是自选规格的一部分，不该藏在这个开关后面。这里只保留
@@ -93,7 +111,9 @@ const previewRows = computed(() => {
     if (!resourceSelectable(field)) return
     const rule = props.modelValue[field.key]
     const max = mode(field) === 'choices' ? rule.choices[rule.choices.length - 1] : rule.max
-    const cents = Math.round(Math.max(0, (max - field.base) / Math.max(1, rule.step)) * rule.price_per_step)
+    const surcharge = field.key === 'transfer_enable'
+      ? configuredAddons.value.reduce((total, a) => total + Number(a.rule.transfer_price_per_gb || 0), 0) * rule.step : 0
+    const cents = Math.round(Math.max(0, (max - field.base) / Math.max(1, rule.step)) * (rule.price_per_step + surcharge))
     rows.push({ label: `${field.label.replace(/ \(.*\)$/, '')}至 ${max}`, cents })
   })
   optionalAddons.value.forEach((a) => rows.push({ label: `${a.rule.label?.trim() || a.group?.name || a.id}（可选购）`, cents: Number(a.rule.price || 0) }))
@@ -237,10 +257,19 @@ function updateChoices(field, text) {
                 @update:model-value="setAddonLabel(item.id, $event)"
               />
               <span class="addon-topup-surcharge">
-                <span>持有本组的用户加购流量每 GB 加价</span>
+                <span>套餐加量每 GB 附加价</span>
+                <el-input-number
+                  :model-value="Number(item.rule?.transfer_price_per_gb || 0) / 100"
+                  :min="0" :max="1000000" :precision="2" :step="0.01" size="small"
+                  @update:model-value="setAddonTransferSurcharge(item.id, $event)"
+                />
+                <span>元 / 月或次</span>
+              </span>
+              <span class="addon-topup-surcharge">
+                <span>本周期流量包每 GB 附加价</span>
                 <el-input-number
                   :model-value="Number(item.rule?.topup_price_per_gb || 0) / 100"
-                  :min="0" :max="1000000" :precision="2" :step="0.1" size="small"
+                  :min="0" :max="1000000" :precision="2" :step="0.01" size="small"
                   @update:model-value="setAddonTopupSurcharge(item.id, $event)"
                 />
                 <span>元</span>
@@ -249,6 +278,13 @@ function updateChoices(field, text) {
           </li>
         </ul>
         <div v-else class="addon-empty">还没有添加任何增值组 —— 本套餐只提供基础权限组的节点。</div>
+
+        <el-table :data="trafficPriceRows" size="small" style="margin: 12px 0" aria-label="线路差异流量价格预览">
+          <el-table-column prop="label" label="线路选择" min-width="160" />
+          <el-table-column prop="transfer" label="套餐额外流量（月 / 次）" min-width="180" />
+          <el-table-column prop="topup" label="本周期流量包" min-width="160" />
+        </el-table>
+        <p class="customization-note">上述 GB 均为面板额度，节点倍率不变。附加价是差价，不是最终单价；流量包档位专价仍需加上线路差价。多个增值组同时持有时差价累加，固定线路费另计。</p>
 
         <div class="addon-adder">
           <el-select
