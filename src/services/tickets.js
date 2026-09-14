@@ -32,9 +32,12 @@ const TICKET_STATUS = {
   1: { text: '已关闭', type: 'info' },
 }
 
+// 与 v2_ticket.reply_status 的列注释一致：0 待回复 / 1 已回复。
+// 这里曾经是反的，配合后端同样反了的写入恰好显示正常，但用户前端按注释
+// 语义渲染，于是新工单一建就在用户端显示「官方已回复」。后端已扳正，这里跟上。
 const TICKET_REPLY_STATUS = {
-  0: { text: '已回复', type: 'success' },
-  1: { text: '待回复', type: 'warning' },
+  0: { text: '待回复', type: 'warning' },
+  1: { text: '已回复', type: 'success' },
 }
 
 function formatTimestamp(value) {
