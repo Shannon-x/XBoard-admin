@@ -67,7 +67,7 @@ export function toCoupon(name, code) {
   return null
 }
 
-/** 跳转到「权限组」并按组 id 定位（组页搜索框同时匹配名称/ID 子串）。 */
+/** 跳转到「权限组」并按组 id 精确定位。 */
 export function toNodeGroup(id) {
   return isLinkable(id) ? { name: 'nodeGroups', query: { group_id: String(id) } } : null
 }

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import NodeGroupDetailsDialog from '../nodes/NodeGroupDetailsDialog.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: null },
@@ -42,6 +43,12 @@ const addonCandidates = computed(() => props.groups.filter((g) =>
   (props.baseGroupId == null || String(g.id) !== String(props.baseGroupId)) && !addonRules.value[String(g.id)]))
 const optionalAddons = computed(() => configuredAddons.value.filter((a) => a.rule?.mode === 'optional'))
 const pendingAdd = ref(null)
+const previewGroupId = ref(null)
+const previewVisible = ref(false)
+function previewGroup(id) {
+  previewGroupId.value = id
+  previewVisible.value = true
+}
 
 function emitAddons(next) {
   const value = { ...props.modelValue }
@@ -256,8 +263,8 @@ function updateChoices(field, text) {
 
         <ul v-if="configuredAddons.length" class="addon-list">
           <li v-for="item in configuredAddons" :key="item.id" class="addon-row" :data-group="item.id">
-            <span class="addon-name">{{ item.group?.name || `权限组 #${item.id}` }}</span>
-            <span v-if="item.group" class="customization-note">{{ item.group.serverCount }} 个节点</span>
+            <span class="addon-name">#{{ item.id }} {{ item.group?.name || '权限组已不存在' }}</span>
+            <el-button v-if="item.group" link type="primary" size="small" @click="previewGroup(item.id)">查看 {{ item.group.serverCount }} 个节点</el-button>
             <span v-else class="customization-error">该权限组已不存在，保存会被拒绝，请移除</span>
             <el-radio-group :model-value="item.rule?.mode" size="small" @update:model-value="setAddonMode(item.id, $event)">
               <el-radio-button value="included">包含</el-radio-button>
@@ -325,13 +332,13 @@ function updateChoices(field, text) {
           <strong>历史授权组加购最终价（仅计价，不授权、不上架）</strong>
           <p class="customization-note">用于本套餐未出售、但用户被管理员授予的线路组。不会改变任何用户权限。已有增值组请在上方设置。</p>
           <div v-for="(price, id) in pricingOnlyGroups" :key="id" class="addon-topup-surcharge">
-            <span>{{ groupById[id]?.name || `权限组 #${id}` }}</span>
+            <el-button link type="primary" size="small" @click="previewGroup(id)">#{{ id }} {{ groupById[id]?.name || '权限组已不存在' }}</el-button>
             <el-input-number :model-value="Number(price) / 100" :min="0.01" :max="1000000" :precision="2" :step="0.01" size="small" @update:model-value="setPricingOnlyGroup(id, $event)" />
             <span>元 / GB</span>
             <el-button text type="danger" size="small" @click="setPricingOnlyGroup(id, null)">移除计价规则</el-button>
           </div>
           <el-select :model-value="null" filterable placeholder="添加仅计价的授权组…" style="width: 300px" @change="setPricingOnlyGroup(String($event), Number(modelValue.traffic_topup.price_per_gb || 1) / 100)">
-            <el-option v-for="g in pricingOnlyCandidates" :key="g.id" :label="g.name" :value="g.id" />
+            <el-option v-for="g in pricingOnlyCandidates" :key="g.id" :label="`#${g.id} ${g.name}`" :value="g.id" />
           </el-select>
         </div>
 
@@ -345,14 +352,17 @@ function updateChoices(field, text) {
             style="width: 300px"
             @change="addGroup"
           >
-            <el-option v-for="g in addonCandidates" :key="g.id" :label="g.name" :value="String(g.id)">
-              <span>{{ g.name }}</span>
+            <el-option v-for="g in addonCandidates" :key="g.id" :label="`#${g.id} ${g.name}`" :value="String(g.id)">
+              <span>#{{ g.id }} {{ g.name }}</span>
               <span class="addon-opt-count">{{ g.serverCount }} 个节点</span>
             </el-option>
           </el-select>
+          <el-button @click="previewGroup(addonCandidates[0]?.id || groups[0]?.id)">先查看各组节点</el-button>
           <span class="customization-note">可添加 {{ addonCandidates.length }} 个；基础组与已添加的组不在列表里。添加后默认「可选购 ¥5.00/月」，名称与价格都可改。</span>
         </div>
       </div>
+
+      <NodeGroupDetailsDialog v-model="previewVisible" :group-id="previewGroupId" :groups="groups" />
 
       <el-alert v-if="allFixed" type="success" :closable="false" title="当前全部固定且无可选购增值组：使用原套餐定价，客户无需选择。" />
       <div v-else class="price-preview">

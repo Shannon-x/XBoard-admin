@@ -124,6 +124,16 @@ const filters = reactive({
     abnormalOnly: false,
 });
 
+// 权限组明细中的链接按 ID 精确定位；浏览器前进/后退时同步。
+watch(
+    () => [route.query.group_id, route.query.node_id],
+    ([groupId, nodeId]) => {
+        filters.group = typeof groupId === "string" && /^\d+$/.test(groupId) ? groupId : "all";
+        filters.nodeId = typeof nodeId === "string" && /^\d+$/.test(nodeId) ? nodeId : "";
+    },
+    { immediate: true },
+);
+
 const statusOptions = ["all", "1", "2", "0"];
 const statusLabelMap = new Map([
     [t("nodes.statusOnline"), "1"],
@@ -1104,7 +1114,11 @@ function handleResetFilters() {
     filters.group = "all";
     filters.nodeId = "";
     filters.abnormalOnly = false;
-    syncStatusToRoute("all");
+    const query = { ...route.query };
+    delete query.status;
+    delete query.group_id;
+    delete query.node_id;
+    router.replace({ query });
 }
 
 // 「清空筛选」只在真的有筛选时出现 —— 六个维度里任一非默认值都算。

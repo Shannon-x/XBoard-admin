@@ -430,6 +430,25 @@ function normalizeManagedNodeGroup(group, index) {
     name: group?.name || `权限组 ${index + 1}`,
     usersCount: Number(group?.users_count ?? 0),
     serverCount: Number(group?.server_count ?? 0),
+    detailsAvailable: Array.isArray(group?.nodes) && Array.isArray(group?.plans),
+    visibleServerCount: Number(group?.visible_server_count ?? 0),
+    pricingPlanCount: Number(group?.pricing_plan_count ?? 0),
+    nodes: Array.isArray(group?.nodes) ? group.nodes.map(node => ({
+      id: String(node.id),
+      name: String(node.name || `节点 #${node.id}`),
+      type: String(node.type || '').toUpperCase(),
+      show: resolveNodeShow(node),
+      rate: formatNodeRate(node.rate),
+    })) : [],
+    plans: Array.isArray(group?.plans) ? group.plans.map(plan => ({
+      id: String(plan.id),
+      name: String(plan.name || `套餐 #${plan.id}`),
+      mode: String(plan.mode || ''),
+      label: String(plan.label || ''),
+      price: Number(plan.price || 0),
+      show: resolveNodeShow(plan),
+      sell: plan.sell === true || plan.sell === 1 || plan.sell === '1',
+    })) : [],
     createdAt: formatTimestamp(group?.created_at),
     updatedAt: formatTimestamp(group?.updated_at),
   };
@@ -516,8 +535,8 @@ export async function fetchManagedNodes(options = {}) {
   };
 }
 
-export async function fetchManagedNodeGroups() {
-  const apiUrl = buildDashboardApiUrl("server/group/fetch");
+export async function fetchManagedNodeGroups({ includeDetails = false } = {}) {
+  const apiUrl = buildDashboardApiUrl("server/group/fetch", includeDetails ? [["include_details", 1]] : []);
   const payload = await requestDashboardApi(apiUrl);
   const list = Array.isArray(payload?.data) ? payload.data : [];
 
