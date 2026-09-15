@@ -451,11 +451,11 @@ onMounted(function onMount() {
         </el-form-item>
 
         <el-form-item label="权限组">
-          <el-select v-model="editForm.groupId" clearable placeholder="选择权限组" style="width: 100%">
+          <el-select v-model="editForm.groupId" filterable clearable placeholder="选择基础权限组" style="width: 100%">
             <el-option
               v-for="group in groups"
               :key="group.id"
-              :label="group.name"
+              :label="`#${group.id} ${group.name}`"
               :value="group.id"
             />
           </el-select>
