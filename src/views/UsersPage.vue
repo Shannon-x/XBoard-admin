@@ -22,12 +22,14 @@ import { fetchManagedNodeGroups } from '../services/nodes'
 import { assignOrder } from '../services/orders'
 import { createSequence } from '../utils/sequence'
 import { copyText } from '../utils/clipboard'
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const router = useRouter()
 const route = useRoute()
 
 const users = ref([])
-const pagination = ref(createEmptyManagedUsersPagination())
+const pageSizePreference = createPageSizePreference('users', 10, [10, 20, 50, 100])
+const pagination = ref({ ...createEmptyManagedUsersPagination(), pageSize: pageSizePreference.initialSize })
 const loading = ref(false)
 const errorMsg = ref('')
 const searchKeyword = ref('')
@@ -371,7 +373,6 @@ function saveUsersPageState() {
       sortField: sortField.value,
       sortOrder: sortOrder.value,
       page: pagination.value.page,
-      pageSize: pagination.value.pageSize,
     }))
   } catch (_) {
     // sessionStorage 不可用时静默忽略
@@ -392,7 +393,6 @@ function restoreUsersPageState() {
     if (typeof data.sortField === 'string') sortField.value = data.sortField
     if (typeof data.sortOrder === 'string') sortOrder.value = data.sortOrder
     if (Number.isFinite(data.page)) pagination.value.page = data.page
-    if (Number.isFinite(data.pageSize)) pagination.value.pageSize = data.pageSize
   } catch (_) {
     // 反序列化失败时忽略，使用默认状态
   }
@@ -449,6 +449,7 @@ function handlePageChange(page) {
 }
 
 function handlePageSizeChange(size) {
+  pageSizePreference.save(size)
   pagination.value.pageSize = size
   pagination.value.page = 1
   loadUsers()
@@ -1055,7 +1056,7 @@ onMounted(function onMount() {
       <el-pagination
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="pageSizePreference.pageSizes"
         :total="pagination.total"
         background
         layout="total, sizes, prev, pager, next, jumper"

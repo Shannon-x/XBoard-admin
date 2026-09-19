@@ -21,6 +21,7 @@ import SortDialog from "../components/common/SortDialog.vue";
 import CopyButton from "../components/common/CopyButton.vue";
 import { sortManagedNodes } from "../services/nodes";
 import { toNodeGroup } from "../utils/crossLink";
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const adminStore = useAdminStore();
 const route = useRoute();
@@ -200,7 +201,8 @@ function syncStatusToRoute(status) {
 const NODE_FETCH_LIMIT = 1000;
 
 const clientPage = ref(1);
-const clientPageSize = ref(10);
+const pageSizePreference = createPageSizePreference('nodes', 10, [10, 20, 50, 100, 500])
+const clientPageSize = ref(pageSizePreference.initialSize);
 
 function reloadNodes({ silent = false } = {}) {
     return adminStore.loadManagedNodes({
@@ -1171,6 +1173,7 @@ async function handleShowToggle(node, value) {
 // 翻页/改每页条数都只动本地状态，不再请求后端 —— 全量数据已经在手上。
 function handlePageSizeChange(limit) {
     if (limit === clientPageSize.value) return;
+    pageSizePreference.save(limit);
     clientPageSize.value = limit;
     clientPage.value = 1;
 }
@@ -1531,7 +1534,7 @@ onUnmounted(function clearTimersOnUnmount() {
                     background
                     :current-page="pagination.page"
                     :page-size="pagination.limit"
-                    :page-sizes="[10, 20, 50, 100, 500]"
+                    :page-sizes="pageSizePreference.pageSizes"
                     :total="pagination.total"
                     :disabled="adminStore.managedNodesLoading"
                     layout="sizes, prev, pager, next, jumper"

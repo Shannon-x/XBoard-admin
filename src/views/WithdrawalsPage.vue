@@ -17,11 +17,13 @@ import {
 import { copyText } from '../utils/clipboard'
 import { formatCents } from '../utils/format'
 import { createSequence } from '../utils/sequence'
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const router = useRouter()
 
 const list = ref([])
-const pagination = ref(createEmptyWithdrawalsPagination())
+const pageSizePreference = createPageSizePreference('withdrawals', 15, [15, 30, 50, 100])
+const pagination = ref({ ...createEmptyWithdrawalsPagination(), pageSize: pageSizePreference.initialSize })
 const loading = ref(false)
 const errorMsg = ref('')
 const statusFilter = ref('0')
@@ -84,6 +86,7 @@ function handlePageChange(page) {
 }
 
 function handlePageSizeChange(size) {
+  pageSizePreference.save(size)
   pagination.value.pageSize = size
   pagination.value.page = 1
   loadList()
@@ -312,7 +315,7 @@ onMounted(function onMount() {
       <el-pagination
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
-        :page-sizes="[15, 30, 50, 100]"
+        :page-sizes="pageSizePreference.pageSizes"
         :total="pagination.total"
         background
         layout="total, sizes, prev, pager, next, jumper"

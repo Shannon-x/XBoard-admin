@@ -22,12 +22,14 @@ import {
   banManagedUsers,
 } from '../services/users'
 import { fetchManagedPlans } from '../services/plans'
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const route = useRoute()
 const router = useRouter()
 
 const tickets = ref([])
-const pagination = ref(createEmptyManagedTicketsPagination())
+const pageSizePreference = createPageSizePreference('tickets', 10, [10, 20, 50, 100])
+const pagination = ref({ ...createEmptyManagedTicketsPagination(), pageSize: pageSizePreference.initialSize })
 const loading = ref(false)
 const errorMsg = ref('')
 const statusFilter = ref('')
@@ -275,6 +277,7 @@ function handlePageChange(page) {
 }
 
 function handlePageSizeChange(size) {
+  pageSizePreference.save(size)
   pagination.value.pageSize = size
   pagination.value.page = 1
   loadTickets()
@@ -605,7 +608,7 @@ onMounted(function onMount() {
       <el-pagination
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="pageSizePreference.pageSizes"
         :total="pagination.total"
         background
         layout="total, sizes, prev, pager, next, jumper"

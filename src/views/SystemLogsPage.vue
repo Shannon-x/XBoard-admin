@@ -6,6 +6,7 @@ import { ElMessage } from 'element-plus'
 import SectionCard from '../components/common/SectionCard.vue'
 import CopyButton from '../components/common/CopyButton.vue'
 import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const route = useRoute()
 
@@ -19,7 +20,8 @@ const auditError = ref('')
 const activeAction = ref('all')
 const searchKeyword = ref('')
 const auditPage = ref(1)
-const auditPageSize = ref(20)
+const auditSizePreference = createPageSizePreference('audit-logs', 20, [10, 20, 50, 100])
+const auditPageSize = ref(auditSizePreference.initialSize)
 const auditTotal = ref(0)
 
 const actionOptions = [
@@ -35,7 +37,8 @@ const failedJobs = ref([])
 const failedLoading = ref(false)
 const failedError = ref('')
 const failedPage = ref(1)
-const failedPageSize = ref(10)
+const failedSizePreference = createPageSizePreference('failed-jobs', 10, [10, 20, 50])
+const failedPageSize = ref(failedSizePreference.initialSize)
 const failedTotal = ref(0)
 const failedDetailVisible = ref(false)
 const failedDetailJob = ref(null)
@@ -304,9 +307,9 @@ watch(activeTab, function onTabSwitch(nextTab) {
           <div class="log-pagination">
             <el-pagination
               v-model:current-page="auditPage" v-model:page-size="auditPageSize"
-              :page-sizes="[10, 20, 50, 100]" :total="auditTotal"
+              :page-sizes="auditSizePreference.pageSizes" :total="auditTotal"
               layout="total, sizes, prev, pager, next, jumper"
-              @current-change="loadAuditLogs" @size-change="() => { auditPage = 1; loadAuditLogs() }"
+              @current-change="loadAuditLogs" @size-change="(size) => { auditSizePreference.save(size); auditPage = 1; loadAuditLogs() }"
             />
           </div>
         </el-tab-pane>
@@ -351,9 +354,9 @@ watch(activeTab, function onTabSwitch(nextTab) {
           <div class="log-pagination">
             <el-pagination
               v-model:current-page="failedPage" v-model:page-size="failedPageSize"
-              :page-sizes="[10, 20, 50]" :total="failedTotal"
+              :page-sizes="failedSizePreference.pageSizes" :total="failedTotal"
               layout="total, sizes, prev, pager, next, jumper"
-              @current-change="loadFailedJobs" @size-change="() => { failedPage = 1; loadFailedJobs() }"
+              @current-change="loadFailedJobs" @size-change="(size) => { failedSizePreference.save(size); failedPage = 1; loadFailedJobs() }"
             />
           </div>
         </el-tab-pane>
