@@ -8,14 +8,16 @@ import {
   saveManagedNodeRoute,
   deleteManagedNodeRoute,
 } from '../services/nodes'
+import { createPageSizePreference } from '../utils/pageSizePreference'
 
 const routes = ref([])
 const loading = ref(false)
 const error = ref('')
 const searchWord = ref('')
+const pageSizePreference = createPageSizePreference('node-routes', 20, [10, 20, 50, 100])
 const pagination = ref({
   page: 1,
-  pageSize: 20,
+  pageSize: pageSizePreference.initialSize,
 })
 
 const dialogVisible = ref(false)
@@ -227,6 +229,7 @@ function handlePageChange(page) {
 }
 
 function handlePageSizeChange(size) {
+  pageSizePreference.save(size)
   pagination.value.pageSize = size
   pagination.value.page = 1
 }
@@ -278,7 +281,7 @@ onMounted(loadRoutes)
         v-if="totalRoutes"
         :current-page="pagination.page"
         :page-size="pagination.pageSize"
-        :page-sizes="[10, 20, 50, 100]"
+        :page-sizes="pageSizePreference.pageSizes"
         :total="totalRoutes"
         background
         layout="total, sizes, prev, pager, next, jumper"
