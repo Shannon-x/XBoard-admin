@@ -22,6 +22,8 @@ const SettingsPage = () => import('../views/SettingsPage.vue')
 const SystemLogsPage = () => import('../views/SystemLogsPage.vue')
 const ThemeConfigPage = () => import('../views/ThemeConfigPage.vue')
 const TicketsPage = () => import('../views/TicketsPage.vue')
+const BillingDocumentsPage = () => import('../views/BillingDocumentsPage.vue')
+const MailDeliveryPage = () => import('../views/MailDeliveryPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
 const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
 
@@ -101,6 +103,14 @@ const ROUTE_META_KEYS = {
   themeConfig: {
     title: 'routes.themeConfig.title',
     eyebrow: 'routes.themeConfig.eyebrow',
+  },
+  billingDocuments: {
+    title: 'routes.billingDocuments.title',
+    eyebrow: 'routes.billingDocuments.eyebrow',
+  },
+  mailDelivery: {
+    title: 'routes.mailDelivery.title',
+    eyebrow: 'routes.mailDelivery.eyebrow',
   },
 }
 
@@ -210,6 +220,24 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.withdrawals.title,
           eyebrowKey: ROUTE_META_KEYS.withdrawals.eyebrow,
+        },
+      },
+      {
+        path: 'billing-documents',
+        name: 'billingDocuments',
+        component: BillingDocumentsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.billingDocuments.title,
+          eyebrowKey: ROUTE_META_KEYS.billingDocuments.eyebrow,
+        },
+      },
+      {
+        path: 'mail-delivery',
+        name: 'mailDelivery',
+        component: MailDeliveryPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.mailDelivery.title,
+          eyebrowKey: ROUTE_META_KEYS.mailDelivery.eyebrow,
         },
       },
       {

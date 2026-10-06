@@ -2,7 +2,7 @@
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { createSequence } from '../utils/sequence'
 import { useRoute, useRouter } from 'vue-router'
-import { toUser, toPlan, toCoupon } from '../utils/crossLink'
+import { toUser, toPlan, toCoupon, toBillingDocuments } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -367,6 +367,10 @@ onMounted(function onMount() {
   if (route.query.user_email) {
     userEmailDisplay.value = String(route.query.user_email)
   }
+  // 从「账单与收据」按订单号跳过来：直接落到搜索框，列表按 trade_no 过滤
+  if (route.query.trade_no) {
+    searchKeyword.value = String(route.query.trade_no)
+  }
   loadOrders()
   fetchManagedPlans()
     .then(list => { plans.value = list })
@@ -618,6 +622,15 @@ onMounted(function onMount() {
                 <el-tag :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
               </el-tooltip>
               <el-tag v-else :type="detailData.statusType" effect="dark" size="small">{{ detailData.statusText }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="收据">
+              <span
+                v-if="detailData.status === 3 || detailData.status === 4"
+                class="x-link"
+                title="在「账单与收据」中查看该订单的收据"
+                @click="router.push(toBillingDocuments({ orderId: detailData.id, email: detailData.userEmail }))"
+              >查看归档收据</span>
+              <span v-else style="color: var(--el-text-color-secondary);">付款开通后自动生成</span>
             </el-descriptions-item>
             <el-descriptions-item label="佣金">¥{{ detailData.commissionBalance.toFixed(2) }}</el-descriptions-item>
             <el-descriptions-item label="佣金状态">{{ detailData.commissionStatusText }}</el-descriptions-item>

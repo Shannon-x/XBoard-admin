@@ -5,6 +5,7 @@ import { toPlan } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X, HelpCircle } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
+import BalanceLedgerDialog from '../components/users/BalanceLedgerDialog.vue'
 import {
   fetchManagedUsers,
   updateManagedUser,
@@ -485,6 +486,20 @@ function toggleSortOrder() {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
   syncTableSortIndicator()
   handleSearch()
+}
+
+// ===== 余额流水 / 调账 =====
+const ledgerDialogVisible = ref(false)
+const ledgerUser = ref(null)
+
+function openBalanceLedger(user) {
+  ledgerUser.value = { id: user.id, email: user.email }
+  ledgerDialogVisible.value = true
+}
+
+function handleLedgerAdjusted() {
+  // 列表里的余额列是打开对话框前的旧值，调账后重新拉当前页
+  loadUsers()
 }
 
 function openEditDialog(user) {
@@ -1037,6 +1052,7 @@ onMounted(function onMount() {
                 <el-dropdown-menu>
                   <el-dropdown-item @click="openEditDialog(row)">编辑</el-dropdown-item>
                   <el-dropdown-item @click="handleAssignOrder(row)">分配订单</el-dropdown-item>
+                  <el-dropdown-item @click="openBalanceLedger(row)">余额流水 / 调账</el-dropdown-item>
                   <el-dropdown-item divided @click="copySubscribeUrl(row)">复制订阅URL</el-dropdown-item>
                   <el-dropdown-item @click="copyLoginUrl(row)">生成登录/订阅URL</el-dropdown-item>
                   <el-dropdown-item divided @click="navigateToUserOrders(row)">TA的订单</el-dropdown-item>
@@ -1065,6 +1081,9 @@ onMounted(function onMount() {
         @size-change="handlePageSizeChange"
       />
     </SectionCard>
+
+    <!-- 余额流水 / 调账 -->
+    <BalanceLedgerDialog v-model="ledgerDialogVisible" :user="ledgerUser" @adjusted="handleLedgerAdjusted" />
 
     <!-- 用户管理对话框 -->
     <el-dialog v-model="editDialogVisible" title="用户管理" width="min(480px, calc(100vw - 32px))" destroy-on-close>

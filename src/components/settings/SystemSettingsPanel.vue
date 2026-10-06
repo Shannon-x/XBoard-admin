@@ -280,7 +280,7 @@ function resolveSelectOptions(field) {
             class="settings-field"
             :class="{
               'settings-field--code-tabs': field.type === 'codeTabs',
-              'settings-field--block': field.type === 'withdrawChains' || field.type === 'withdrawRate',
+              'settings-field--block': field.type === 'withdrawChains' || field.type === 'withdrawRate' || field.type === 'checkboxGroup',
               'settings-field--switch': field.type === 'switch',
               'settings-field--compact': field.tone === 'compact',
             }"
@@ -350,6 +350,20 @@ function resolveSelectOptions(field) {
                 :source="props.form?.commissionWithdrawRateSource || 'auto'"
                 @update:model-value="updateFieldValue(field, $event)"
               />
+
+              <el-checkbox-group
+                v-else-if="field.type === 'checkboxGroup'"
+                class="settings-checkbox-group"
+                :model-value="Array.isArray(resolveFieldValue(field)) ? resolveFieldValue(field) : []"
+                @update:model-value="updateFieldValue(field, $event)"
+              >
+                <el-checkbox
+                  v-for="option in resolveSelectOptions(field)"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
+              </el-checkbox-group>
 
               <el-select
                 v-else-if="field.type === 'select'"

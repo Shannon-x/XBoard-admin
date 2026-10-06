@@ -71,3 +71,22 @@ export function toCoupon(name, code) {
 export function toNodeGroup(id) {
   return isLinkable(id) ? { name: 'nodeGroups', query: { group_id: String(id) } } : null
 }
+
+/** 跳转到「订单管理」并按订单号精确定位（订单页读取 trade_no 填入搜索框）。 */
+export function toOrder(tradeNo) {
+  return isLinkable(tradeNo) ? { name: 'orders', query: { trade_no: String(tradeNo) } } : null
+}
+
+/** 跳转到「账单与收据」，按订单 / 用户 / 邮箱筛选归档文档。 */
+export function toBillingDocuments({ orderId, userId, email } = {}) {
+  const query = {}
+  if (isLinkable(orderId)) query.order_id = String(orderId)
+  if (isLinkable(userId)) query.user_id = String(userId)
+  if (isLinkable(email)) query.email = String(email)
+  return { name: 'billingDocuments', query }
+}
+
+/** 跳转到「邮件投递」并按邮箱筛选投递日志。 */
+export function toMailDelivery(email) {
+  return { name: 'mailDelivery', query: isLinkable(email) ? { email: String(email) } : {} }
+}

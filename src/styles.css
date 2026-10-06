@@ -4201,3 +4201,14 @@ a:hover {
 .x-link:active {
     opacity: 0.7;
 }
+
+/* 系统设置：多选勾选组（如「隐藏的工单分类」） */
+.settings-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+}
+
+.settings-checkbox-group .el-checkbox {
+    margin-right: 0;
+}
