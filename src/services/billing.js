@@ -93,7 +93,10 @@ function normalizeDocument(raw) {
     expiredAt: raw?.expired_at ? Number(raw.expired_at) : null,
     expiredAtText: formatTimestamp(raw?.expired_at),
     size: Number(raw?.size || 0),
-    sizeText: formatBytes(raw?.size),
+    // size = 0：文件已按保留期清理，记录仍在，下载 / 重发时按订单重新生成
+    filePruned: Number(raw?.size || 0) === 0,
+    sizeText: Number(raw?.size || 0) === 0 ? '文件已清理' : formatBytes(raw?.size),
+    disk: String(raw?.disk || 'local'),
     sentAt: sentAt || null,
     sentAtText: formatTimestamp(sentAt),
     sendCount: Number(raw?.send_count || 0),
@@ -103,6 +106,32 @@ function normalizeDocument(raw) {
     downloadUrl: downloadPath ? buildOriginUrl(downloadPath) : '',
     createdAt: Number(raw?.created_at || 0),
     createdAtText: formatTimestamp(raw?.created_at),
+  }
+}
+
+export const STORAGE_DRIVER = {
+  local: '本地存储',
+  s3: 'S3 兼容对象存储',
+}
+
+/** 归档整体占用与当前策略（后端 fetch 响应的 summary） */
+function normalizeSummary(raw) {
+  const driver = String(raw?.driver || 'local')
+  const receiptDays = Number(raw?.receipt_retention_days ?? 0)
+  const invoiceDays = Number(raw?.invoice_retention_days ?? 0)
+
+  return {
+    total: Number(raw?.total || 0),
+    bytes: Number(raw?.bytes || 0),
+    bytesText: formatBytes(raw?.bytes || 0),
+    pruned: Number(raw?.pruned || 0),
+    driver,
+    driverText: STORAGE_DRIVER[driver] || driver,
+    location: String(raw?.location || ''),
+    receiptRetentionDays: receiptDays,
+    receiptRetentionText: receiptDays > 0 ? `${receiptDays} 天` : '永久',
+    invoiceRetentionDays: invoiceDays,
+    invoiceRetentionText: invoiceDays > 0 ? `${invoiceDays} 天` : '永久',
   }
 }
 
@@ -127,6 +156,7 @@ export async function fetchBillingDocuments(options = {}) {
       pageSize,
       total: Number(payload?.total ?? 0),
     },
+    summary: payload?.summary ? normalizeSummary(payload.summary) : null,
   }
 }
 

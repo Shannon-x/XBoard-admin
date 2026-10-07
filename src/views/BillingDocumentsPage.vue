@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, RefreshCw, Search, Send, X } from 'lucide-vue-next'
+import { Database, Download, RefreshCw, Search, Send, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
 import {
   createEmptyBillingDocumentsPagination,
@@ -21,6 +21,8 @@ const pageSizePreference = createPageSizePreference('billing-documents', 20, [20
 const pagination = ref({ ...createEmptyBillingDocumentsPagination(), pageSize: pageSizePreference.initialSize })
 const loading = ref(false)
 const errorMsg = ref('')
+// 归档整体占用与保留策略，随列表一起返回
+const summary = ref(null)
 const kindFilter = ref('')
 const emailSearch = ref('')
 // 从订单详情 / 用户页 / 邮件投递带过来的精确筛选；点掉标签就回到全量
@@ -56,6 +58,7 @@ async function loadList() {
     if (!listSeq.isCurrent(my)) return
     list.value = result.list
     pagination.value = result.pagination
+    if (result.summary) summary.value = result.summary
   } catch (err) {
     if (!listSeq.isCurrent(my)) return
     errorMsg.value = err?.message || '加载归档文档失败'
@@ -189,13 +192,31 @@ onMounted(function onMount() {
         </el-space>
       </div>
 
+      <div v-if="summary" class="billing-summary">
+        <Database :size="14" class="billing-summary__icon" />
+        <span>
+          存储：<strong>{{ summary.driverText }}</strong>
+          <span class="billing-doc-mono billing-summary__path">{{ summary.location }}</span>
+        </span>
+        <el-divider direction="vertical" />
+        <span>归档 <strong>{{ summary.total }}</strong> 份，占用 <strong>{{ summary.bytesText }}</strong><template v-if="summary.pruned">，其中 {{ summary.pruned }} 份文件已按保留期清理（下载时重建）</template></span>
+        <el-divider direction="vertical" />
+        <span>收据文件保留 {{ summary.receiptRetentionText }}，账单在周期结束后保留 {{ summary.invoiceRetentionText }}</span>
+        <router-link :to="{ name: 'settings', params: { category: 'billing' } }" class="x-link">调整</router-link>
+      </div>
+
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="list" stripe style="width: 100%">
         <el-table-column label="编号" min-width="200">
           <template #default="{ row }">
             <span class="billing-doc-no">{{ row.docNo }}</span>
-            <div class="billing-doc-sub">{{ row.sizeText }}</div>
+            <div class="billing-doc-sub">
+              <el-tooltip v-if="row.filePruned" content="PDF 已按保留期清理，记录保留；下载或重发时按订单重新生成" placement="top">
+                <span class="billing-doc-pruned">{{ row.sizeText }}</span>
+              </el-tooltip>
+              <template v-else>{{ row.sizeText }}</template>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="类型" width="130">
@@ -301,6 +322,33 @@ onMounted(function onMount() {
 </template>
 
 <style scoped>
+.billing-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--el-fill-color-light);
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+.billing-summary__icon {
+  color: var(--el-text-color-secondary);
+}
+
+.billing-summary__path {
+  margin-left: 6px;
+  color: var(--el-text-color-secondary);
+}
+
+.billing-doc-pruned {
+  color: var(--el-color-warning);
+  cursor: help;
+}
+
 .billing-doc-no,
 .billing-doc-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

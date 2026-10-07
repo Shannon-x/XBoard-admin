@@ -107,6 +107,18 @@ async function handleTestTicketStorage() {
   }
 }
 
+async function handleTestBillingStorage() {
+  try {
+    const result = await adminStore.testBillingStorage()
+    const where = result?.bucket
+      ? `${result.endpoint} / ${result.bucket}`
+      : String(result?.endpoint || '')
+    ElMessage.success(`${t('systemSettings.messages.testBillingStorageSuccess')}${where ? `（${where}）` : ''}`)
+  } catch (error) {
+    ElMessage.error(error?.message || t('systemSettings.messages.testBillingStorageFailed'))
+  }
+}
+
 onMounted(function loadSettingsOnMount() {
   adminStore.loadSiteSettings(activeCategory.value).catch(function ignoreLoadError() {
     return null
@@ -169,6 +181,7 @@ function handleCategoryChange(categoryKey) {
           mailTestSending: adminStore.mailTestSending,
           telegramWebhookSetting: adminStore.telegramWebhookSetting,
           ticketStorageTesting: adminStore.ticketStorageTesting,
+          billingStorageTesting: adminStore.billingStorageTesting,
         }"
         :form="adminStore.siteSettings"
         :groups="adminStore.systemSettingsGroups"
@@ -177,6 +190,7 @@ function handleCategoryChange(categoryKey) {
         @setup-telegram-webhook="handleSetupTelegramWebhook"
         @test-mail="handleTestMail"
         @test-ticket-storage="handleTestTicketStorage"
+        @test-billing-storage="handleTestBillingStorage"
       />
     </SectionCard>
 

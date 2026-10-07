@@ -88,6 +88,7 @@ import {
   fetchSiteSettings,
   saveSiteSettings,
   setupTelegramWebhook,
+  testBillingStorage,
   testSendMail,
   testTicketAttachmentStorage,
 } from "../services/settings";
@@ -156,6 +157,7 @@ export const useAdminStore = defineStore("admin", () => {
   const mailTestSending = ref(false);
   const telegramWebhookSetting = ref(false);
   const ticketStorageTesting = ref(false);
+  const billingStorageTesting = ref(false);
   const emailTemplateOptions = ref([]);
 
   const navigationGroups = [
@@ -1078,6 +1080,14 @@ export const useAdminStore = defineStore("admin", () => {
           tone: "compact",
         },
         {
+          key: "mailLogRetentionDays",
+          labelKey: "systemSettings.fields.mailLogRetentionDays.label",
+          descriptionKey: "systemSettings.fields.mailLogRetentionDays.description",
+          type: "number",
+          min: 0,
+          max: 3650,
+        },
+        {
           key: "mailTestAction",
           labelKey: "systemSettings.fields.mailTestAction.label",
           descriptionKey: "systemSettings.fields.mailTestAction.description",
@@ -1173,6 +1183,92 @@ export const useAdminStore = defineStore("admin", () => {
           descriptionKey: "systemSettings.fields.billingLogo.description",
           placeholderKey: "systemSettings.fields.billingLogo.placeholder",
           type: "text",
+        },
+        // 归档存储位置：本地或 S3 兼容对象存储；字段与工单附件的 S3 配置同构
+        {
+          key: "billingStorageDriver",
+          labelKey: "systemSettings.fields.billingStorageDriver.label",
+          descriptionKey: "systemSettings.fields.billingStorageDriver.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.billingStorageDriver",
+        },
+        {
+          key: "billingS3Endpoint",
+          labelKey: "systemSettings.fields.billingS3Endpoint.label",
+          descriptionKey: "systemSettings.fields.billingS3Endpoint.description",
+          placeholderKey: "systemSettings.fields.billingS3Endpoint.placeholder",
+          type: "text",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3Region",
+          labelKey: "systemSettings.fields.billingS3Region.label",
+          descriptionKey: "systemSettings.fields.billingS3Region.description",
+          placeholderKey: "systemSettings.fields.billingS3Region.placeholder",
+          type: "text",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3Bucket",
+          labelKey: "systemSettings.fields.billingS3Bucket.label",
+          descriptionKey: "systemSettings.fields.billingS3Bucket.description",
+          placeholderKey: "systemSettings.fields.billingS3Bucket.placeholder",
+          type: "text",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3AccessKey",
+          labelKey: "systemSettings.fields.billingS3AccessKey.label",
+          descriptionKey: "systemSettings.fields.billingS3AccessKey.description",
+          type: "text",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3SecretKey",
+          labelKey: "systemSettings.fields.billingS3SecretKey.label",
+          descriptionKey: "systemSettings.fields.billingS3SecretKey.description",
+          type: "password",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3PathStyle",
+          labelKey: "systemSettings.fields.billingS3PathStyle.label",
+          descriptionKey: "systemSettings.fields.billingS3PathStyle.description",
+          type: "switch",
+          tone: "compact",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingS3Prefix",
+          labelKey: "systemSettings.fields.billingS3Prefix.label",
+          descriptionKey: "systemSettings.fields.billingS3Prefix.description",
+          placeholderKey: "systemSettings.fields.billingS3Prefix.placeholder",
+          type: "text",
+          visibleWhen: { key: "billingStorageDriver", equals: "s3" },
+        },
+        {
+          key: "billingStorageTestAction",
+          labelKey: "systemSettings.fields.billingStorageTestAction.label",
+          descriptionKey: "systemSettings.fields.billingStorageTestAction.description",
+          type: "action",
+          actionKey: "testBillingStorage",
+        },
+        // 保留期：归档不会无限膨胀
+        {
+          key: "billingReceiptRetentionDays",
+          labelKey: "systemSettings.fields.billingReceiptRetentionDays.label",
+          descriptionKey: "systemSettings.fields.billingReceiptRetentionDays.description",
+          type: "number",
+          min: 0,
+          max: 3650,
+        },
+        {
+          key: "billingInvoiceRetentionDays",
+          labelKey: "systemSettings.fields.billingInvoiceRetentionDays.label",
+          descriptionKey: "systemSettings.fields.billingInvoiceRetentionDays.description",
+          type: "number",
+          min: 0,
+          max: 3650,
         },
       ],
       badgeKey: "systemSettings.badges.live",
@@ -1805,6 +1901,16 @@ export const useAdminStore = defineStore("admin", () => {
     }
   }
 
+  async function testBillingStorageItem() {
+    billingStorageTesting.value = true;
+
+    try {
+      return await testBillingStorage(siteSettings.value);
+    } finally {
+      billingStorageTesting.value = false;
+    }
+  }
+
   async function loadQueueStats() {
     queueStatsLoading.value = true;
     queueStatsError.value = "";
@@ -2197,7 +2303,9 @@ export const useAdminStore = defineStore("admin", () => {
     saveSiteSettings: saveSiteSettingsItem,
     setupTelegramWebhook: setupTelegramWebhookItem,
     testSendMail: testSendMailItem,
+    testBillingStorage: testBillingStorageItem,
     ticketStorageTesting,
+    billingStorageTesting,
     testTicketAttachmentStorage: testTicketAttachmentStorageItem,
     systemStatus,
     systemStatusError,

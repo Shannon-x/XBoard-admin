@@ -398,7 +398,7 @@ export default {
       },
       billing: {
         title: '收据与账单',
-        description: '付款后自动寄送收据 PDF，到期前寄送续费账单；到期后的暂停提醒与召回邮件也在这里开关。所有文档会归档，可在「账单与收据」页面查看与重发。',
+        description: '付款后自动寄送收据 PDF，到期前寄送续费账单；到期后的暂停提醒与召回邮件也在这里开关。所有文档会归档，可在「账单与收据」页面查看与重发；归档可放本地或 S3 兼容对象存储，并按保留期自动清理。',
       },
       ticketWorkflow: {
         title: '工单分类',
@@ -466,6 +466,54 @@ export default {
         label: '文档 Logo',
         description: 'PDF 抬头使用的 Logo 图片地址（PNG / JPG），留空则使用站点 Logo。',
         placeholder: 'https://',
+      },
+      billingStorageDriver: {
+        label: '归档存储位置',
+        description: '本地存放在 storage/app/billing/documents（需在持久卷上）；S3 兼容 Cloudflare R2、MinIO、Backblaze B2、阿里云 OSS 等。桶无需公开读，下载始终经后端校验后输出。切换后旧文件仍按原位置读取，可用 php artisan billing:migrate-storage 集中搬迁。',
+      },
+      billingS3Endpoint: {
+        label: 'S3 Endpoint',
+        description: '留空使用 AWS 官方地址（按 Region 拼接）。R2 填 https://账号ID.r2.cloudflarestorage.com，MinIO 填自建地址。',
+        placeholder: 'https://ACCOUNT_ID.r2.cloudflarestorage.com',
+      },
+      billingS3Region: {
+        label: 'Region',
+        description: 'R2 填 auto，AWS 填真实区域如 ap-northeast-1，MinIO 一般填 us-east-1。',
+        placeholder: 'auto',
+      },
+      billingS3Bucket: {
+        label: 'Bucket',
+        description: '存储桶名称。可与工单附件共用一个桶，用不同的对象前缀隔开。',
+        placeholder: 'xboard-billing',
+      },
+      billingS3AccessKey: {
+        label: 'Access Key ID',
+        description: '仅需对该桶的读写删权限。',
+      },
+      billingS3SecretKey: {
+        label: 'Secret Access Key',
+        description: '只在服务端使用，不会下发给任何前端。',
+      },
+      billingS3PathStyle: {
+        label: '路径式访问（Path-style）',
+        description: '开启后对象地址形如「端点 / 存储桶 / 对象键」，关闭则为「存储桶.端点 / 对象键」。R2 / MinIO 建议开启。',
+      },
+      billingS3Prefix: {
+        label: '对象前缀',
+        description: '对象 key 的目录前缀：<前缀>/<用户ID>/<编号>.pdf。',
+        placeholder: 'billing/documents',
+      },
+      billingStorageTestAction: {
+        label: '测试存储连接',
+        description: '用上方当前填写的配置（无需先保存）写入、读回并删除一个探针文件。',
+      },
+      billingReceiptRetentionDays: {
+        label: '收据 PDF 保留天数',
+        description: '超过保留期的收据只删除文件、保留记录：面板里照常列出，用户再下载或后台重发时按订单重新生成。0 = 永久保留。每天 03:40 清理一次。',
+      },
+      billingInvoiceRetentionDays: {
+        label: '续费账单保留天数',
+        description: '账单在对应周期结束这么多天后连记录一起删除，只删已续费或已失效的；仍在 30 天付款窗口内的待付款账单不会删。0 = 永久保留。',
       },
       ticketAttachmentEnable: {
         label: '启用工单附件',
@@ -912,6 +960,10 @@ export default {
         label: '投递失败日报',
         description: '开启后，前一天有投递失败或暂停投递时，每天 09:00 向管理员邮箱寄送一份汇总报告；没有失败时不打扰。',
       },
+      mailLogRetentionDays: {
+        label: '投递日志保留天数',
+        description: '「邮件投递」页的日志按此保留期每天清理（到期 / 流量提醒每天都会记一行）。0 = 永久保留。',
+      },
       mailTestAction: {
         label: '发送测试邮件',
         description: '立即使用当前邮件配置发送一封测试邮件。',
@@ -1029,6 +1081,10 @@ export default {
         local: '本地存储',
         s3: 'S3 兼容对象存储',
       },
+      billingStorageDriver: {
+        local: '本地存储',
+        s3: 'S3 兼容对象存储',
+      },
       ticketAttachmentRetentionDays: {
         0: '永久保留',
         180: '保留半年',
@@ -1100,6 +1156,8 @@ export default {
       telegramWebhookFailed: 'Telegram Webhook 设置失败',
       testTicketStorageSuccess: '附件存储读写正常',
       testTicketStorageFailed: '附件存储测试失败',
+      testBillingStorageSuccess: '归档存储读写正常',
+      testBillingStorageFailed: '归档存储测试失败',
     },
     testMail: {
       title: '发送测试邮件',

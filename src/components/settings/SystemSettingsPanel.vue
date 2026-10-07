@@ -31,7 +31,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['change-group', 'testMail', 'setupTelegramWebhook', 'testTicketStorage'])
+const emit = defineEmits(['change-group', 'testMail', 'setupTelegramWebhook', 'testTicketStorage', 'testBillingStorage'])
 
 const { t, tm } = useI18n()
 const activeCodeTab = ref('subscribeTemplateSingbox')
@@ -140,6 +140,10 @@ function resolveActionLoading(field) {
 
   if (field.actionKey === 'testTicketStorage') {
     return Boolean(props.dynamicOptions.ticketStorageTesting)
+  }
+
+  if (field.actionKey === 'testBillingStorage') {
+    return Boolean(props.dynamicOptions.billingStorageTesting)
   }
 
   return false
