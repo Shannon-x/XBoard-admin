@@ -19,8 +19,9 @@ export const MAIL_CATEGORY = {
 
 // mail_suppressed_reason 存的就是触发暂停的分类
 export const SUPPRESS_REASON = {
+  suppressed: '在发信服务商的抑制名单里',
   bounce: '退信（地址无效或被对方拒收）',
-  temporary: '连续 3 次临时失败',
+  temporary: '多次临时失败（不同时段累计 3 次）',
   config: '发信配置错误',
 }
 

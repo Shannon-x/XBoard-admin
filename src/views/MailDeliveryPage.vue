@@ -372,7 +372,7 @@ onMounted(function onMount() {
             :closable="false"
             show-icon
             style="margin-bottom: 16px"
-            title="一次硬退信或连续三次临时失败会暂停该邮箱的投递。暂停期间收据与账单改走 Telegram（已绑定时）并留在用户面板，用户在面板里自测邮箱成功后会自动解除。"
+            title="一次硬退信，或在不同时段累计三次临时失败（一小时内只算一次），会暂停该邮箱的投递。暂停期间收据与账单改走 Telegram（已绑定时）并留在用户面板，用户在面板里自测邮箱成功后会自动解除。"
           />
 
           <el-alert v-if="suppressedError" :title="suppressedError" closable show-icon type="error" style="margin-bottom: 16px" @close="suppressedError = ''" />
