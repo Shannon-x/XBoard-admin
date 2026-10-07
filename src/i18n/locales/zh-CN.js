@@ -918,7 +918,15 @@ export default {
       },
       remindMailEnable: {
         label: '邮件提醒',
-        description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。',
+        description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。到期、流量两类提醒都按周期只发一封，不会每天重复。',
+      },
+      remindTrafficPercent: {
+        label: '流量预警阈值',
+        description: '本周期流量用到这个百分比时发一封预警（50–99，默认 80）。同一周期只发一次；流量重置或升级套餐后重新计算。',
+      },
+      remindTrafficExhaustedEnable: {
+        label: '流量用完通知',
+        description: '流量用完时再发一封「本周期流量已用完」，附重置日期与加购 / 升级入口；同一周期只发一次。',
       },
       mailDigestEnable: {
         label: '投递失败日报',

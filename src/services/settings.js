@@ -101,6 +101,8 @@ export function createEmptySiteSettings() {
     emailEncryption: 'none',
     emailFromAddress: '',
     remindMailEnable: false,
+    remindTrafficPercent: 80,
+    remindTrafficExhaustedEnable: true,
     telegramBotEnable: false,
     telegramBotToken: '',
     telegramDiscussLink: '',
@@ -805,6 +807,8 @@ function normalizeEmailSettings(email) {
       emailEncryption: fallback.emailEncryption,
       emailFromAddress: fallback.emailFromAddress,
       remindMailEnable: fallback.remindMailEnable,
+      remindTrafficPercent: fallback.remindTrafficPercent,
+      remindTrafficExhaustedEnable: fallback.remindTrafficExhaustedEnable,
       mailDigestEnable: fallback.mailDigestEnable,
       mailLogRetentionDays: fallback.mailLogRetentionDays,
       notifyOptionalCategories: fallback.notifyOptionalCategories,
@@ -822,6 +826,11 @@ function normalizeEmailSettings(email) {
     emailEncryption: normalizeEmailEncryption(email.email_encryption ?? fallback.emailEncryption),
     emailFromAddress: String(email.email_from_address ?? ''),
     remindMailEnable: Boolean(email.remind_mail_enable),
+    // 流量提醒：预警阈值 50–99，「用完」开关缺省开
+    remindTrafficPercent: Math.min(99, Math.max(50, Number(email.remind_traffic_percent ?? fallback.remindTrafficPercent) || fallback.remindTrafficPercent)),
+    remindTrafficExhaustedEnable: email.remind_traffic_exhausted_enable === undefined
+      ? fallback.remindTrafficExhaustedEnable
+      : Boolean(Number(email.remind_traffic_exhausted_enable)),
     mailDigestEnable: email.mail_digest_enable === undefined
       ? fallback.mailDigestEnable
       : Boolean(Number(email.mail_digest_enable)),
@@ -856,6 +865,8 @@ function createEmailSettingsPayload(settings = {}) {
     email_encryption: normalizeEmailEncryption(settings.emailEncryption || 'none'),
     email_from_address: String(settings.emailFromAddress || '').trim(),
     remind_mail_enable: settings.remindMailEnable ? 1 : 0,
+    remind_traffic_percent: Math.min(99, Math.max(50, Number(settings.remindTrafficPercent) || 80)),
+    remind_traffic_exhausted_enable: settings.remindTrafficExhaustedEnable ? 1 : 0,
     mail_digest_enable: settings.mailDigestEnable ? 1 : 0,
     mail_log_retention_days: normalizeRetentionDays(settings.mailLogRetentionDays, 180),
     notify_optional_categories: splitCodeList(settings.notifyOptionalCategories).join(','),

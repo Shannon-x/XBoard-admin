@@ -1071,6 +1071,21 @@ export const useAdminStore = defineStore("admin", () => {
           tone: "compact",
         },
         {
+          key: "remindTrafficPercent",
+          labelKey: "systemSettings.fields.remindTrafficPercent.label",
+          descriptionKey: "systemSettings.fields.remindTrafficPercent.description",
+          type: "number",
+          min: 50,
+          max: 99,
+        },
+        {
+          key: "remindTrafficExhaustedEnable",
+          labelKey: "systemSettings.fields.remindTrafficExhaustedEnable.label",
+          descriptionKey: "systemSettings.fields.remindTrafficExhaustedEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
           key: "mailDigestEnable",
           labelKey: "systemSettings.fields.mailDigestEnable.label",
           descriptionKey: "systemSettings.fields.mailDigestEnable.description",

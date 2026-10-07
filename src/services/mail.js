@@ -178,7 +178,7 @@ export async function unsuppressUser(userId) {
 /** 与后端 App\Services\Notification\NotificationPreference::CATEGORIES 一致，顺序即展示顺序 */
 export const NOTIFY_CATEGORY = {
   billing: { text: '账单与到期提醒', hint: '续费账单、到期当天的服务暂停通知、自动续费结果（对应老的 remind_expire）' },
-  usage: { text: '流量与用量', hint: '流量用到 80% 的提醒（对应老的 remind_traffic）' },
+  usage: { text: '流量与用量', hint: '流量用到阈值的预警与用完通知，每周期各一封（对应老的 remind_traffic）' },
   support: { text: '工单回复', hint: '工单有新回复' },
   announcement: { text: '服务公告', hint: '后台群发默认类别；带一键退订头' },
   marketing: { text: '活动与优惠', hint: '到期后的召回邮件、标为「活动」的群发；带一键退订头' },
