@@ -317,20 +317,30 @@ const typeOptions = [
   { label: '建议与反馈', value: '1' },
 ]
 
-const categoryGroups = computed(function categoryGroups() {
+function groupCategories(onlyType) {
   const counts = ticketStat.value.counts.byCategory
   const groups = [
     { label: '求助', type: 0, options: [] },
     { label: '建议与反馈', type: 1, options: [] },
   ]
   for (const category of ticketStat.value.categories) {
-    if (typeFilter.value !== '' && String(category.type) !== typeFilter.value) continue
+    if (onlyType !== '' && String(category.type) !== onlyType) continue
     const target = groups.find(function byType(group) { return group.type === category.type })
     if (!target) continue
     const count = counts[category.code] || { open: 0, pending: 0 }
     target.options.push({ ...category, open: count.open, pending: count.pending })
   }
   return groups.filter(function nonEmpty(group) { return group.options.length > 0 })
+}
+
+// 筛选条的分类下拉跟着类型筛选走
+const categoryGroups = computed(function categoryGroups() {
+  return groupCategories(typeFilter.value)
+})
+
+// 详情里改分类不受列表类型筛选影响：混在「建议与反馈」里的故障单要能直接改回求助分类
+const detailCategoryGroups = computed(function detailCategoryGroups() {
+  return groupCategories('')
 })
 
 const feedbackStateOptions = computed(function feedbackStateOptions() {
@@ -840,7 +850,7 @@ onMounted(function onMount() {
               title="修改分类"
               @change="handleUpdateTicketField('category', $event)"
             >
-              <el-option-group v-for="group in categoryGroups" :key="group.type" :label="group.label">
+              <el-option-group v-for="group in detailCategoryGroups" :key="group.type" :label="group.label">
                 <el-option
                   v-for="category in group.options"
                   :key="category.code"

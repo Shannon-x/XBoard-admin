@@ -66,13 +66,15 @@ export const DEFAULT_FEEDBACK_STATES = [
   { code: 'declined', name: '暂不采纳' },
 ]
 
-// 用户端按 received → accepted → planned → shipped 画进度条，declined 是终态分支
+// 用户端按 received → accepted → planned → shipped 画进度条，declined 是终态分支。
+// 配色与用户端一致：待分拣的「已收到」醒目，「暂不采纳」置灰。
+// 注意 styles.css 里 --primary 与 --danger 同为 #c94f2e，两者不能分给意思相反的状态。
 export const FEEDBACK_STATE_TAG = {
-  received: 'info',
+  received: 'warning',
   accepted: 'primary',
-  planned: 'warning',
+  planned: 'primary',
   shipped: 'success',
-  declined: 'danger',
+  declined: 'info',
 }
 
 function formatTimestamp(value) {
