@@ -149,17 +149,8 @@ export function createEmptySiteSettings() {
     billingWinbackEnable: true,
     billingWinbackDays: '7,30',
     billingWinbackCoupon: '',
-    // 归档存储位置与保留期（同在后端 email 组）
-    billingStorageDriver: 'local',
-    billingS3Endpoint: '',
-    billingS3Region: 'auto',
-    billingS3Bucket: '',
-    billingS3AccessKey: '',
-    billingS3SecretKey: '',
-    billingS3PathStyle: true,
-    billingS3Prefix: 'billing/documents',
-    billingReceiptRetentionDays: 365,
-    billingInvoiceRetentionDays: 90,
+    // 已续费 / 已失效的账单记录保留天数（同在后端 email 组），0 = 永久；收据始终保留
+    billingInvoiceRetentionDays: 0,
     // 退信日报（只在有失败时发）
     mailDigestEnable: true,
     mailLogRetentionDays: 180,
@@ -398,17 +389,6 @@ export async function testTicketAttachmentStorage(settings = {}) {
   const payload = await requestDashboardMutation(
     buildSecureV2ApiUrl('config/testTicketAttachmentStorage'),
     createTicketAttachmentSettingsPayload(settings),
-    'POST'
-  )
-
-  return payload?.data || {}
-}
-
-/** 收据 / 账单归档「测试存储连接」：同样把表单当前值发过去探测，返回 { driver, endpoint, bucket, location } */
-export async function testBillingStorage(settings = {}) {
-  const payload = await requestDashboardMutation(
-    buildSecureV2ApiUrl('config/testBillingStorage'),
-    createBillingSettingsPayload(settings),
     'POST'
   )
 
@@ -1179,15 +1159,6 @@ function normalizeBillingSettings(email) {
       billingWinbackEnable: fallback.billingWinbackEnable,
       billingWinbackDays: fallback.billingWinbackDays,
       billingWinbackCoupon: fallback.billingWinbackCoupon,
-      billingStorageDriver: fallback.billingStorageDriver,
-      billingS3Endpoint: fallback.billingS3Endpoint,
-      billingS3Region: fallback.billingS3Region,
-      billingS3Bucket: fallback.billingS3Bucket,
-      billingS3AccessKey: fallback.billingS3AccessKey,
-      billingS3SecretKey: fallback.billingS3SecretKey,
-      billingS3PathStyle: fallback.billingS3PathStyle,
-      billingS3Prefix: fallback.billingS3Prefix,
-      billingReceiptRetentionDays: fallback.billingReceiptRetentionDays,
       billingInvoiceRetentionDays: fallback.billingInvoiceRetentionDays,
     }
   }
@@ -1208,15 +1179,6 @@ function normalizeBillingSettings(email) {
       ? fallback.billingWinbackDays
       : normalizeDayList(email.billing_winback_days, ''),
     billingWinbackCoupon: String(email.billing_winback_coupon ?? ''),
-    billingStorageDriver: email.billing_storage_driver === 's3' ? 's3' : 'local',
-    billingS3Endpoint: String(email.billing_s3_endpoint ?? ''),
-    billingS3Region: String(email.billing_s3_region ?? 'auto'),
-    billingS3Bucket: String(email.billing_s3_bucket ?? ''),
-    billingS3AccessKey: String(email.billing_s3_access_key ?? ''),
-    billingS3SecretKey: String(email.billing_s3_secret_key ?? ''),
-    billingS3PathStyle: email.billing_s3_path_style === undefined ? true : Boolean(Number(email.billing_s3_path_style)),
-    billingS3Prefix: String(email.billing_s3_prefix ?? 'billing/documents'),
-    billingReceiptRetentionDays: normalizeRetentionDays(email.billing_receipt_retention_days, fallback.billingReceiptRetentionDays),
     billingInvoiceRetentionDays: normalizeRetentionDays(email.billing_invoice_retention_days, fallback.billingInvoiceRetentionDays),
   }
 }
@@ -1239,15 +1201,6 @@ function createBillingSettingsPayload(settings = {}) {
     billing_winback_enable: settings.billingWinbackEnable ? 1 : 0,
     billing_winback_days: normalizeDayList(settings.billingWinbackDays, ''),
     billing_winback_coupon: String(settings.billingWinbackCoupon || '').trim(),
-    billing_storage_driver: settings.billingStorageDriver === 's3' ? 's3' : 'local',
-    billing_s3_endpoint: String(settings.billingS3Endpoint || '').trim(),
-    billing_s3_region: String(settings.billingS3Region || '').trim(),
-    billing_s3_bucket: String(settings.billingS3Bucket || '').trim(),
-    billing_s3_access_key: String(settings.billingS3AccessKey || '').trim(),
-    billing_s3_secret_key: String(settings.billingS3SecretKey || '').trim(),
-    billing_s3_path_style: settings.billingS3PathStyle ? 1 : 0,
-    billing_s3_prefix: String(settings.billingS3Prefix || '').trim(),
-    billing_receipt_retention_days: normalizeRetentionDays(settings.billingReceiptRetentionDays, 365),
-    billing_invoice_retention_days: normalizeRetentionDays(settings.billingInvoiceRetentionDays, 90),
+    billing_invoice_retention_days: normalizeRetentionDays(settings.billingInvoiceRetentionDays, 0),
   }
 }

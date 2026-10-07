@@ -21,7 +21,7 @@ const pageSizePreference = createPageSizePreference('billing-documents', 20, [20
 const pagination = ref({ ...createEmptyBillingDocumentsPagination(), pageSize: pageSizePreference.initialSize })
 const loading = ref(false)
 const errorMsg = ref('')
-// 归档整体占用与保留策略，随列表一起返回
+// 整体份数、快照占用与旧账单保留策略，随列表一起返回
 const summary = ref(null)
 const kindFilter = ref('')
 const emailSearch = ref('')
@@ -92,7 +92,7 @@ function clearPreciseFilter() {
   handleSearch()
 }
 
-// 收据随时可以按订单重新渲染后重发；账单只有仍是当前到期周期（待付款）时后端才接受
+// 收据照开具时的快照原样重发（收件人是用户现在的邮箱）；账单只有仍是当前到期周期（待付款）时后端才接受
 function canResend(row) {
   if (row.kind === 'receipt') return Boolean(row.orderId)
   return row.status === 'open'
@@ -194,14 +194,11 @@ onMounted(function onMount() {
 
       <div v-if="summary" class="billing-summary">
         <Database :size="14" class="billing-summary__icon" />
-        <span>
-          存储：<strong>{{ summary.driverText }}</strong>
-          <span class="billing-doc-mono billing-summary__path">{{ summary.location }}</span>
-        </span>
+        <span>收据 <strong>{{ summary.receipts }}</strong> 份 · 续费账单 <strong>{{ summary.invoices }}</strong> 份，内容快照共 <strong>{{ summary.bytesText }}</strong></span>
         <el-divider direction="vertical" />
-        <span>归档 <strong>{{ summary.total }}</strong> 份，占用 <strong>{{ summary.bytesText }}</strong><template v-if="summary.pruned">，其中 {{ summary.pruned }} 份文件已按保留期清理（下载时重建）</template></span>
+        <span>不存 PDF 文件，下载或重发时按快照现生成</span>
         <el-divider direction="vertical" />
-        <span>收据文件保留 {{ summary.receiptRetentionText }}，账单在周期结束后保留 {{ summary.invoiceRetentionText }}</span>
+        <span>收据永久保留；已续费 / 已失效的旧账单{{ summary.invoiceRetentionText }}</span>
         <router-link :to="{ name: 'settings', params: { category: 'billing' } }" class="x-link">调整</router-link>
       </div>
 
@@ -211,12 +208,6 @@ onMounted(function onMount() {
         <el-table-column label="编号" min-width="200">
           <template #default="{ row }">
             <span class="billing-doc-no">{{ row.docNo }}</span>
-            <div class="billing-doc-sub">
-              <el-tooltip v-if="row.filePruned" content="PDF 已按保留期清理，记录保留；下载或重发时按订单重新生成" placement="top">
-                <span class="billing-doc-pruned">{{ row.sizeText }}</span>
-              </el-tooltip>
-              <template v-else>{{ row.sizeText }}</template>
-            </div>
           </template>
         </el-table-column>
         <el-table-column label="类型" width="130">
@@ -337,16 +328,6 @@ onMounted(function onMount() {
 
 .billing-summary__icon {
   color: var(--el-text-color-secondary);
-}
-
-.billing-summary__path {
-  margin-left: 6px;
-  color: var(--el-text-color-secondary);
-}
-
-.billing-doc-pruned {
-  color: var(--el-color-warning);
-  cursor: help;
 }
 
 .billing-doc-no,
