@@ -1086,6 +1086,27 @@ export const useAdminStore = defineStore("admin", () => {
           max: 3650,
         },
         {
+          key: "notifyOptionalCategories",
+          labelKey: "systemSettings.fields.notifyOptionalCategories.label",
+          descriptionKey: "systemSettings.fields.notifyOptionalCategories.description",
+          type: "checkboxGroup",
+          optionsKey: "systemSettings.selectOptions.notifyOptionalCategories",
+        },
+        {
+          key: "notifyFooterLabel",
+          labelKey: "systemSettings.fields.notifyFooterLabel.label",
+          descriptionKey: "systemSettings.fields.notifyFooterLabel.description",
+          placeholderKey: "systemSettings.fields.notifyFooterLabel.placeholder",
+          type: "text",
+        },
+        {
+          key: "notifyListUnsubscribeEnable",
+          labelKey: "systemSettings.fields.notifyListUnsubscribeEnable.label",
+          descriptionKey: "systemSettings.fields.notifyListUnsubscribeEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
           key: "mailTestAction",
           labelKey: "systemSettings.fields.mailTestAction.label",
           descriptionKey: "systemSettings.fields.mailTestAction.description",

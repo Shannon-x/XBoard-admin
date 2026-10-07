@@ -924,6 +924,19 @@ export default {
         label: '投递失败日报',
         description: '开启后，前一天有投递失败或暂停投递时，每天 09:00 向管理员邮箱寄送一份汇总报告；没有失败时不打扰。',
       },
+      notifyOptionalCategories: {
+        label: '允许用户关闭的通知',
+        description: '用户在面板「通知设置」和邮件页脚的偏好页里能自己关掉的类别；没勾选的类别显示为「始终发送」，用户关也关不掉。收据、提现结果、验证码等交易类邮件不在其中，永远发送。',
+      },
+      notifyFooterLabel: {
+        label: '邮件页脚链接文案',
+        description: '账单、提醒、公告、活动邮件底部那行小字链接的文案，点开是免登录的通知偏好页。留空为「管理通知偏好」。',
+        placeholder: '管理通知偏好',
+      },
+      notifyListUnsubscribeEnable: {
+        label: '批量邮件带一键退订头',
+        description: '服务公告与活动邮件附带 List-Unsubscribe / List-Unsubscribe-Post 头，Gmail、Yahoo 会在邮件顶部显示「退订」并一键关闭该类别。这是它们对批量发件人的送达率要求，关掉会增加进垃圾箱的概率。',
+      },
       mailLogRetentionDays: {
         label: '投递日志保留天数',
         description: '「邮件投递」页的日志按此保留期每天清理（到期 / 流量提醒每天都会记一行）。0 = 永久保留。',
@@ -1023,6 +1036,13 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      notifyOptionalCategories: {
+        billing: '账单与到期提醒',
+        usage: '流量与用量',
+        support: '工单回复',
+        announcement: '服务公告',
+        marketing: '活动与优惠',
+      },
       billingLocale: {
         'zh-CN': '简体中文',
         'zh-TW': '繁體中文',

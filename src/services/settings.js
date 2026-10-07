@@ -157,6 +157,9 @@ export function createEmptySiteSettings() {
     // 退信日报（只在有失败时发）
     mailDigestEnable: true,
     mailLogRetentionDays: 180,
+    notifyOptionalCategories: ['billing', 'usage', 'support', 'announcement', 'marketing'],
+    notifyFooterLabel: '',
+    notifyListUnsubscribeEnable: true,
   }
 }
 
@@ -804,6 +807,9 @@ function normalizeEmailSettings(email) {
       remindMailEnable: fallback.remindMailEnable,
       mailDigestEnable: fallback.mailDigestEnable,
       mailLogRetentionDays: fallback.mailLogRetentionDays,
+      notifyOptionalCategories: fallback.notifyOptionalCategories,
+      notifyFooterLabel: fallback.notifyFooterLabel,
+      notifyListUnsubscribeEnable: fallback.notifyListUnsubscribeEnable,
     }
   }
 
@@ -820,6 +826,14 @@ function normalizeEmailSettings(email) {
       ? fallback.mailDigestEnable
       : Boolean(Number(email.mail_digest_enable)),
     mailLogRetentionDays: normalizeRetentionDays(email.mail_log_retention_days, fallback.mailLogRetentionDays),
+    // 通知偏好：后端留空 = 全部类别都允许用户关闭
+    notifyOptionalCategories: email.notify_optional_categories === undefined
+      ? fallback.notifyOptionalCategories
+      : splitCodeList(email.notify_optional_categories),
+    notifyFooterLabel: String(email.notify_footer_label ?? ''),
+    notifyListUnsubscribeEnable: email.notify_list_unsubscribe_enable === undefined
+      ? fallback.notifyListUnsubscribeEnable
+      : Boolean(Number(email.notify_list_unsubscribe_enable)),
   }
 }
 
@@ -844,6 +858,9 @@ function createEmailSettingsPayload(settings = {}) {
     remind_mail_enable: settings.remindMailEnable ? 1 : 0,
     mail_digest_enable: settings.mailDigestEnable ? 1 : 0,
     mail_log_retention_days: normalizeRetentionDays(settings.mailLogRetentionDays, 180),
+    notify_optional_categories: splitCodeList(settings.notifyOptionalCategories).join(','),
+    notify_footer_label: String(settings.notifyFooterLabel || '').trim(),
+    notify_list_unsubscribe_enable: settings.notifyListUnsubscribeEnable ? 1 : 0,
   }
 }
 
