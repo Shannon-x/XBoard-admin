@@ -101,6 +101,8 @@ export function createEmptySiteSettings() {
     emailEncryption: 'none',
     emailFromAddress: '',
     remindMailEnable: false,
+    remindTrafficPercent: 80,
+    remindTrafficExhaustedEnable: true,
     telegramBotEnable: false,
     telegramBotToken: '',
     telegramDiscussLink: '',
@@ -157,6 +159,9 @@ export function createEmptySiteSettings() {
     // 退信日报（只在有失败时发）
     mailDigestEnable: true,
     mailLogRetentionDays: 180,
+    notifyOptionalCategories: ['billing', 'usage', 'support', 'announcement', 'marketing'],
+    notifyFooterLabel: '',
+    notifyListUnsubscribeEnable: true,
   }
 }
 
@@ -802,8 +807,13 @@ function normalizeEmailSettings(email) {
       emailEncryption: fallback.emailEncryption,
       emailFromAddress: fallback.emailFromAddress,
       remindMailEnable: fallback.remindMailEnable,
+      remindTrafficPercent: fallback.remindTrafficPercent,
+      remindTrafficExhaustedEnable: fallback.remindTrafficExhaustedEnable,
       mailDigestEnable: fallback.mailDigestEnable,
       mailLogRetentionDays: fallback.mailLogRetentionDays,
+      notifyOptionalCategories: fallback.notifyOptionalCategories,
+      notifyFooterLabel: fallback.notifyFooterLabel,
+      notifyListUnsubscribeEnable: fallback.notifyListUnsubscribeEnable,
     }
   }
 
@@ -816,10 +826,23 @@ function normalizeEmailSettings(email) {
     emailEncryption: normalizeEmailEncryption(email.email_encryption ?? fallback.emailEncryption),
     emailFromAddress: String(email.email_from_address ?? ''),
     remindMailEnable: Boolean(email.remind_mail_enable),
+    // 流量提醒：预警阈值 50–99，「用完」开关缺省开
+    remindTrafficPercent: Math.min(99, Math.max(50, Number(email.remind_traffic_percent ?? fallback.remindTrafficPercent) || fallback.remindTrafficPercent)),
+    remindTrafficExhaustedEnable: email.remind_traffic_exhausted_enable === undefined
+      ? fallback.remindTrafficExhaustedEnable
+      : Boolean(Number(email.remind_traffic_exhausted_enable)),
     mailDigestEnable: email.mail_digest_enable === undefined
       ? fallback.mailDigestEnable
       : Boolean(Number(email.mail_digest_enable)),
     mailLogRetentionDays: normalizeRetentionDays(email.mail_log_retention_days, fallback.mailLogRetentionDays),
+    // 通知偏好：后端留空 = 全部类别都允许用户关闭
+    notifyOptionalCategories: email.notify_optional_categories === undefined
+      ? fallback.notifyOptionalCategories
+      : splitCodeList(email.notify_optional_categories),
+    notifyFooterLabel: String(email.notify_footer_label ?? ''),
+    notifyListUnsubscribeEnable: email.notify_list_unsubscribe_enable === undefined
+      ? fallback.notifyListUnsubscribeEnable
+      : Boolean(Number(email.notify_list_unsubscribe_enable)),
   }
 }
 
@@ -842,8 +865,13 @@ function createEmailSettingsPayload(settings = {}) {
     email_encryption: normalizeEmailEncryption(settings.emailEncryption || 'none'),
     email_from_address: String(settings.emailFromAddress || '').trim(),
     remind_mail_enable: settings.remindMailEnable ? 1 : 0,
+    remind_traffic_percent: Math.min(99, Math.max(50, Number(settings.remindTrafficPercent) || 80)),
+    remind_traffic_exhausted_enable: settings.remindTrafficExhaustedEnable ? 1 : 0,
     mail_digest_enable: settings.mailDigestEnable ? 1 : 0,
     mail_log_retention_days: normalizeRetentionDays(settings.mailLogRetentionDays, 180),
+    notify_optional_categories: splitCodeList(settings.notifyOptionalCategories).join(','),
+    notify_footer_label: String(settings.notifyFooterLabel || '').trim(),
+    notify_list_unsubscribe_enable: settings.notifyListUnsubscribeEnable ? 1 : 0,
   }
 }
 

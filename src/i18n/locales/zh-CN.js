@@ -918,11 +918,32 @@ export default {
       },
       remindMailEnable: {
         label: '邮件提醒',
-        description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。',
+        description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。到期、流量两类提醒都按周期只发一封，不会每天重复。',
+      },
+      remindTrafficPercent: {
+        label: '流量预警阈值',
+        description: '本周期流量用到这个百分比时发一封预警（50–99，默认 80）。同一周期只发一次；流量重置或升级套餐后重新计算。',
+      },
+      remindTrafficExhaustedEnable: {
+        label: '流量用完通知',
+        description: '流量用完时再发一封「本周期流量已用完」，附重置日期与加购 / 升级入口；同一周期只发一次。',
       },
       mailDigestEnable: {
         label: '投递失败日报',
         description: '开启后，前一天有投递失败或暂停投递时，每天 09:00 向管理员邮箱寄送一份汇总报告；没有失败时不打扰。',
+      },
+      notifyOptionalCategories: {
+        label: '允许用户关闭的通知',
+        description: '用户在面板「通知设置」和邮件页脚的偏好页里能自己关掉的类别；没勾选的类别显示为「始终发送」，用户关也关不掉。收据、提现结果、验证码等交易类邮件不在其中，永远发送。',
+      },
+      notifyFooterLabel: {
+        label: '邮件页脚链接文案',
+        description: '账单、提醒、公告、活动邮件底部那行小字链接的文案，点开是免登录的通知偏好页。留空为「管理通知偏好」。',
+        placeholder: '管理通知偏好',
+      },
+      notifyListUnsubscribeEnable: {
+        label: '批量邮件带一键退订头',
+        description: '服务公告与活动邮件附带 List-Unsubscribe / List-Unsubscribe-Post 头，Gmail、Yahoo 会在邮件顶部显示「退订」并一键关闭该类别。这是它们对批量发件人的送达率要求，关掉会增加进垃圾箱的概率。',
       },
       mailLogRetentionDays: {
         label: '投递日志保留天数',
@@ -1023,6 +1044,13 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      notifyOptionalCategories: {
+        billing: '账单与到期提醒',
+        usage: '流量与用量',
+        support: '工单回复',
+        announcement: '服务公告',
+        marketing: '活动与优惠',
+      },
       billingLocale: {
         'zh-CN': '简体中文',
         'zh-TW': '繁體中文',

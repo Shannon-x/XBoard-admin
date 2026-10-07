@@ -13,6 +13,15 @@ import {
   fetchMailStats,
   fetchSuppressedUsers,
   unsuppressUser,
+  NOTIFY_CATEGORY,
+  NOTIFY_SOURCE,
+  createEmptyNotifyLogPagination,
+  createEmptyNotifyStats,
+  fetchNotifyLog,
+  fetchNotifyStats,
+  fetchUserNotifyPrefs,
+  rotateUserNotifyKey,
+  saveUserNotifyPref,
 } from '../services/mail'
 import { toBillingDocuments, toUser } from '../utils/crossLink'
 import { createSequence } from '../utils/sequence'
@@ -161,6 +170,189 @@ async function handleUnsuppress(row) {
   }
 }
 
+// ===== 通知偏好 =====
+const notifyStats = ref(createEmptyNotifyStats())
+const notifyStatsLoading = ref(false)
+const notifyLog = ref([])
+const notifyLogPageSizePreference = createPageSizePreference('mail-notify-log', 20, [20, 50, 100])
+const notifyLogPagination = ref({ ...createEmptyNotifyLogPagination(), pageSize: notifyLogPageSizePreference.initialSize })
+const notifyLogLoading = ref(false)
+const notifyLogError = ref('')
+const notifyCategoryFilter = ref('')
+const notifySourceFilter = ref('')
+const notifySeq = createSequence()
+const notifyLoadedOnce = ref(false)
+
+const notifyLookup = ref('')
+const notifyUser = ref(null)
+const notifyUserLoading = ref(false)
+const notifyUserError = ref('')
+const notifySavingKey = ref('')
+const notifyRotating = ref(false)
+
+const notifyCategoryOptions = computed(function notifyCategoryOptions() {
+  return [
+    { label: '全部类别', value: '' },
+    ...Object.entries(NOTIFY_CATEGORY).map(function toOption([value, info]) {
+      return { label: info.text, value }
+    }),
+  ]
+})
+
+const notifySourceOptions = computed(function notifySourceOptions() {
+  return [
+    { label: '全部来源', value: '' },
+    ...Object.entries(NOTIFY_SOURCE).map(function toOption([value, info]) {
+      return { label: info.text, value }
+    }),
+  ]
+})
+
+/** 退订统计卡：每个类别一张，来源分布拼成一行小字 */
+const notifyCategoryCards = computed(function notifyCategoryCards() {
+  return notifyStats.value.categories.map(function toCard(row) {
+    const parts = Object.entries(row.bySource)
+      .filter(function hasCount([, count]) { return Number(count) > 0 })
+      .sort(function bySize(a, b) { return Number(b[1]) - Number(a[1]) })
+      .map(function toText([source, count]) {
+        return `${NOTIFY_SOURCE[source]?.text || source} ${count}`
+      })
+    return {
+      ...row,
+      bulk: notifyStats.value.bulk.includes(row.category),
+      sourceText: parts.length ? parts.join(' · ') : '暂无退订',
+    }
+  })
+})
+
+async function loadNotifyStats() {
+  notifyStatsLoading.value = true
+  try {
+    notifyStats.value = await fetchNotifyStats()
+  } catch (err) {
+    console.warn('[MailDeliveryPage] 加载通知偏好统计失败', err)
+  } finally {
+    notifyStatsLoading.value = false
+  }
+}
+
+async function loadNotifyLog() {
+  const my = notifySeq.next()
+  notifyLogLoading.value = true
+  notifyLogError.value = ''
+  try {
+    const result = await fetchNotifyLog({
+      page: notifyLogPagination.value.page,
+      pageSize: notifyLogPagination.value.pageSize,
+      category: notifyCategoryFilter.value,
+      source: notifySourceFilter.value,
+    })
+    if (!notifySeq.isCurrent(my)) return
+    notifyLog.value = result.list
+    notifyLogPagination.value = result.pagination
+  } catch (err) {
+    if (!notifySeq.isCurrent(my)) return
+    notifyLogError.value = err?.message || '加载退订记录失败'
+  } finally {
+    if (notifySeq.isCurrent(my)) notifyLogLoading.value = false
+  }
+}
+
+function handleNotifyLogSearch() {
+  notifyLogPagination.value.page = 1
+  loadNotifyLog()
+}
+
+function handleNotifyLogPageChange(page) {
+  notifyLogPagination.value.page = page
+  loadNotifyLog()
+}
+
+function handleNotifyLogPageSizeChange(size) {
+  notifyLogPageSizePreference.save(size)
+  notifyLogPagination.value.pageSize = size
+  notifyLogPagination.value.page = 1
+  loadNotifyLog()
+}
+
+function setNotifyCategoryFilter(value) {
+  notifyCategoryFilter.value = value
+  handleNotifyLogSearch()
+}
+
+function setNotifySourceFilter(value) {
+  notifySourceFilter.value = value
+  handleNotifyLogSearch()
+}
+
+// 通知偏好标签页的数据按需加载：第一次切过去才请求，避免每次进页面多打三个接口
+function ensureNotifyLoaded() {
+  if (notifyLoadedOnce.value) return
+  notifyLoadedOnce.value = true
+  loadNotifyStats()
+  loadNotifyLog()
+}
+
+function refreshNotify() {
+  loadNotifyStats()
+  loadNotifyLog()
+  if (notifyUser.value?.userId) lookupNotifyUser({ userId: notifyUser.value.userId })
+}
+
+async function lookupNotifyUser(target) {
+  const query = target || (/^\d+$/.test(notifyLookup.value.trim()) ? { userId: notifyLookup.value.trim() } : { email: notifyLookup.value.trim() })
+  if (!query.userId && !query.email) {
+    notifyUserError.value = '输入用户邮箱或用户 ID'
+    return
+  }
+  notifyUserLoading.value = true
+  notifyUserError.value = ''
+  try {
+    notifyUser.value = await fetchUserNotifyPrefs(query)
+  } catch (err) {
+    notifyUser.value = null
+    notifyUserError.value = err?.message || '没有找到这个用户'
+  } finally {
+    notifyUserLoading.value = false
+  }
+}
+
+function openNotifyUser(id, email) {
+  activeTab.value = 'notify'
+  ensureNotifyLoaded()
+  notifyLookup.value = email || String(id)
+  lookupNotifyUser({ userId: id })
+}
+
+async function handleNotifyToggle(row, enabled) {
+  if (!notifyUser.value?.userId || row.locked) return
+  notifySavingKey.value = row.key
+  try {
+    notifyUser.value = await saveUserNotifyPref(notifyUser.value.userId, row.key, enabled)
+    ElMessage.success(`已${enabled ? '恢复' : '关闭'}「${row.text}」`)
+    loadNotifyStats()
+    loadNotifyLog()
+  } catch (err) {
+    ElMessage.error(err?.message || '保存失败')
+  } finally {
+    notifySavingKey.value = ''
+  }
+}
+
+async function handleNotifyRotate() {
+  if (!notifyUser.value?.userId) return
+  notifyRotating.value = true
+  try {
+    await rotateUserNotifyKey(notifyUser.value.userId)
+    ElMessage.success('已更换该用户的免登录链接，旧邮件里的偏好链接与一键退订地址已失效')
+    await lookupNotifyUser({ userId: notifyUser.value.userId })
+  } catch (err) {
+    ElMessage.error(err?.message || '更换失败')
+  } finally {
+    notifyRotating.value = false
+  }
+}
+
 // ===== 统计 =====
 async function loadStats() {
   statsLoading.value = true
@@ -191,6 +383,11 @@ function refreshAll() {
   loadStats()
   loadLogs()
   loadSuppressed()
+  if (notifyLoadedOnce.value) refreshNotify()
+}
+
+function handleTabChange(name) {
+  if (name === 'notify') ensureNotifyLoaded()
 }
 
 function openUser(id, email) {
@@ -205,6 +402,14 @@ function openPendingDocuments(row) {
 onMounted(function onMount() {
   if (route.query.email) emailSearch.value = String(route.query.email)
   if (route.query.tab === 'suppressed') activeTab.value = 'suppressed'
+  if (route.query.tab === 'notify') {
+    activeTab.value = 'notify'
+    ensureNotifyLoaded()
+    if (route.query.email) {
+      notifyLookup.value = String(route.query.email)
+      lookupNotifyUser({ email: notifyLookup.value })
+    }
+  }
   refreshAll()
 })
 </script>
@@ -266,7 +471,7 @@ onMounted(function onMount() {
         >{{ row.text }} {{ row.count }}</el-tag>
       </div>
 
-      <el-tabs v-model="activeTab" class="mail-tabs">
+      <el-tabs v-model="activeTab" class="mail-tabs" @tab-change="handleTabChange">
         <el-tab-pane name="logs" label="投递日志">
           <div class="order-filter-bar">
             <el-space wrap :size="6">
@@ -430,6 +635,154 @@ onMounted(function onMount() {
             @size-change="handleSuppressedPageSizeChange"
           />
         </el-tab-pane>
+        <el-tab-pane name="notify" label="通知偏好">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 16px"
+            title="用户可以在面板「账号设置」或邮件页脚的「管理通知偏好」链接里逐类关闭通知；收据、提现、安全类邮件始终发送。「服务公告」与「活动与优惠」还带邮件客户端的一键退订头（Gmail / Apple Mail 顶部的退订按钮）。可选类别与页脚文案在 系统设置 → 邮件 里调整。"
+          />
+
+          <div v-loading="notifyStatsLoading" class="notify-metrics">
+            <el-card class="metric-card metric-card--unified metric-card--compact" shadow="never">
+              <span class="metric-label">关掉过任一通知的用户</span>
+              <strong class="metric-value">{{ notifyStats.usersWithOptout }}</strong>
+              <span class="mail-metric__foot">近 30 天新增退订 {{ notifyStats.recent30d }} 次</span>
+            </el-card>
+            <el-card
+              v-for="card in notifyCategoryCards"
+              :key="card.category"
+              class="metric-card metric-card--unified metric-card--compact metric-card--clickable"
+              shadow="never"
+              role="button"
+              tabindex="0"
+              @click="setNotifyCategoryFilter(card.category)"
+              @keyup.enter="setNotifyCategoryFilter(card.category)"
+            >
+              <span class="metric-label">
+                {{ card.text }}
+                <el-tag v-if="!card.optional" size="small" type="info" effect="plain" class="notify-metric__tag">不可退订</el-tag>
+                <el-tag v-else-if="card.bulk" size="small" type="warning" effect="plain" class="notify-metric__tag">一键退订</el-tag>
+              </span>
+              <strong class="metric-value" :class="{ 'mail-metric__value--warn': card.disabled }">{{ card.disabled }}<small class="mail-metric__unit">人关闭</small></strong>
+              <span class="mail-metric__foot">{{ card.sourceText }}</span>
+            </el-card>
+          </div>
+
+          <div class="notify-lookup">
+            <el-input
+              v-model="notifyLookup"
+              clearable
+              placeholder="查某个用户：邮箱或用户 ID"
+              class="notify-lookup__input"
+              @keyup.enter="lookupNotifyUser()"
+            >
+              <template #append>
+                <el-button :icon="Search" :loading="notifyUserLoading" @click="lookupNotifyUser()">查看</el-button>
+              </template>
+            </el-input>
+            <span v-if="notifyUserError" class="notify-lookup__error">{{ notifyUserError }}</span>
+          </div>
+
+          <el-card v-if="notifyUser" v-loading="notifyUserLoading" class="notify-user" shadow="never">
+            <div class="notify-user__head">
+              <div>
+                <span class="x-link notify-user__email" title="在用户管理中查看该用户" @click="openUser(notifyUser.userId, notifyUser.email)">{{ notifyUser.email }}</span>
+                <span class="mail-muted notify-user__id">#{{ notifyUser.userId }}</span>
+              </div>
+              <el-popconfirm
+                title="更换后，该用户此前收到的所有邮件里的偏好链接与一键退订地址都会失效。确定更换？"
+                confirm-button-text="更换"
+                cancel-button-text="取消"
+                width="300"
+                @confirm="handleNotifyRotate"
+              >
+                <template #reference>
+                  <el-button link size="small" type="warning" :loading="notifyRotating">
+                    {{ notifyUser.hasKey ? '更换免登录链接' : '生成免登录链接' }}
+                  </el-button>
+                </template>
+              </el-popconfirm>
+            </div>
+            <el-table :data="notifyUser.categories" size="small" style="width: 100%">
+              <el-table-column label="类别" min-width="180">
+                <template #default="{ row }">
+                  <div>{{ row.text }}</div>
+                  <div class="notify-user__hint">{{ row.hint }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag v-if="row.locked" size="small" type="info" effect="plain">始终发送</el-tag>
+                  <el-switch
+                    v-else
+                    :model-value="row.enabled"
+                    :loading="notifySavingKey === row.key"
+                    :disabled="Boolean(notifySavingKey)"
+                    size="small"
+                    @change="(value) => handleNotifyToggle(row, value)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="最近改动" min-width="220">
+                <template #default="{ row }">
+                  <span v-if="row.source">{{ row.sourceText }}<span class="mail-muted"> · {{ row.updatedAtText }}</span></span>
+                  <span v-else class="mail-muted">从未改过</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-card>
+
+          <div class="notify-log-head">
+            <span class="notify-log-head__title">退订记录</span>
+            <el-select :model-value="notifyCategoryFilter" size="small" class="notify-log-head__select" placeholder="全部类别" @change="setNotifyCategoryFilter">
+              <el-option v-for="opt in notifyCategoryOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <el-select :model-value="notifySourceFilter" size="small" class="notify-log-head__select" placeholder="全部来源" @change="setNotifySourceFilter">
+              <el-option v-for="opt in notifySourceOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <el-button :icon="RefreshCw" class="ghost-btn small" plain size="small" type="info" @click="refreshNotify">刷新</el-button>
+          </div>
+
+          <el-alert v-if="notifyLogError" :title="notifyLogError" closable show-icon type="error" style="margin-bottom: 16px" @close="notifyLogError = ''" />
+
+          <el-table v-loading="notifyLogLoading" :data="notifyLog" stripe style="width: 100%">
+            <el-table-column label="时间" width="150" prop="updatedAtText" />
+            <el-table-column label="用户" min-width="220">
+              <template #default="{ row }">
+                <span class="x-link" title="查看该用户的通知偏好" @click="openNotifyUser(row.userId, row.email)">{{ row.email || `#${row.userId}` }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="关闭的类别" min-width="160" prop="categoryText" />
+            <el-table-column label="来源" width="180">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.sourceType || 'info'" effect="plain">{{ row.sourceText }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="IP" min-width="140">
+              <template #default="{ row }">
+                <span v-if="row.ip" class="mail-mono">{{ row.ip }}</span>
+                <span v-else class="mail-muted">--</span>
+              </template>
+            </el-table-column>
+            <template #empty>
+              <el-empty description="还没有人关闭过通知" :image-size="72" />
+            </template>
+          </el-table>
+
+          <el-pagination
+            :current-page="notifyLogPagination.page"
+            :page-size="notifyLogPagination.pageSize"
+            :page-sizes="notifyLogPageSizePreference.pageSizes"
+            :total="notifyLogPagination.total"
+            background
+            layout="total, sizes, prev, pager, next, jumper"
+            style="margin-top: 16px; justify-content: flex-end"
+            @current-change="handleNotifyLogPageChange"
+            @size-change="handleNotifyLogPageSizeChange"
+          />
+        </el-tab-pane>
       </el-tabs>
     </SectionCard>
   </section>
@@ -524,5 +877,89 @@ onMounted(function onMount() {
 
 .mail-muted {
   color: var(--el-text-color-secondary);
+}
+.notify-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1100px) {
+  .notify-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .notify-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+.notify-metric__tag {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.notify-lookup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.notify-lookup__input {
+  max-width: 420px;
+}
+
+.notify-lookup__error {
+  font-size: 12px;
+  color: var(--el-color-danger);
+}
+
+.notify-user {
+  margin-bottom: 20px;
+}
+
+.notify-user__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.notify-user__email {
+  font-weight: 600;
+}
+
+.notify-user__id {
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.notify-user__hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.notify-log-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.notify-log-head__title {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.notify-log-head__select {
+  width: 170px;
 }
 </style>

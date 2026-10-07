@@ -172,3 +172,121 @@ export async function fetchSuppressedUsers(options = {}) {
 export async function unsuppressUser(userId) {
   return requestDashboardMutation(buildSecureV2ApiUrl('mail/unsuppress'), { user_id: Number(userId) })
 }
+
+// ===== 通知偏好（admin/notify/*）：退订统计、退订记录、单用户偏好与代改 =====
+
+/** 与后端 App\Services\Notification\NotificationPreference::CATEGORIES 一致，顺序即展示顺序 */
+export const NOTIFY_CATEGORY = {
+  billing: { text: '账单与到期提醒', hint: '续费账单、到期当天的服务暂停通知、自动续费结果（对应老的 remind_expire）' },
+  usage: { text: '流量与用量', hint: '流量用到阈值的预警与用完通知，每周期各一封（对应老的 remind_traffic）' },
+  support: { text: '工单回复', hint: '工单有新回复' },
+  announcement: { text: '服务公告', hint: '后台群发默认类别；带一键退订头' },
+  marketing: { text: '活动与优惠', hint: '到期后的召回邮件、标为「活动」的群发；带一键退订头' },
+}
+
+export const NOTIFY_SOURCE = {
+  panel: { text: '面板设置', type: 'info' },
+  email_link: { text: '邮件页脚链接', type: 'warning' },
+  list_unsubscribe: { text: '邮件客户端一键退订', type: 'danger' },
+  admin: { text: '后台', type: '' },
+  legacy: { text: '旧版开关', type: 'info' },
+}
+
+export function createEmptyNotifyStats() {
+  return { categories: [], optional: [], bulk: [], recent30d: 0, usersWithOptout: 0, loaded: false }
+}
+
+export async function fetchNotifyStats() {
+  const payload = await requestDashboardApi(buildSecureV2ApiUrl('notify/stats'))
+  const data = payload?.data || {}
+  return {
+    categories: (Array.isArray(data.categories) ? data.categories : []).map(function normalizeRow(row) {
+      return {
+        category: String(row.category || ''),
+        text: NOTIFY_CATEGORY[row.category]?.text || row.category,
+        optional: Boolean(row.optional),
+        disabled: Number(row.disabled || 0),
+        bySource: row.by_source && typeof row.by_source === 'object' ? row.by_source : {},
+      }
+    }),
+    optional: Array.isArray(data.optional) ? data.optional : [],
+    bulk: Array.isArray(data.bulk) ? data.bulk : [],
+    recent30d: Number(data.recent_30d || 0),
+    usersWithOptout: Number(data.users_with_optout || 0),
+    loaded: true,
+  }
+}
+
+export function createEmptyNotifyLogPagination() {
+  return { page: 1, pageSize: 20, total: 0 }
+}
+
+export async function fetchNotifyLog(options = {}) {
+  const current = Number(options.page || 1)
+  const pageSize = Number(options.pageSize || 20)
+  const query = [['current', current], ['pageSize', pageSize]]
+  if (options.category) query.push(['category', options.category])
+  if (options.source) query.push(['source', options.source])
+  const payload = await requestDashboardApi(buildSecureV2ApiUrl('notify/log', query))
+  const list = Array.isArray(payload?.data) ? payload.data : []
+  return {
+    list: list.map(function normalizeLog(row) {
+      return {
+        id: Number(row.id || 0),
+        userId: Number(row.user_id || 0),
+        email: row.email || '',
+        category: row.category || '',
+        categoryText: NOTIFY_CATEGORY[row.category]?.text || row.category,
+        source: row.source || '',
+        sourceText: NOTIFY_SOURCE[row.source]?.text || row.source,
+        sourceType: NOTIFY_SOURCE[row.source]?.type ?? 'info',
+        ip: row.ip || '',
+        updatedAtText: row.updated_at ? formatTimestamp(row.updated_at) : '--',
+      }
+    }),
+    pagination: { page: current, pageSize, total: Number(payload?.total ?? 0) },
+  }
+}
+
+function normalizeNotifyPrefs(data) {
+  return {
+    userId: Number(data?.user_id || 0),
+    email: data?.email || '',
+    hasKey: Boolean(data?.has_key),
+    categories: (Array.isArray(data?.categories) ? data.categories : []).map(function normalizePref(row) {
+      return {
+        key: row.key,
+        text: NOTIFY_CATEGORY[row.key]?.text || row.key,
+        hint: NOTIFY_CATEGORY[row.key]?.hint || '',
+        enabled: Boolean(row.enabled),
+        locked: Boolean(row.locked),
+        source: row.source || '',
+        sourceText: row.source ? (NOTIFY_SOURCE[row.source]?.text || row.source) : '',
+        updatedAtText: row.updated_at ? formatTimestamp(row.updated_at) : '',
+      }
+    }),
+  }
+}
+
+/** 按用户 id 或邮箱查某人的通知偏好 */
+export async function fetchUserNotifyPrefs(options = {}) {
+  const query = []
+  if (options.userId) query.push(['user_id', Number(options.userId)])
+  else if (options.email) query.push(['email', String(options.email).trim()])
+  const payload = await requestDashboardApi(buildSecureV2ApiUrl('notify/fetch', query))
+  return normalizeNotifyPrefs(payload?.data)
+}
+
+/** 代用户改一类（来源记为 admin） */
+export async function saveUserNotifyPref(userId, category, enabled) {
+  const payload = await requestDashboardMutation(buildSecureV2ApiUrl('notify/save'), {
+    user_id: Number(userId),
+    prefs: { [category]: Boolean(enabled) },
+  })
+  return normalizeNotifyPrefs(payload?.data)
+}
+
+/** 换掉用户的免登录凭据：此前邮件里的偏好链接与一键退订地址全部作废 */
+export async function rotateUserNotifyKey(userId) {
+  return requestDashboardMutation(buildSecureV2ApiUrl('notify/rotate'), { user_id: Number(userId) })
+}

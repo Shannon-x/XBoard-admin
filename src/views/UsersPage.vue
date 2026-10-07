@@ -38,7 +38,7 @@ const showFilters = ref(false)
 const filterConditions = ref([])
 
 const sendMailDialogVisible = ref(false)
-const sendMailForm = ref({ subject: '', content: '' })
+const sendMailForm = ref({ subject: '', content: '', category: 'announcement' })
 const sendMailSending = ref(false)
 const sendMailScope = ref('all') // 'all' or 'filter'
 
@@ -808,7 +808,7 @@ async function submitGenerate() {
 
 function openSendMailDialog(scope) {
   sendMailScope.value = scope
-  sendMailForm.value = { subject: '', content: '' }
+  sendMailForm.value = { subject: '', content: '', category: 'announcement' }
   sendMailDialogVisible.value = true
 }
 
@@ -821,6 +821,7 @@ async function submitSendMail() {
     const payload = {
       subject: sendMailForm.value.subject,
       content: sendMailForm.value.content,
+      category: sendMailForm.value.category,
     }
     if (sendMailScope.value === 'filter') {
       payload.filter = buildFilterArray()
@@ -1313,6 +1314,18 @@ onMounted(function onMount() {
         <el-form-item label="邮件内容" prop="content">
           <el-input v-model="sendMailForm.content" type="textarea" :rows="8" placeholder="支持 HTML 格式" />
         </el-form-item>
+        <el-form-item label="通知类别" prop="category">
+          <el-radio-group v-model="sendMailForm.category">
+            <el-radio value="announcement">服务公告</el-radio>
+            <el-radio value="marketing">活动与优惠</el-radio>
+            <el-radio value="transactional">必达通知</el-radio>
+          </el-radio-group>
+          <div class="send-mail-category-hint">
+            <template v-if="sendMailForm.category === 'announcement'">关掉「服务公告」的用户收不到；邮件带一键退订头，页脚有通知偏好链接。</template>
+            <template v-else-if="sendMailForm.category === 'marketing'">关掉「活动与优惠」的用户收不到；邮件带一键退订头，页脚有通知偏好链接。推广邮件请选这一类。</template>
+            <template v-else>不看用户的通知偏好，所有人都发，页脚没有退订链接。只用于安全事件、服务条款变更这类必须送达的通知。</template>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="sendMailDialogVisible = false">取消</el-button>
@@ -1372,6 +1385,13 @@ onMounted(function onMount() {
 </template>
 
 <style scoped>
+.send-mail-category-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
+}
+
 .user-filter-panel {
   margin-bottom: 16px;
   padding: 14px 16px;
