@@ -1124,6 +1124,24 @@ export const useAdminStore = defineStore("admin", () => {
           max: 30,
           visibleWhen: { key: "billingInvoiceEnable", equals: true },
         },
+        // 账单邮件里的「立即付款」按钮：不用登录、只能付这一张账单的付款页
+        {
+          key: "billingPayLinkEnable",
+          labelKey: "systemSettings.fields.billingPayLinkEnable.label",
+          descriptionKey: "systemSettings.fields.billingPayLinkEnable.description",
+          type: "switch",
+          tone: "compact",
+          visibleWhen: { key: "billingInvoiceEnable", equals: true },
+        },
+        {
+          key: "billingPayLinkDays",
+          labelKey: "systemSettings.fields.billingPayLinkDays.label",
+          descriptionKey: "systemSettings.fields.billingPayLinkDays.description",
+          type: "number",
+          min: 0,
+          max: 30,
+          visibleWhen: { key: "billingPayLinkEnable", equals: true },
+        },
         {
           key: "billingExpiredEnable",
           labelKey: "systemSettings.fields.billingExpiredEnable.label",

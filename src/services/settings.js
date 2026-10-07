@@ -141,6 +141,9 @@ export function createEmptySiteSettings() {
     billingReceiptEnable: true,
     billingInvoiceEnable: true,
     billingInvoiceDays: 7,
+    // 账单邮件里的免登录付款链接：开关、到期后仍可付款的天数
+    billingPayLinkEnable: true,
+    billingPayLinkDays: 7,
     billingLocale: 'zh-CN',
     billingIssuer: '',
     billingLogo: '',
@@ -1151,6 +1154,8 @@ function normalizeBillingSettings(email) {
       billingReceiptEnable: fallback.billingReceiptEnable,
       billingInvoiceEnable: fallback.billingInvoiceEnable,
       billingInvoiceDays: fallback.billingInvoiceDays,
+      billingPayLinkEnable: fallback.billingPayLinkEnable,
+      billingPayLinkDays: fallback.billingPayLinkDays,
       billingLocale: fallback.billingLocale,
       billingIssuer: fallback.billingIssuer,
       billingLogo: fallback.billingLogo,
@@ -1164,11 +1169,14 @@ function normalizeBillingSettings(email) {
   }
 
   const invoiceDays = Number(email.billing_invoice_days)
+  const payLinkDays = Number(email.billing_pay_link_days)
 
   return {
     billingReceiptEnable: flag(email.billing_receipt_enable, fallback.billingReceiptEnable),
     billingInvoiceEnable: flag(email.billing_invoice_enable, fallback.billingInvoiceEnable),
     billingInvoiceDays: Number.isFinite(invoiceDays) ? Math.max(0, Math.min(30, Math.round(invoiceDays))) : fallback.billingInvoiceDays,
+    billingPayLinkEnable: flag(email.billing_pay_link_enable, fallback.billingPayLinkEnable),
+    billingPayLinkDays: Number.isFinite(payLinkDays) ? Math.max(0, Math.min(30, Math.round(payLinkDays))) : fallback.billingPayLinkDays,
     billingLocale: normalizeBillingLocale(email.billing_locale ?? fallback.billingLocale),
     billingIssuer: String(email.billing_issuer ?? ''),
     billingLogo: String(email.billing_logo ?? ''),
@@ -1188,6 +1196,8 @@ function createBillingSettingsPayload(settings = {}) {
     billing_receipt_enable: settings.billingReceiptEnable ? 1 : 0,
     billing_invoice_enable: settings.billingInvoiceEnable ? 1 : 0,
     billing_invoice_days: Math.max(0, Math.min(30, Math.round(Number(settings.billingInvoiceDays) || 0))),
+    billing_pay_link_enable: settings.billingPayLinkEnable ? 1 : 0,
+    billing_pay_link_days: Math.max(0, Math.min(30, Math.round(Number(settings.billingPayLinkDays) || 0))),
     billing_locale: normalizeBillingLocale(settings.billingLocale),
     billing_issuer: String(settings.billingIssuer || '').trim(),
     billing_logo: String(settings.billingLogo || '').trim(),

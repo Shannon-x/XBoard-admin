@@ -430,6 +430,14 @@ export default {
         label: '提前天数',
         description: '到期前多少天寄送第一封续费账单（0–30）；到期前 24 小时会再寄送一封提醒。',
       },
+      billingPayLinkEnable: {
+        label: '邮件里直接付款',
+        description: '账单邮件和 PDF 里的「立即付款」按钮打开免登录付款页：不用密码，只能支付这一张账单，余额会自动抵扣。关闭后按钮改为跳转到需要登录的续费页。',
+      },
+      billingPayLinkDays: {
+        label: '到期后仍可付款的天数',
+        description: '订阅到期后，付款链接还能继续用多少天（0–30，0 = 到期即失效）。到期当天的「服务已暂停」邮件在这段时间里也会用同一个付款链接。',
+      },
       billingExpiredEnable: {
         label: '到期后寄送暂停提醒',
         description: '订阅到期两天内仍未续费的用户会收到一封「服务已暂停」邮件，附带续费入口。',
