@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, MessageCircle, Paperclip, X } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
+import BalanceLedgerDialog from '../components/users/BalanceLedgerDialog.vue'
 import {
   fetchManagedTickets,
   fetchTicketDetail,
@@ -12,6 +13,10 @@ import {
   uploadTicketAttachment,
   deleteTicketAttachment,
   createEmptyManagedTicketsPagination,
+  createEmptyTicketStat,
+  fetchTicketStat,
+  updateTicket,
+  FEEDBACK_STATE_TAG,
 } from '../services/tickets'
 import { fetchSiteSettingsGroup } from '../services/settings'
 import { createSequence } from '../utils/sequence'
@@ -34,6 +39,12 @@ const loading = ref(false)
 const errorMsg = ref('')
 const statusFilter = ref('')
 const priorityFilter = ref('')   // '' / '0' / '1' / '2'
+const typeFilter = ref('')       // '' / '0' 求助 / '1' 建议与反馈
+const categoryFilter = ref('')   // 分类 code，空为全部
+const feedbackStateFilter = ref('') // 建议与反馈的跟进状态，只在类型为建议与反馈时出现
+const ticketStat = ref(createEmptyTicketStat())
+const ticketFieldUpdating = ref('')
+const ledgerVisible = ref(false)
 const emailSearch = ref('')
 
 const detailDialogVisible = ref(false)
@@ -259,6 +270,15 @@ async function loadTickets() {
     if (priorityFilter.value !== '') {
       options.filter = [...(options.filter || []), { id: 'level', value: `eq:${priorityFilter.value}` }]
     }
+    if (typeFilter.value !== '') {
+      options.type = [Number(typeFilter.value)]
+    }
+    if (categoryFilter.value) {
+      options.category = [categoryFilter.value]
+    }
+    if (feedbackStateFilter.value) {
+      options.feedbackState = [feedbackStateFilter.value]
+    }
     const result = await fetchManagedTickets(options)
     if (!ticketsSeq.isCurrent(my)) return
     tickets.value = result.list
@@ -286,6 +306,121 @@ function handlePageSizeChange(size) {
 function handleSearch() {
   pagination.value.page = 1
   loadTickets()
+}
+
+// ===== 分类 / 类型 / 跟进状态 =====
+// 字典与计数来自 ticket/stat：分类名以后端为准（隐藏的分类仍要能显示存量工单），
+// 计数只数开启中的工单，用来在下拉里直观看到每类积压了多少。
+const typeOptions = [
+  { label: '全部类型', value: '' },
+  { label: '求助', value: '0' },
+  { label: '建议与反馈', value: '1' },
+]
+
+function groupCategories(onlyType) {
+  const counts = ticketStat.value.counts.byCategory
+  const groups = [
+    { label: '求助', type: 0, options: [] },
+    { label: '建议与反馈', type: 1, options: [] },
+  ]
+  for (const category of ticketStat.value.categories) {
+    if (onlyType !== '' && String(category.type) !== onlyType) continue
+    const target = groups.find(function byType(group) { return group.type === category.type })
+    if (!target) continue
+    const count = counts[category.code] || { open: 0, pending: 0 }
+    target.options.push({ ...category, open: count.open, pending: count.pending })
+  }
+  return groups.filter(function nonEmpty(group) { return group.options.length > 0 })
+}
+
+// 筛选条的分类下拉跟着类型筛选走
+const categoryGroups = computed(function categoryGroups() {
+  return groupCategories(typeFilter.value)
+})
+
+// 详情里改分类不受列表类型筛选影响：混在「建议与反馈」里的故障单要能直接改回求助分类
+const detailCategoryGroups = computed(function detailCategoryGroups() {
+  return groupCategories('')
+})
+
+const feedbackStateOptions = computed(function feedbackStateOptions() {
+  const counts = ticketStat.value.counts.feedbackByState
+  return ticketStat.value.feedbackStates.map(function withCount(state) {
+    return { ...state, count: counts[state.code] || 0 }
+  })
+})
+
+const pendingReplyCount = computed(function pendingReplyCount() {
+  return ticketStat.value.counts.pendingReply
+})
+
+const showFeedbackStateFilter = computed(function showFeedbackStateFilter() {
+  return typeFilter.value === '1'
+})
+
+function categoryName(code) {
+  const category = ticketStat.value.categories.find(function byCode(item) { return item.code === code })
+  return category ? category.name : (code || '--')
+}
+
+function feedbackStateName(code) {
+  const state = ticketStat.value.feedbackStates.find(function byCode(item) { return item.code === code })
+  return state ? state.name : (code || '--')
+}
+
+function feedbackStateTag(code) {
+  return FEEDBACK_STATE_TAG[code] || 'info'
+}
+
+async function loadTicketStat() {
+  try {
+    ticketStat.value = await fetchTicketStat()
+  } catch (err) {
+    console.warn('[TicketsPage] 加载工单分类统计失败', err)
+  }
+}
+
+function setTypeFilter(value) {
+  typeFilter.value = value
+  if (value !== '1') feedbackStateFilter.value = ''
+  // 切类型时，不属于该类型的分类筛选作废
+  if (categoryFilter.value && value !== '') {
+    const current = ticketStat.value.categories.find(function byCode(item) { return item.code === categoryFilter.value })
+    if (current && String(current.type) !== value) categoryFilter.value = ''
+  }
+  handleSearch()
+}
+
+function toggleFeedbackStateFilter(code) {
+  feedbackStateFilter.value = feedbackStateFilter.value === code ? '' : code
+  handleSearch()
+}
+
+// 详情里改分类 / 优先级 / 跟进状态：后端按分类自动改 type，改完整单重拉一次
+async function handleUpdateTicketField(field, value) {
+  const ticket = detailData.value
+  if (!ticket || value === undefined || value === null || value === '') return
+  ticketFieldUpdating.value = field
+  try {
+    await updateTicket(ticket.id, { [field]: value })
+    detailData.value = await fetchTicketDetail(ticket.id)
+    ElMessage.success(field === 'category' ? '分类已更新' : field === 'level' ? '优先级已更新' : '跟进状态已更新')
+    loadTickets()
+    loadTicketStat()
+  } catch (err) {
+    ElMessage.error(err?.message || '更新失败')
+  } finally {
+    ticketFieldUpdating.value = ''
+  }
+}
+
+function openLedger() {
+  if (!ticketUser.value?.id) return
+  ledgerVisible.value = true
+}
+
+function handleLedgerAdjusted() {
+  if (ticketUser.value?.id) loadTicketUser(ticketUser.value.id)
 }
 
 async function openDetail(ticket) {
@@ -516,7 +651,15 @@ onMounted(function onMount() {
   if (route.query.user_email) {
     emailSearch.value = String(route.query.user_email)
   }
+  // 仪表盘 / 其他页面可以带 type=1 或 category=suggestion 直接落到对应筛选
+  if (route.query.type === '0' || route.query.type === '1') {
+    typeFilter.value = String(route.query.type)
+  }
+  if (route.query.category) {
+    categoryFilter.value = String(route.query.category)
+  }
   loadTickets()
+  loadTicketStat()
   // 从「佣金提现」等页面带 ticket_id 跳过来时直接打开该工单
   const ticketIdFromQuery = Number(route.query.ticket_id || 0)
   if (ticketIdFromQuery > 0) {
@@ -534,6 +677,7 @@ onMounted(function onMount() {
     <SectionCard description="在这里可以查看用户工单。包括查看、回复、关闭等操作。" title="工单管理">
       <template #actions>
         <el-space wrap>
+          <el-tag v-if="pendingReplyCount" type="warning" effect="dark">待回复 {{ pendingReplyCount }}</el-tag>
           <el-input
             v-model="emailSearch"
             :prefix-icon="Search"
@@ -569,6 +713,49 @@ onMounted(function onMount() {
             @click="priorityFilter = opt.value; handleSearch()"
           >{{ opt.label }}</el-tag>
         </el-space>
+        <div class="ticket-filter-row">
+          <el-space wrap :size="6">
+            <el-tag
+              v-for="opt in typeOptions"
+              :key="opt.value"
+              :effect="typeFilter === opt.value ? 'dark' : 'plain'"
+              class="order-filter-tag"
+              size="small"
+              @click="setTypeFilter(opt.value)"
+            >{{ opt.label }}</el-tag>
+            <el-divider direction="vertical" />
+            <el-select
+              v-model="categoryFilter"
+              class="ticket-category-select"
+              clearable
+              filterable
+              placeholder="全部分类"
+              size="small"
+              @change="handleSearch"
+            >
+              <el-option-group v-for="group in categoryGroups" :key="group.type" :label="group.label">
+                <el-option v-for="category in group.options" :key="category.code" :label="category.name" :value="category.code">
+                  <span class="ticket-category-option">
+                    <span>{{ category.name }}<span v-if="category.hidden" class="ticket-category-option__hidden">（已隐藏）</span></span>
+                    <span class="ticket-category-option__count">{{ category.pending ? `${category.pending} 待回复 · ` : '' }}{{ category.open }} 开启</span>
+                  </span>
+                </el-option>
+              </el-option-group>
+            </el-select>
+            <template v-if="showFeedbackStateFilter">
+              <el-divider direction="vertical" />
+              <el-tag
+                v-for="opt in feedbackStateOptions"
+                :key="opt.code"
+                :effect="feedbackStateFilter === opt.code ? 'dark' : 'plain'"
+                :type="feedbackStateTag(opt.code)"
+                class="order-filter-tag"
+                size="small"
+                @click="toggleFeedbackStateFilter(opt.code)"
+              >{{ opt.name }}{{ opt.count ? ` ${opt.count}` : '' }}</el-tag>
+            </template>
+          </el-space>
+        </div>
       </div>
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
@@ -583,6 +770,14 @@ onMounted(function onMount() {
       >
         <el-table-column label="工单号" prop="id" width="80" />
         <el-table-column label="主题" min-width="180" prop="subject" show-overflow-tooltip />
+        <el-table-column label="分类" width="170">
+          <template #default="{ row }">
+            <div class="ticket-category-cell">
+              <el-tag size="small" :type="row.isFeedback ? 'primary' : 'info'" effect="plain">{{ categoryName(row.category) }}</el-tag>
+              <el-tag v-if="row.isFeedback && row.feedbackState" size="small" :type="feedbackStateTag(row.feedbackState)">{{ feedbackStateName(row.feedbackState) }}</el-tag>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="优先级" width="90">
           <template #default="{ row }">
             <el-tag :type="row.levelType" size="small">{{ row.levelText }}</el-tag>
@@ -647,7 +842,45 @@ onMounted(function onMount() {
             <span class="ticket-dialog-meta__sep">·</span>
             <span>创建于 {{ detailData.createdAt }}</span>
             <span class="ticket-dialog-meta__sep">·</span>
-            <el-tag :type="getLevelInfo(detailData.level).type" size="small">{{ getLevelInfo(detailData.level).label }}</el-tag>
+            <el-select
+              class="ticket-inline-select"
+              size="small"
+              :model-value="detailData.category"
+              :loading="ticketFieldUpdating === 'category'"
+              title="修改分类"
+              @change="handleUpdateTicketField('category', $event)"
+            >
+              <el-option-group v-for="group in detailCategoryGroups" :key="group.type" :label="group.label">
+                <el-option
+                  v-for="category in group.options"
+                  :key="category.code"
+                  :label="category.name"
+                  :value="category.code"
+                  :disabled="!category.selectable && category.code !== detailData.category"
+                />
+              </el-option-group>
+            </el-select>
+            <el-select
+              class="ticket-inline-select ticket-inline-select--narrow"
+              size="small"
+              :model-value="detailData.level"
+              :loading="ticketFieldUpdating === 'level'"
+              title="修改优先级"
+              @change="handleUpdateTicketField('level', $event)"
+            >
+              <el-option v-for="(info, level) in levelTagMap" :key="level" :label="info.label" :value="Number(level)" />
+            </el-select>
+            <el-select
+              v-if="detailData.isFeedback"
+              class="ticket-inline-select"
+              size="small"
+              :model-value="detailData.feedbackState || 'received'"
+              :loading="ticketFieldUpdating === 'feedbackState'"
+              title="建议与反馈的跟进状态，用户端可见"
+              @change="handleUpdateTicketField('feedbackState', $event)"
+            >
+              <el-option v-for="state in ticketStat.feedbackStates" :key="state.code" :label="state.name" :value="state.code" />
+            </el-select>
 
             <!-- 用户摘要 + 操作（右对齐） -->
             <span class="ticket-dialog-meta__spacer" />
@@ -673,6 +906,7 @@ onMounted(function onMount() {
                 if (cmd === 'resetSecret') return handleResetUserSecret()
                 if (cmd === 'copySubscribe') return handleCopyUserSubscribe()
                 if (cmd === 'toggleBan') return handleToggleUserBan()
+                if (cmd === 'ledger') return openLedger()
                 if (cmd === 'openOrders') return handleOpenUserOrders()
                 if (cmd === 'openManage') return handleOpenUserManage()
               }"
@@ -685,6 +919,7 @@ onMounted(function onMount() {
                   <el-dropdown-item command="resetTraffic">重置流量</el-dropdown-item>
                   <el-dropdown-item command="resetSecret">重置订阅链接 / UUID</el-dropdown-item>
                   <el-dropdown-item command="copySubscribe" :disabled="!ticketUser.subscribeUrl">复制订阅 URL</el-dropdown-item>
+                  <el-dropdown-item command="ledger" divided>余额流水 / 调账</el-dropdown-item>
                   <el-dropdown-item command="toggleBan" divided>
                     {{ ticketUser.isBanned ? '解封用户' : '封禁用户' }}
                   </el-dropdown-item>
@@ -899,6 +1134,9 @@ onMounted(function onMount() {
         </div>
       </div>
     </el-dialog>
+
+    <!-- 余额流水 / 调账（与用户管理页共用同一个对话框） -->
+    <BalanceLedgerDialog v-model="ledgerVisible" :user="ticketUser" @adjusted="handleLedgerAdjusted" />
   </section>
 </template>
 
@@ -1241,6 +1479,41 @@ onMounted(function onMount() {
   color: var(--el-text-color-secondary);
   border-top: 1px solid var(--el-border-color-lighter);
   font-size: 13px;
+}
+
+.ticket-filter-row {
+  margin-top: 8px;
+}
+
+.ticket-category-select {
+  width: 200px;
+}
+
+.ticket-category-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.ticket-category-option__hidden,
+.ticket-category-option__count {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.ticket-category-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ticket-inline-select {
+  width: 136px;
+}
+
+.ticket-inline-select--narrow {
+  width: 96px;
 }
 
 /* 整行可点击：让 cursor 提示 + hover 高亮 */

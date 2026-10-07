@@ -134,6 +134,29 @@ export function createEmptySiteSettings() {
     // 只读：后端硬上限，表单用来限制输入范围
     ticketAttachmentHardMaxSizeMb: 20,
     ticketAttachmentHardMaxCount: 10,
+    // 工单分类：隐藏哪些分类（用户新建时不可选）、是否开放「建议与反馈」
+    ticketCategoryHidden: [],
+    ticketFeedbackEnable: true,
+    // 收据 / 续费账单 / 到期后邮件（后端 email 组里的 billing_* 键）
+    billingReceiptEnable: true,
+    billingInvoiceEnable: true,
+    billingInvoiceDays: 7,
+    // 账单邮件里的免登录付款链接：开关、到期后仍可付款的天数
+    billingPayLinkEnable: true,
+    billingPayLinkDays: 7,
+    billingLocale: 'zh-CN',
+    billingIssuer: '',
+    billingLogo: '',
+    billingRecommendPlanIds: '',
+    billingExpiredEnable: true,
+    billingWinbackEnable: true,
+    billingWinbackDays: '7,30',
+    billingWinbackCoupon: '',
+    // 已续费 / 已失效的账单记录保留天数（同在后端 email 组），0 = 永久；收据始终保留
+    billingInvoiceRetentionDays: 0,
+    // 退信日报（只在有失败时发）
+    mailDigestEnable: true,
+    mailLogRetentionDays: 180,
   }
 }
 
@@ -187,6 +210,18 @@ const SETTINGS_GROUP_CONFIG = {
     fetchKey: 'ticket',
     normalize: normalizeTicketAttachmentSettings,
     createPayload: createTicketAttachmentSettingsPayload,
+  },
+  // 与 ticketAttachment 共用后端 ticket 组，各自只认自己的字段；保存按组 diff，互不覆盖
+  ticketWorkflow: {
+    fetchKey: 'ticket',
+    normalize: normalizeTicketWorkflowSettings,
+    createPayload: createTicketWorkflowSettingsPayload,
+  },
+  // billing_* 键挂在后端 email 组下
+  billing: {
+    fetchKey: 'email',
+    normalize: normalizeBillingSettings,
+    createPayload: createBillingSettingsPayload,
   },
 }
 
@@ -244,6 +279,8 @@ export async function fetchSiteSettings() {
     ...normalizeAppSettings(app),
     ...normalizeSubscribeTemplateSettings(subscribeTemplate),
     ...normalizeTicketAttachmentSettings(ticket),
+    ...normalizeTicketWorkflowSettings(ticket),
+    ...normalizeBillingSettings(email),
   }
 }
 
@@ -765,6 +802,8 @@ function normalizeEmailSettings(email) {
       emailEncryption: fallback.emailEncryption,
       emailFromAddress: fallback.emailFromAddress,
       remindMailEnable: fallback.remindMailEnable,
+      mailDigestEnable: fallback.mailDigestEnable,
+      mailLogRetentionDays: fallback.mailLogRetentionDays,
     }
   }
 
@@ -777,7 +816,20 @@ function normalizeEmailSettings(email) {
     emailEncryption: normalizeEmailEncryption(email.email_encryption ?? fallback.emailEncryption),
     emailFromAddress: String(email.email_from_address ?? ''),
     remindMailEnable: Boolean(email.remind_mail_enable),
+    mailDigestEnable: email.mail_digest_enable === undefined
+      ? fallback.mailDigestEnable
+      : Boolean(Number(email.mail_digest_enable)),
+    mailLogRetentionDays: normalizeRetentionDays(email.mail_log_retention_days, fallback.mailLogRetentionDays),
   }
+}
+
+/** 保留天数：0–3650 的整数，0 = 永久保留；非法值回落默认 */
+function normalizeRetentionDays(value, fallback) {
+  const days = Number(value)
+  if (value === undefined || value === null || value === '' || !Number.isFinite(days)) {
+    return fallback
+  }
+  return Math.max(0, Math.min(3650, Math.round(days)))
 }
 
 function createEmailSettingsPayload(settings = {}) {
@@ -790,6 +842,8 @@ function createEmailSettingsPayload(settings = {}) {
     email_encryption: normalizeEmailEncryption(settings.emailEncryption || 'none'),
     email_from_address: String(settings.emailFromAddress || '').trim(),
     remind_mail_enable: settings.remindMailEnable ? 1 : 0,
+    mail_digest_enable: settings.mailDigestEnable ? 1 : 0,
+    mail_log_retention_days: normalizeRetentionDays(settings.mailLogRetentionDays, 180),
   }
 }
 
@@ -1035,4 +1089,128 @@ export function slugifyChainCode(value) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 32)
+}
+
+// ===== 工单分类（后端 ticket 组的 ticket_category_hidden / ticket_feedback_enable） =====
+
+function splitCodeList(value) {
+  if (Array.isArray(value)) {
+    return value.map(function toCode(item) { return String(item || '').trim() }).filter(Boolean)
+  }
+  return String(value || '')
+    .split(/[\s,，;]+/)
+    .map(function trimCode(item) { return item.trim() })
+    .filter(Boolean)
+}
+
+function normalizeTicketWorkflowSettings(ticket) {
+  const fallback = createEmptySiteSettings()
+
+  if (!ticket || typeof ticket !== 'object') {
+    return {
+      ticketCategoryHidden: fallback.ticketCategoryHidden,
+      ticketFeedbackEnable: fallback.ticketFeedbackEnable,
+    }
+  }
+
+  return {
+    ticketCategoryHidden: splitCodeList(ticket.ticket_category_hidden),
+    ticketFeedbackEnable: ticket.ticket_feedback_enable === undefined
+      ? fallback.ticketFeedbackEnable
+      : Boolean(Number(ticket.ticket_feedback_enable)),
+  }
+}
+
+function createTicketWorkflowSettingsPayload(settings = {}) {
+  return {
+    ticket_category_hidden: splitCodeList(settings.ticketCategoryHidden).join(','),
+    ticket_feedback_enable: settings.ticketFeedbackEnable ? 1 : 0,
+  }
+}
+
+// ===== 收据 / 账单 / 到期后邮件（后端 email 组的 billing_* 键） =====
+
+function normalizeBillingLocale(value) {
+  const normalized = String(value || '').trim()
+  return ['zh-CN', 'zh-TW', 'en-US'].includes(normalized) ? normalized : 'zh-CN'
+}
+
+function normalizeDayList(value, fallbackValue) {
+  const days = String(value ?? '')
+    .split(/[\s,，;]+/)
+    .map(function toDay(item) { return Number(item) })
+    .filter(function isDay(item) { return Number.isInteger(item) && item > 0 })
+  return days.length ? days.join(',') : fallbackValue
+}
+
+function normalizeBillingSettings(email) {
+  const fallback = createEmptySiteSettings()
+  const flag = function flag(value, defaultValue) {
+    return value === undefined || value === null ? defaultValue : Boolean(Number(value))
+  }
+
+  if (!email || typeof email !== 'object') {
+    return {
+      billingReceiptEnable: fallback.billingReceiptEnable,
+      billingInvoiceEnable: fallback.billingInvoiceEnable,
+      billingInvoiceDays: fallback.billingInvoiceDays,
+      billingPayLinkEnable: fallback.billingPayLinkEnable,
+      billingPayLinkDays: fallback.billingPayLinkDays,
+      billingLocale: fallback.billingLocale,
+      billingIssuer: fallback.billingIssuer,
+      billingLogo: fallback.billingLogo,
+      billingRecommendPlanIds: fallback.billingRecommendPlanIds,
+      billingExpiredEnable: fallback.billingExpiredEnable,
+      billingWinbackEnable: fallback.billingWinbackEnable,
+      billingWinbackDays: fallback.billingWinbackDays,
+      billingWinbackCoupon: fallback.billingWinbackCoupon,
+      billingInvoiceRetentionDays: fallback.billingInvoiceRetentionDays,
+    }
+  }
+
+  const invoiceDays = Number(email.billing_invoice_days)
+  const payLinkDays = Number(email.billing_pay_link_days)
+
+  return {
+    billingReceiptEnable: flag(email.billing_receipt_enable, fallback.billingReceiptEnable),
+    billingInvoiceEnable: flag(email.billing_invoice_enable, fallback.billingInvoiceEnable),
+    billingInvoiceDays: Number.isFinite(invoiceDays) ? Math.max(0, Math.min(30, Math.round(invoiceDays))) : fallback.billingInvoiceDays,
+    billingPayLinkEnable: flag(email.billing_pay_link_enable, fallback.billingPayLinkEnable),
+    billingPayLinkDays: Number.isFinite(payLinkDays) ? Math.max(0, Math.min(30, Math.round(payLinkDays))) : fallback.billingPayLinkDays,
+    billingLocale: normalizeBillingLocale(email.billing_locale ?? fallback.billingLocale),
+    billingIssuer: String(email.billing_issuer ?? ''),
+    billingLogo: String(email.billing_logo ?? ''),
+    billingRecommendPlanIds: String(email.billing_recommend_plan_ids ?? ''),
+    billingExpiredEnable: flag(email.billing_expired_enable, fallback.billingExpiredEnable),
+    billingWinbackEnable: flag(email.billing_winback_enable, fallback.billingWinbackEnable),
+    billingWinbackDays: email.billing_winback_days === undefined
+      ? fallback.billingWinbackDays
+      : normalizeDayList(email.billing_winback_days, ''),
+    billingWinbackCoupon: String(email.billing_winback_coupon ?? ''),
+    billingInvoiceRetentionDays: normalizeRetentionDays(email.billing_invoice_retention_days, fallback.billingInvoiceRetentionDays),
+  }
+}
+
+function createBillingSettingsPayload(settings = {}) {
+  return {
+    billing_receipt_enable: settings.billingReceiptEnable ? 1 : 0,
+    billing_invoice_enable: settings.billingInvoiceEnable ? 1 : 0,
+    billing_invoice_days: Math.max(0, Math.min(30, Math.round(Number(settings.billingInvoiceDays) || 0))),
+    billing_pay_link_enable: settings.billingPayLinkEnable ? 1 : 0,
+    billing_pay_link_days: Math.max(0, Math.min(30, Math.round(Number(settings.billingPayLinkDays) || 0))),
+    billing_locale: normalizeBillingLocale(settings.billingLocale),
+    billing_issuer: String(settings.billingIssuer || '').trim(),
+    billing_logo: String(settings.billingLogo || '').trim(),
+    // 后端只认「1,2,3」这种逗号分隔的数字串
+    billing_recommend_plan_ids: String(settings.billingRecommendPlanIds || '')
+      .split(/[\s,，;]+/)
+      .map(function toId(item) { return item.trim() })
+      .filter(function isId(item) { return /^\d+$/.test(item) })
+      .join(','),
+    billing_expired_enable: settings.billingExpiredEnable ? 1 : 0,
+    billing_winback_enable: settings.billingWinbackEnable ? 1 : 0,
+    billing_winback_days: normalizeDayList(settings.billingWinbackDays, ''),
+    billing_winback_coupon: String(settings.billingWinbackCoupon || '').trim(),
+    billing_invoice_retention_days: normalizeRetentionDays(settings.billingInvoiceRetentionDays, 0),
+  }
 }

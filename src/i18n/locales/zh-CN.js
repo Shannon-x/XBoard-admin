@@ -97,6 +97,14 @@ export default {
       title: '主题配置',
       eyebrow: '系统管理',
     },
+    billingDocuments: {
+      title: '账单与收据',
+      eyebrow: '财务管理',
+    },
+    mailDelivery: {
+      title: '邮件投递',
+      eyebrow: '财务管理',
+    },
   },
   themeConfigPage: {
     sectionTitle: '主题配置',
@@ -190,6 +198,9 @@ export default {
     knowledge: '知识库',
     payment: '支付管理',
     logs: '系统日志',
+    finance: '财务管理',
+    billingDocuments: '账单与收据',
+    mailDelivery: '邮件投递',
   },
   auth: {
     login: '登录',
@@ -385,12 +396,89 @@ export default {
         title: '订阅模板',
         description: '配置各个客户端的订阅模板。',
       },
+      billing: {
+        title: '收据与账单',
+        description: '付款后自动寄送收据 PDF，到期前寄送续费账单；到期后的暂停提醒与召回邮件也在这里开关。所有文档都会留档，可在「账单与收据」页面查看与重发；每份只存约 2 KB 的内容快照，下载时按快照现生成 PDF。',
+      },
+      ticketWorkflow: {
+        title: '工单分类',
+        description: '控制用户前端的工单分类与「功能建议 / 意见反馈」入口。隐藏的分类不再出现在新建工单的选项里，已有工单不受影响。',
+      },
       ticketAttachment: {
         title: '工单附件',
         description: '用户与客服在工单里互发截图 / 文件。支持剪贴板粘贴与拖拽上传，存储可选本地或 S3 兼容对象存储，并按保留期自动清理。',
       },
     },
     fields: {
+      ticketFeedbackEnable: {
+        label: '开放建议与反馈',
+        description: '开启后用户可以提交「功能建议 / 意见与体验」类工单，管理员可标记处理状态并反馈进展。',
+      },
+      ticketCategoryHidden: {
+        label: '隐藏的工单分类',
+        description: '勾选的分类不会出现在用户新建工单的选项中；「其他」始终保留，提现相关工单由系统自动归类。',
+      },
+      billingReceiptEnable: {
+        label: '付款后寄送收据',
+        description: '订单支付成功并开通后，向用户邮箱寄送一份带 PDF 附件的收据。',
+      },
+      billingInvoiceEnable: {
+        label: '到期前寄送续费账单',
+        description: '订阅到期前寄送续费账单 PDF，并附上可选的其他套餐；开启自动续费且余额充足的用户只收第一封。',
+      },
+      billingInvoiceDays: {
+        label: '提前天数',
+        description: '到期前多少天寄送第一封续费账单（0–30）；到期前 24 小时会再寄送一封提醒。',
+      },
+      billingPayLinkEnable: {
+        label: '邮件里直接付款',
+        description: '账单邮件和 PDF 里的「立即付款」按钮打开免登录付款页：不用密码，只能支付这一张账单，余额会自动抵扣。关闭后按钮改为跳转到需要登录的续费页。',
+      },
+      billingPayLinkDays: {
+        label: '到期后仍可付款的天数',
+        description: '订阅到期后，付款链接还能继续用多少天（0–30，0 = 到期即失效）。到期当天的「服务已暂停」邮件在这段时间里也会用同一个付款链接。',
+      },
+      billingExpiredEnable: {
+        label: '到期后寄送暂停提醒',
+        description: '订阅到期两天内仍未续费的用户会收到一封「服务已暂停」邮件，附带续费入口。',
+      },
+      billingWinbackEnable: {
+        label: '流失召回邮件',
+        description: '到期后按设定的天数向未续费用户寄送召回邮件，可附带优惠码。',
+      },
+      billingWinbackDays: {
+        label: '召回时间点',
+        description: '到期后的第几天寄送召回邮件，多个时间点用英文逗号分隔。',
+        placeholder: '7,30',
+      },
+      billingWinbackCoupon: {
+        label: '召回优惠码',
+        description: '填写后台已创建的优惠券码，召回邮件会附带该优惠码及直达结账的链接；留空则不附带。',
+        placeholder: '请输入优惠券码',
+      },
+      billingRecommendPlanIds: {
+        label: '账单推荐套餐',
+        description: '续费账单里展示的其他套餐 ID，用英文逗号分隔；留空则自动挑选在售套餐。',
+        placeholder: '例如 1,2,3',
+      },
+      billingLocale: {
+        label: '文档语言',
+        description: '收据与账单 PDF 使用的语言。',
+      },
+      billingIssuer: {
+        label: '开具方名称',
+        description: '显示在收据与账单抬头的开具方名称，留空则使用站点名称。',
+        placeholder: '请输入开具方名称',
+      },
+      billingLogo: {
+        label: '文档 Logo',
+        description: 'PDF 抬头使用的 Logo 图片地址（PNG / JPG），留空则使用站点 Logo。',
+        placeholder: 'https://',
+      },
+      billingInvoiceRetentionDays: {
+        label: '旧账单保留天数',
+        description: '默认 0 = 永久保留，用户能看到完整的账单历史（每份只占约 2 KB）。填 N 后，到期日早于 N 天前、且已续费或已失效的续费账单在每天 03:40 删除（续费那一单自有收据）；待付款的账单和所有收据都不会删。',
+      },
       ticketAttachmentEnable: {
         label: '启用工单附件',
         description: '关闭后用户前端不显示上传入口，已有附件仍可查看。',
@@ -832,6 +920,14 @@ export default {
         label: '邮件提醒',
         description: '开启后用户订阅即将到期或流量不足时会收到邮件推送。',
       },
+      mailDigestEnable: {
+        label: '投递失败日报',
+        description: '开启后，前一天有投递失败或暂停投递时，每天 09:00 向管理员邮箱寄送一份汇总报告；没有失败时不打扰。',
+      },
+      mailLogRetentionDays: {
+        label: '投递日志保留天数',
+        description: '「邮件投递」页的日志按此保留期每天清理（到期 / 流量提醒每天都会记一行）。0 = 永久保留。',
+      },
       mailTestAction: {
         label: '发送测试邮件',
         description: '立即使用当前邮件配置发送一封测试邮件。',
@@ -927,6 +1023,20 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      billingLocale: {
+        'zh-CN': '简体中文',
+        'zh-TW': '繁體中文',
+        'en-US': 'English',
+      },
+      ticketCategoryHidden: {
+        connection: '节点与连接',
+        client: '客户端使用',
+        subscription: '订阅与套餐',
+        billing: '支付与订单',
+        account: '账号与安全',
+        suggestion: '功能建议',
+        experience: '意见与体验',
+      },
       commissionWithdrawRateSource: {
         auto: '自动获取实时行情（推荐）',
         manual: '手动固定汇率',
