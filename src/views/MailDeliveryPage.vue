@@ -736,10 +736,10 @@ onMounted(function onMount() {
 
           <div class="notify-log-head">
             <span class="notify-log-head__title">退订记录</span>
-            <el-select :model-value="notifyCategoryFilter" size="small" class="notify-log-head__select" @change="setNotifyCategoryFilter">
+            <el-select :model-value="notifyCategoryFilter" size="small" class="notify-log-head__select" placeholder="全部类别" @change="setNotifyCategoryFilter">
               <el-option v-for="opt in notifyCategoryOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
-            <el-select :model-value="notifySourceFilter" size="small" class="notify-log-head__select" @change="setNotifySourceFilter">
+            <el-select :model-value="notifySourceFilter" size="small" class="notify-log-head__select" placeholder="全部来源" @change="setNotifySourceFilter">
               <el-option v-for="opt in notifySourceOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
             <el-button :icon="RefreshCw" class="ghost-btn small" plain size="small" type="info" @click="refreshNotify">刷新</el-button>
