@@ -999,18 +999,21 @@ onMounted(function onMount() {
 
       <el-table ref="usersTableRef" v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
         <el-table-column label="ID" prop="id" width="88" />
-        <el-table-column label="邮箱" prop="email" width="200" show-overflow-tooltip>
+        <el-table-column label="邮箱" prop="email" min-width="230">
           <template #default="{ row }">
-            <span>{{ row.email }}</span>
-            <el-tooltip v-if="row.mailSuppressed" content="发往该邮箱的邮件被退回，已暂停投递" placement="top">
-              <el-tag size="small" type="danger" style="margin-left: 6px">退信</el-tag>
-            </el-tooltip>
-            <el-tooltip v-else-if="row.emailVerifyState === 'verified'" content="邮箱已验证" placement="top">
-              <el-tag size="small" type="success" style="margin-left: 6px">已验证</el-tag>
-            </el-tooltip>
-            <el-tooltip v-else-if="row.emailVerifyState === 'pending'" content="已发验证邮件，用户还没点链接" placement="top">
-              <el-tag size="small" type="warning" style="margin-left: 6px">待验证</el-tag>
-            </el-tooltip>
+            <!-- 邮箱过长时只截邮箱本身，验证徽标始终可见（整格 show-overflow-tooltip 会把徽标一起截掉） -->
+            <div class="user-email-cell">
+              <span class="user-email-cell__text" :title="row.email">{{ row.email }}</span>
+              <el-tooltip v-if="row.mailSuppressed" content="发往该邮箱的邮件被退回，已暂停投递" placement="top">
+                <el-tag size="small" type="danger">退信</el-tag>
+              </el-tooltip>
+              <el-tooltip v-else-if="row.emailVerifyState === 'verified'" content="邮箱已验证" placement="top">
+                <el-tag size="small" type="success">已验证</el-tag>
+              </el-tooltip>
+              <el-tooltip v-else-if="row.emailVerifyState === 'pending'" content="已发验证邮件，用户还没点链接" placement="top">
+                <el-tag size="small" type="warning">待验证</el-tag>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="90">
@@ -1456,5 +1459,23 @@ onMounted(function onMount() {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   min-width: 50px;
+}
+
+.user-email-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.user-email-cell__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-email-cell :deep(.el-tag) {
+  flex-shrink: 0;
 }
 </style>
