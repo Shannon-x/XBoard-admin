@@ -951,7 +951,7 @@ export default {
       },
       emailVerifyRestrictMode: {
         label: '限制状态限制什么',
-        description: '「功能限制」：订阅照常，新下单、续费、提交工单、申请提现前必须先验证；「暂停订阅」：在此之上订阅链接也暂停更新、节点不再下发该用户；「只提示」：横幅一直显示但不限制。验证或更换邮箱后立即恢复。',
+        description: '任何方式下都不拦下单、续费和付款。「功能限制」：订阅照常，新建工单（支付与订单类除外）、佣金提现、佣金转余额前必须先验证；「暂停订阅」：在此之上订阅链接也暂停更新、节点不再下发该用户；「只提示」：横幅一直显示但不限制。验证或更换邮箱后立即恢复。',
       },
       emailVerifyRemindDays: {
         label: '到期前提醒天数',
@@ -1065,7 +1065,7 @@ export default {
     },
     selectOptions: {
       emailVerifyRestrictMode: {
-        features: '功能限制（下单、工单、提现前先验证）',
+        features: '功能限制（工单、佣金提现前先验证，不拦付款）',
         subscribe: '暂停订阅（再加上订阅链接停更）',
         none: '只提示，不限制',
       },
