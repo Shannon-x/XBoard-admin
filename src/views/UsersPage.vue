@@ -1007,6 +1007,9 @@ onMounted(function onMount() {
               <el-tooltip v-if="row.mailSuppressed" content="发往该邮箱的邮件被退回，已暂停投递" placement="top">
                 <el-tag size="small" type="danger">退信</el-tag>
               </el-tooltip>
+              <el-tooltip v-else-if="row.emailVerifyState === 'exempt'" content="邮箱验证上线前注册的老用户，不需要验证" placement="top">
+                <el-tag size="small" type="info">免验证</el-tag>
+              </el-tooltip>
               <el-tooltip v-else-if="row.emailVerifyState === 'verified'" content="邮箱已验证" placement="top">
                 <el-tag size="small" type="success">已验证</el-tag>
               </el-tooltip>
@@ -1099,8 +1102,8 @@ onMounted(function onMount() {
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item @click="handleViewTraffic(row)">流量详情</el-dropdown-item>
                   <el-dropdown-item @click="handleResetSecret(row)">重置订阅链接/UUID</el-dropdown-item>
-                  <el-dropdown-item v-if="row.emailVerifyState !== 'verified'" divided @click="handleEmailVerify(row, 'send')">发送邮箱验证邮件</el-dropdown-item>
-                  <el-dropdown-item v-if="row.emailVerifyState !== 'verified'" @click="handleEmailVerify(row, 'verify')">标记邮箱已验证</el-dropdown-item>
+                  <el-dropdown-item v-if="!row.emailVerified" divided @click="handleEmailVerify(row, 'send')">发送邮箱验证邮件</el-dropdown-item>
+                  <el-dropdown-item v-if="!row.emailVerified" @click="handleEmailVerify(row, 'verify')">标记邮箱已验证</el-dropdown-item>
                   <el-dropdown-item v-else divided @click="handleEmailVerify(row, 'reset')">重新要求验证邮箱</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>

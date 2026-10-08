@@ -103,10 +103,12 @@ function normalizeUser(user) {
     lastResetAtRaw: user?.last_reset_at || null,
     createdAt: formatTimestamp(user?.created_at),
     lastLoginAt: formatTimestamp(user?.last_login_at),
-    // 邮箱软验证：verified / pending（纳入流程未验证）/ legacy（老用户还没轮到）；退信暂停投递单独标
+    // 邮箱软验证：exempt（上线前注册的老用户，免验证）/ verified / pending（纳入流程未验证）/ none（还没纳入）；退信暂停投递单独标
     emailVerified: Boolean(user?.email_verified_at),
     emailVerifyStartedAt: user?.email_verify_started_at ? Number(user.email_verify_started_at) : null,
-    emailVerifyState: user?.email_verified_at ? 'verified' : user?.email_verify_started_at ? 'pending' : 'legacy',
+    emailVerifyState: user?.email_verified_at
+      ? (user?.email_verify_source === 'legacy' ? 'exempt' : 'verified')
+      : user?.email_verify_started_at ? 'pending' : 'none',
     mailSuppressed: Boolean(user?.mail_suppressed_at),
     isBanned,
     banned: user?.banned ? 1 : 0,
