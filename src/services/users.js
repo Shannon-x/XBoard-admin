@@ -103,6 +103,13 @@ function normalizeUser(user) {
     lastResetAtRaw: user?.last_reset_at || null,
     createdAt: formatTimestamp(user?.created_at),
     lastLoginAt: formatTimestamp(user?.last_login_at),
+    // 邮箱软验证：exempt（上线前注册的老用户，免验证）/ verified / pending（纳入流程未验证）/ none（还没纳入）；退信暂停投递单独标
+    emailVerified: Boolean(user?.email_verified_at),
+    emailVerifyStartedAt: user?.email_verify_started_at ? Number(user.email_verify_started_at) : null,
+    emailVerifyState: user?.email_verified_at
+      ? (user?.email_verify_source === 'legacy' ? 'exempt' : 'verified')
+      : user?.email_verify_started_at ? 'pending' : 'none',
+    mailSuppressed: Boolean(user?.mail_suppressed_at),
     isBanned,
     banned: user?.banned ? 1 : 0,
     statusText: isBanned ? '已封禁' : '正常',
@@ -210,6 +217,12 @@ export async function generateManagedUser(data) {
 export async function banManagedUsers(data) {
   const apiUrl = buildSecureV2ApiUrl('user/ban')
   return requestDashboardMutation(apiUrl, data)
+}
+
+/** 邮箱验证：action = verify（标记已验证）| send（重发验证邮件）| reset（重新要求验证） */
+export async function emailVerifyManagedUser(id, action) {
+  const apiUrl = buildSecureV2ApiUrl('user/emailVerify')
+  return requestDashboardMutation(apiUrl, { id: Number(id), action })
 }
 
 export async function resetManagedUserSecret(id) {

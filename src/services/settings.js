@@ -162,6 +162,12 @@ export function createEmptySiteSettings() {
     notifyOptionalCategories: ['billing', 'usage', 'support', 'announcement', 'marketing'],
     notifyFooterLabel: '',
     notifyListUnsubscribeEnable: true,
+    // 邮箱软验证：注册 / 付款后发一次性链接，宽限期过后限制
+    emailVerifyNudgeEnable: true,
+    emailVerifyGraceDays: 14,
+    emailVerifyRestrictMode: 'features',
+    emailVerifyRemindDays: 3,
+    emailVerifyMxCheck: true,
   }
 }
 
@@ -814,6 +820,11 @@ function normalizeEmailSettings(email) {
       notifyOptionalCategories: fallback.notifyOptionalCategories,
       notifyFooterLabel: fallback.notifyFooterLabel,
       notifyListUnsubscribeEnable: fallback.notifyListUnsubscribeEnable,
+      emailVerifyNudgeEnable: fallback.emailVerifyNudgeEnable,
+      emailVerifyGraceDays: fallback.emailVerifyGraceDays,
+      emailVerifyRestrictMode: fallback.emailVerifyRestrictMode,
+      emailVerifyRemindDays: fallback.emailVerifyRemindDays,
+      emailVerifyMxCheck: fallback.emailVerifyMxCheck,
     }
   }
 
@@ -843,6 +854,18 @@ function normalizeEmailSettings(email) {
     notifyListUnsubscribeEnable: email.notify_list_unsubscribe_enable === undefined
       ? fallback.notifyListUnsubscribeEnable
       : Boolean(Number(email.notify_list_unsubscribe_enable)),
+    // 邮箱软验证
+    emailVerifyNudgeEnable: email.email_verify_nudge_enable === undefined
+      ? fallback.emailVerifyNudgeEnable
+      : Boolean(Number(email.email_verify_nudge_enable)),
+    emailVerifyGraceDays: Math.min(90, Math.max(1, Number(email.email_verify_grace_days ?? fallback.emailVerifyGraceDays) || fallback.emailVerifyGraceDays)),
+    emailVerifyRestrictMode: ['features', 'subscribe', 'none'].includes(String(email.email_verify_restrict_mode))
+      ? String(email.email_verify_restrict_mode)
+      : fallback.emailVerifyRestrictMode,
+    emailVerifyRemindDays: Math.min(30, Math.max(0, Number(email.email_verify_remind_days ?? fallback.emailVerifyRemindDays) || 0)),
+    emailVerifyMxCheck: email.email_verify_mx_check === undefined
+      ? fallback.emailVerifyMxCheck
+      : Boolean(Number(email.email_verify_mx_check)),
   }
 }
 
@@ -872,6 +895,11 @@ function createEmailSettingsPayload(settings = {}) {
     notify_optional_categories: splitCodeList(settings.notifyOptionalCategories).join(','),
     notify_footer_label: String(settings.notifyFooterLabel || '').trim(),
     notify_list_unsubscribe_enable: settings.notifyListUnsubscribeEnable ? 1 : 0,
+    email_verify_nudge_enable: settings.emailVerifyNudgeEnable ? 1 : 0,
+    email_verify_grace_days: Math.min(90, Math.max(1, Number(settings.emailVerifyGraceDays) || 14)),
+    email_verify_restrict_mode: ['features', 'subscribe', 'none'].includes(String(settings.emailVerifyRestrictMode)) ? String(settings.emailVerifyRestrictMode) : 'features',
+    email_verify_remind_days: Math.min(30, Math.max(0, Number(settings.emailVerifyRemindDays) || 0)),
+    email_verify_mx_check: settings.emailVerifyMxCheck ? 1 : 0,
   }
 }
 

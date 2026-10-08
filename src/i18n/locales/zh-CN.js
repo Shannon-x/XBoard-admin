@@ -941,6 +941,26 @@ export default {
         description: '账单、提醒、公告、活动邮件底部那行小字链接的文案，点开是免登录的通知偏好页。留空为「管理通知偏好」。',
         placeholder: '管理通知偏好',
       },
+      emailVerifyNudgeEnable: {
+        label: '邮箱软验证',
+        description: '注册和购买流程不变；注册成功或付款开通后往邮箱发一封带一次性链接的验证邮件，面板常驻提示并倒数宽限期。老用户不群发，下一次付款后才开始。用验证码注册和 Google 登录的账号自动算已验证。',
+      },
+      emailVerifyGraceDays: {
+        label: '宽限天数',
+        description: '从发出第一封验证邮件起算，这么多天内没验证的账户进入限制状态（1–90，默认 14）。',
+      },
+      emailVerifyRestrictMode: {
+        label: '限制状态限制什么',
+        description: '任何方式下都不拦下单、续费和付款。「功能限制」：订阅照常，新建工单（支付与订单类除外）、佣金提现、佣金转余额前必须先验证；「暂停订阅」：在此之上订阅链接也暂停更新、节点不再下发该用户；「只提示」：横幅一直显示但不限制。验证或更换邮箱后立即恢复。',
+      },
+      emailVerifyRemindDays: {
+        label: '到期前提醒天数',
+        description: '宽限期只剩这么多天时再发一封提醒邮件，每人只发一次；0 = 不提醒。',
+      },
+      emailVerifyMxCheck: {
+        label: '注册时检查邮箱域名',
+        description: '注册和换邮箱时查一次域名的 MX / A 记录，连收信服务器都没有的域名（乱敲的）直接拒绝；DNS 查不到结果时放行，不影响正常用户。',
+      },
       notifyListUnsubscribeEnable: {
         label: '批量邮件带一键退订头',
         description: '服务公告与活动邮件附带 List-Unsubscribe / List-Unsubscribe-Post 头，Gmail、Yahoo 会在邮件顶部显示「退订」并一键关闭该类别。这是它们对批量发件人的送达率要求，关掉会增加进垃圾箱的概率。',
@@ -1044,6 +1064,11 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      emailVerifyRestrictMode: {
+        features: '功能限制（工单、佣金提现前先验证，不拦付款）',
+        subscribe: '暂停订阅（再加上订阅链接停更）',
+        none: '只提示，不限制',
+      },
       notifyOptionalCategories: {
         billing: '账单与到期提醒',
         usage: '流量与用量',
