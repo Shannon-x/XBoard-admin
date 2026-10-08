@@ -12,6 +12,7 @@ import {
   generateManagedUser,
   banManagedUsers,
   resetManagedUserSecret,
+  emailVerifyManagedUser,
   destroyManagedUser,
   dumpUsersCSV,
   sendMailToUsers,
@@ -599,6 +600,26 @@ async function handleBan(user) {
   }
 }
 
+const EMAIL_VERIFY_ACTIONS = {
+  send: { confirm: (u) => `向 ${u.email} 发送一封邮箱验证邮件？老用户会从现在开始计宽限期。`, title: '发送验证邮件', done: '验证邮件已发送' },
+  verify: { confirm: (u) => `把 ${u.email} 标记为已验证？面板里的验证提示会立即消失。`, title: '标记已验证', done: '已标记为已验证' },
+  reset: { confirm: (u) => `重新要求 ${u.email} 验证邮箱？会清掉已验证标记并从现在起重新计宽限期（不会自动发邮件）。`, title: '重新要求验证', done: '已重新要求验证' },
+}
+
+async function handleEmailVerify(user, action) {
+  const spec = EMAIL_VERIFY_ACTIONS[action]
+  try {
+    await ElMessageBox.confirm(spec.confirm(user), spec.title, { type: action === 'reset' ? 'warning' : 'info' })
+    await emailVerifyManagedUser(user.id, action)
+    ElMessage.success(spec.done)
+    loadUsers()
+  } catch (err) {
+    if (err !== 'cancel') {
+      ElMessage.error(err.message || '操作失败')
+    }
+  }
+}
+
 async function handleResetSecret(user) {
   try {
     await ElMessageBox.confirm(
@@ -978,7 +999,20 @@ onMounted(function onMount() {
 
       <el-table ref="usersTableRef" v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
         <el-table-column label="ID" prop="id" width="88" />
-        <el-table-column label="邮箱" prop="email" width="180" show-overflow-tooltip />
+        <el-table-column label="邮箱" prop="email" width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.email }}</span>
+            <el-tooltip v-if="row.mailSuppressed" content="发往该邮箱的邮件被退回，已暂停投递" placement="top">
+              <el-tag size="small" type="danger" style="margin-left: 6px">退信</el-tag>
+            </el-tooltip>
+            <el-tooltip v-else-if="row.emailVerifyState === 'verified'" content="邮箱已验证" placement="top">
+              <el-tag size="small" type="success" style="margin-left: 6px">已验证</el-tag>
+            </el-tooltip>
+            <el-tooltip v-else-if="row.emailVerifyState === 'pending'" content="已发验证邮件，用户还没点链接" placement="top">
+              <el-tag size="small" type="warning" style="margin-left: 6px">待验证</el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
@@ -1062,6 +1096,9 @@ onMounted(function onMount() {
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item @click="handleViewTraffic(row)">流量详情</el-dropdown-item>
                   <el-dropdown-item @click="handleResetSecret(row)">重置订阅链接/UUID</el-dropdown-item>
+                  <el-dropdown-item v-if="row.emailVerifyState !== 'verified'" divided @click="handleEmailVerify(row, 'send')">发送邮箱验证邮件</el-dropdown-item>
+                  <el-dropdown-item v-if="row.emailVerifyState !== 'verified'" @click="handleEmailVerify(row, 'verify')">标记邮箱已验证</el-dropdown-item>
+                  <el-dropdown-item v-else divided @click="handleEmailVerify(row, 'reset')">重新要求验证邮箱</el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)" style="color:var(--el-color-danger)">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
