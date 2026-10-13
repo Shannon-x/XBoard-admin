@@ -44,6 +44,7 @@ export function createEmptySiteSettings() {
     passwordLimit: true,
     passwordTryCount: 5,
     passwordLimitDuration: 60,
+    adminSessionDays: 7,
     recaptchaEnable: false,
     planChangeEnable: false,
     resetTrafficMethod: 1,
@@ -490,6 +491,7 @@ function normalizeSafeSettings(safe) {
       passwordLimit: fallback.passwordLimit,
       passwordTryCount: fallback.passwordTryCount,
       passwordLimitDuration: fallback.passwordLimitDuration,
+      adminSessionDays: fallback.adminSessionDays,
       recaptchaEnable: fallback.recaptchaEnable,
     }
   }
@@ -527,6 +529,7 @@ function normalizeSafeSettings(safe) {
     passwordTryCount: Number(safe.password_limit_count ?? fallback.passwordTryCount) || 0,
     passwordLimitDuration:
       Number(safe.password_limit_expire ?? fallback.passwordLimitDuration) || 0,
+    adminSessionDays: Number(safe.admin_session_days ?? fallback.adminSessionDays) || fallback.adminSessionDays,
     recaptchaEnable: Boolean(safe.recaptcha_enable),
   }
 }
@@ -566,6 +569,7 @@ function createSafeSettingsPayload(settings = {}) {
     password_limit_enable: settings.passwordLimit ? 1 : 0,
     password_limit_count: Number(settings.passwordTryCount || 0),
     password_limit_expire: Number(settings.passwordLimitDuration || 0),
+    admin_session_days: Math.min(90, Math.max(1, Number(settings.adminSessionDays || 7))),
     recaptcha_enable: settings.recaptchaEnable ? 1 : 0,
   }
 }

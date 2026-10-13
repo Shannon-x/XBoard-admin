@@ -4212,3 +4212,244 @@ a:hover {
 .settings-checkbox-group .el-checkbox {
     margin-right: 0;
 }
+
+/* ===== 后台登录：两步验证 ===== */
+.login-card.login-card--wide.el-card {
+    width: min(100%, 640px);
+}
+
+.login-form__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.login-form__meta--split {
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.login-form__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.login-form__otp .el-input__inner {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.32em;
+    font-weight: 600;
+}
+
+.login-form__otp--recovery .el-input__inner {
+    font-size: 18px;
+    letter-spacing: 0.12em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.totp-setup {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 8px;
+}
+
+.totp-setup--dialog {
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 18px;
+    margin-top: 0;
+}
+
+.totp-setup__qr {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+.totp-setup__qr img {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+}
+
+.totp-setup__list {
+    margin: 0 0 16px;
+    padding-left: 18px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.totp-setup__list li + li {
+    margin-top: 8px;
+}
+
+.totp-setup__secret {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.totp-setup__secret code {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--surface-muted, #f3f4f6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    word-break: break-all;
+}
+
+.login-form--inline .el-form-item {
+    margin-bottom: 12px;
+}
+
+.recovery-codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin: 12px 0 16px;
+    padding: 16px 18px;
+    list-style: none;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-md);
+    background: #ffffff;
+}
+
+.recovery-codes li code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 16px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+}
+
+.recovery-codes--dialog {
+    margin-top: 0;
+}
+
+.recovery-codes__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.recovery-codes__warning.el-alert {
+    margin-bottom: 14px;
+    border-radius: 12px;
+}
+
+.recovery-codes__ack {
+    display: flex;
+    margin-bottom: 18px;
+}
+
+/* ===== 账号安全页 ===== */
+.security-status {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px 24px;
+    margin-bottom: 16px;
+}
+
+.security-status__item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.security-status__item .el-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.security-status__label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+}
+
+.security-status__warning.el-alert {
+    margin-bottom: 16px;
+    border-radius: 12px;
+}
+
+.security-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.security-note {
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.security-note code {
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--surface-muted, #f3f4f6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+.session-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.session-cell__ua {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.login-log__note {
+    margin-left: 6px;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.dialog-copy {
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+}
+
+@media (max-width: 720px) {
+    .totp-setup,
+    .totp-setup--dialog {
+        grid-template-columns: 1fr;
+    }
+
+    .totp-setup__qr {
+        max-width: 240px;
+        margin: 0 auto;
+    }
+
+    .recovery-codes {
+        grid-template-columns: 1fr;
+    }
+}

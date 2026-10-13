@@ -7,6 +7,7 @@ import SectionCard from '../components/common/SectionCard.vue'
 import CopyButton from '../components/common/CopyButton.vue'
 import { buildDashboardApiUrl, requestDashboardApi, getDashboardApiHeaders } from '../services/api'
 import { createPageSizePreference } from '../utils/pageSizePreference'
+import { LOGIN_LOG_ACTION } from '../services/security'
 
 const route = useRoute()
 
@@ -184,9 +185,19 @@ function formatTime(ts) {
   return d.toLocaleString('zh-CN', { hour12: false })
 }
 
+function actionLabel(action) {
+  // 登录类事件显示中文；其余保持 resource.method 原样
+  return LOGIN_LOG_ACTION[action]?.text || action
+}
+
 function actionTagType(action) {
-  const map = { login: 'success', create: '', update: 'warning', delete: 'danger' }
-  return map[action] || 'info'
+  // 登录类事件（auth.*）来自后台登录 / 两步验证；其余是 resource.method 形式
+  if (action === 'auth.login' || action === 'auth.two_factor_enrolled') return 'success'
+  if (action.startsWith('auth.') && /failed|locked|revoked/.test(action)) return 'danger'
+  if (action.startsWith('auth.')) return 'warning'
+  const method = action.split('.').pop()
+  const map = { login: 'success', create: '', save: '', update: 'warning', drop: 'danger', delete: 'danger' }
+  return map[method] || 'info'
 }
 
 function handleRefresh() {
@@ -256,9 +267,9 @@ watch(activeTab, function onTabSwitch(nextTab) {
 
           <el-table :data="auditLogs" v-loading="auditLoading" class="dashboard-table" max-height="580">
             <el-table-column label="ID" prop="id" width="70" sortable />
-            <el-table-column label="操作" width="90">
+            <el-table-column label="操作" width="130">
               <template #default="{ row }">
-                <el-tag size="small" :type="actionTagType(row.action)">{{ row.action }}</el-tag>
+                <el-tag size="small" :type="actionTagType(row.action)">{{ actionLabel(row.action) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="管理员" width="160">
