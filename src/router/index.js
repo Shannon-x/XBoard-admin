@@ -26,6 +26,7 @@ const BillingDocumentsPage = () => import('../views/BillingDocumentsPage.vue')
 const MailDeliveryPage = () => import('../views/MailDeliveryPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
 const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
+const SecurityPage = () => import('../views/SecurityPage.vue')
 
 const ROUTE_META_KEYS = {
   login: {
@@ -111,6 +112,10 @@ const ROUTE_META_KEYS = {
   mailDelivery: {
     title: 'routes.mailDelivery.title',
     eyebrow: 'routes.mailDelivery.eyebrow',
+  },
+  security: {
+    title: 'routes.security.title',
+    eyebrow: 'routes.security.eyebrow',
   },
 }
 
@@ -301,6 +306,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.logs.title,
           eyebrowKey: ROUTE_META_KEYS.logs.eyebrow,
+        },
+      },
+      {
+        path: 'security',
+        name: 'security',
+        component: SecurityPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.security.title,
+          eyebrowKey: ROUTE_META_KEYS.security.eyebrow,
         },
       },
       {

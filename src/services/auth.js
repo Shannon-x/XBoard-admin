@@ -1,10 +1,14 @@
-import { buildCommonApiUrl } from './api'
+import { buildCommonApiUrl, buildDashboardApiUrl } from './api'
 
 const AUTH_STORAGE_KEY = 'ltc-admin-auth'
 
-function getLoginUrl() {
-  return import.meta.env.VITE_AUTH_LOGIN_URL || buildCommonApiUrl('passport/auth/login')
-}
+// 后台登录走 secure_path 之下的专用接口（/api/v2/<secure_path>/auth/*）：
+// 密码正确只换来一个 5 分钟有效的「挑战」，验证器里的 6 位码（或恢复码）通过后才发 token。
+// 公共的 /api/v1/passport/auth/login 对管理员账号只发普通会话，进不了后台，所以这里不再用它。
+export const TWO_FACTOR_STATE = Object.freeze({
+  REQUIRED: 'required',
+  SETUP_REQUIRED: 'setup_required',
+})
 
 function parseAuthStorage(rawValue) {
   if (!rawValue) {
@@ -101,16 +105,13 @@ export function signalAuthExpired(reason = 'unauthorized') {
   }
 }
 
-export async function loginWithPassword(payload) {
-  const response = await fetch(getLoginUrl(), {
+async function postAuth(endpoint, body, fallbackMessage) {
+  const response = await fetch(buildDashboardApiUrl(endpoint), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      email: payload.email,
-      password: payload.password,
-    }),
+    body: JSON.stringify(body),
   })
 
   let result = null
@@ -121,13 +122,76 @@ export async function loginWithPassword(payload) {
     throw new Error('登录接口返回了无法解析的数据')
   }
 
-  if (!response.ok || result?.status !== 'success' || !result?.data?.auth_data) {
-    throw new Error(result?.message || '登录失败，请检查邮箱或密码')
+  if (!response.ok || result?.status !== 'success') {
+    const error = new Error(result?.message || fallbackMessage)
+    error.status = response.status
+    // 挑战过期 / 作废：登录页据此退回密码步骤
+    error.challengeExpired = response.status === 401
+    throw error
   }
 
+  return result.data || {}
+}
+
+function toSession(auth) {
+  if (!auth || typeof auth.auth_data !== 'string' || !auth.auth_data) {
+    throw new Error('登录接口没有返回会话凭据')
+  }
   return {
-    token: result.data.token || '',
-    authData: result.data.auth_data,
-    isAdmin: Boolean(result.data.is_admin),
+    token: auth.token || '',
+    authData: auth.auth_data,
+    isAdmin: Boolean(auth.is_admin),
+  }
+}
+
+/**
+ * 第一步：邮箱 + 密码。成功只返回两步验证挑战，没有 token。
+ * @returns {{ twoFactor: 'required' | 'setup_required', challenge: string, expiresIn: number }}
+ */
+export async function loginWithPassword(payload) {
+  const data = await postAuth(
+    'auth/login',
+    { email: payload.email, password: payload.password },
+    '登录失败，请检查邮箱或密码',
+  )
+  if (!data.challenge || !data.two_factor) {
+    throw new Error('登录接口返回了意外的数据，请刷新后重试')
+  }
+  return {
+    twoFactor: data.two_factor,
+    challenge: data.challenge,
+    expiresIn: Number(data.expires_in || 300),
+  }
+}
+
+/** 首次绑定：换取密钥与二维码 */
+export async function setupTwoFactor(challenge) {
+  const data = await postAuth('auth/two-factor/setup', { challenge }, '无法开始绑定验证器')
+  return {
+    secret: data.secret || '',
+    secretGrouped: data.secret_grouped || data.secret || '',
+    otpauthUrl: data.otpauth_url || '',
+    qrSvg: data.qr_svg || '',
+    issuer: data.issuer || '',
+    account: data.account || '',
+  }
+}
+
+/** 首次绑定：验证码确认 → 恢复码 + 后台会话 */
+export async function confirmTwoFactor(challenge, otp) {
+  const data = await postAuth('auth/two-factor/confirm', { challenge, otp }, '验证码不正确')
+  return {
+    recoveryCodes: Array.isArray(data.recovery_codes) ? data.recovery_codes : [],
+    session: toSession(data.auth),
+  }
+}
+
+/** 已绑定：验证码 / 恢复码 → 后台会话 */
+export async function verifyTwoFactor(challenge, otp) {
+  const data = await postAuth('auth/two-factor/verify', { challenge, otp }, '验证码不正确')
+  return {
+    session: toSession(data.auth),
+    usedRecoveryCode: Boolean(data.used_recovery_code),
+    recoveryCodesRemaining: Number(data.recovery_codes_remaining ?? 0),
   }
 }

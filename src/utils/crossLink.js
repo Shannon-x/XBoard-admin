@@ -90,3 +90,8 @@ export function toBillingDocuments({ orderId, userId, email } = {}) {
 export function toMailDelivery(email) {
   return { name: 'mailDelivery', query: isLinkable(email) ? { email: String(email) } : {} }
 }
+
+/** 跳转到「系统设置」的某个分组（如 'security'），与 SettingsPage 的 :category 路由参数对应。 */
+export function toSettings(category) {
+  return { name: 'settings', params: isLinkable(category) ? { category } : {} }
+}

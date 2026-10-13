@@ -6,6 +6,7 @@ import {
     ChevronDown,
     LogOut,
     Menu,
+    ShieldCheck,
     PanelLeftClose,
     PanelLeftOpen,
     Search,
@@ -242,6 +243,10 @@ function handleMenuSelect(routeName) {
 }
 
 function handleAccountCommand(command) {
+    if (command === "security") {
+        router.push({ name: "security" });
+        return;
+    }
     if (command !== "logout") {
         return;
     }
@@ -407,7 +412,11 @@ onUnmounted(function detachResizeListener() {
 
                         <template #dropdown>
                             <el-dropdown-menu class="header-account__menu">
-                                <el-dropdown-item command="logout">
+                                <el-dropdown-item command="security">
+                                    <el-icon><ShieldCheck /></el-icon>
+                                    <span>{{ t("nav.security") }}</span>
+                                </el-dropdown-item>
+                                <el-dropdown-item command="logout" divided>
                                     <el-icon><LogOut /></el-icon>
                                     <span>{{ t("auth.logout") }}</span>
                                 </el-dropdown-item>
