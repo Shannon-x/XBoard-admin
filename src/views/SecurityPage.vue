@@ -1,21 +1,27 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Download, KeyRound, LogOut, RefreshCw, ShieldCheck } from 'lucide-vue-next'
+import { Bot, Download, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Users } from 'lucide-vue-next'
 
 import CopyButton from '../components/common/CopyButton.vue'
 import SectionCard from '../components/common/SectionCard.vue'
 import { toSettings } from '../utils/crossLink'
+import { buildDashboardApiUrl } from '../services/api'
 import {
   beginRebind,
   confirmRebind,
+  createApiToken,
   createEmptySecurityStatus,
+  createEmptyUserSessionSummary,
+  fetchApiTokens,
   fetchLoginLog,
   fetchSecurityStatus,
   fetchSessions,
   regenerateRecoveryCodes,
+  revokeApiToken,
   revokeOtherSessions,
   revokeSession,
+  revokeUserSessions,
 } from '../services/security'
 import { copyText } from '../utils/clipboard'
 import { formatTimestamp } from '../utils/format'
@@ -26,11 +32,31 @@ const statusLoading = ref(false)
 const statusError = ref('')
 
 // ===== 会话 =====
+// sessions 只有后台登录；用户面板 / 客户端里的登录只有一行汇总（userSessions）
 const sessions = ref([])
+const userSessions = ref(createEmptyUserSessionSummary())
 const sessionsLoading = ref(false)
 const sessionsError = ref('')
 const revokingId = ref(0)
 const revokingOthers = ref(false)
+const revokingUser = ref(false)
+
+// 用户面板会话多到这个数，多半是某个程序在用密码反复登录，提示改用接口令牌
+const USER_SESSION_FLOOD = 20
+
+// ===== 接口令牌 =====
+const apiTokens = ref([])
+const apiTokensLoading = ref(false)
+const apiTokensError = ref('')
+const revokingTokenId = ref(0)
+
+// 新建令牌弹窗：stage 'form' → 'done'（明文只展示这一次）
+const tokenDialogVisible = ref(false)
+const tokenDialogStage = ref('form')
+const tokenDialogLoading = ref(false)
+const tokenDialogError = ref('')
+const tokenForm = ref({ name: '', scope: 'read', otp: '' })
+const createdToken = ref(null)
 
 // ===== 登录记录 =====
 const loginLog = ref([])
@@ -48,10 +74,30 @@ const otp = ref('')
 const rebindInfo = ref(null)
 const newRecoveryCodes = ref([])
 
-const otherSessionCount = computed(function otherSessionCount() {
+const otherAdminSessionCount = computed(function otherAdminSessionCount() {
   return sessions.value.filter(function isOther(item) {
     return !item.current
   }).length
+})
+
+const otherSessionCount = computed(function otherSessionCount() {
+  return otherAdminSessionCount.value + userSessions.value.count
+})
+
+const tokenFormReady = computed(function tokenFormReady() {
+  const value = tokenForm.value.otp.replace(/[\s-]/g, '')
+  return tokenForm.value.name.trim() !== '' && (/^\d{6}$/.test(value) || value.length === 10)
+})
+
+// 程序调用时的接口前缀（与后台同一个地址），去掉 cache-buster
+const apiBaseUrl = computed(function apiBaseUrl() {
+  try {
+    const url = new URL(buildDashboardApiUrl(''))
+    url.search = ''
+    return url.toString()
+  } catch {
+    return ''
+  }
 })
 
 const recoveryTone = computed(function recoveryTone() {
@@ -91,11 +137,25 @@ async function loadSessions() {
   sessionsLoading.value = true
   sessionsError.value = ''
   try {
-    sessions.value = await fetchSessions()
+    const result = await fetchSessions()
+    sessions.value = result.sessions
+    userSessions.value = result.userSessions
   } catch (error) {
     sessionsError.value = error instanceof Error ? error.message : '会话列表加载失败'
   } finally {
     sessionsLoading.value = false
+  }
+}
+
+async function loadApiTokens() {
+  apiTokensLoading.value = true
+  apiTokensError.value = ''
+  try {
+    apiTokens.value = await fetchApiTokens()
+  } catch (error) {
+    apiTokensError.value = error instanceof Error ? error.message : '接口令牌加载失败'
+  } finally {
+    apiTokensLoading.value = false
   }
 }
 
@@ -114,6 +174,7 @@ async function loadLoginLog() {
 function refreshAll() {
   loadStatus()
   loadSessions()
+  loadApiTokens()
   loadLoginLog()
 }
 
@@ -200,9 +261,12 @@ async function handleRevoke(session) {
 }
 
 async function handleRevokeOthers() {
+  const parts = []
+  if (otherAdminSessionCount.value > 0) parts.push(`其他 ${otherAdminSessionCount.value} 个后台登录`)
+  if (userSessions.value.count > 0) parts.push(`用户面板 / 客户端里的 ${userSessions.value.count} 个登录`)
   try {
     await ElMessageBox.confirm(
-      `将注销除当前浏览器之外的全部 ${otherSessionCount.value} 个会话（包括用户面板的登录），其他设备需要重新登录并再次通过两步验证。`,
+      `将注销${parts.join('和')}，其他设备需要重新登录（后台还要再次通过两步验证）。接口令牌不受影响，需要的话在「接口令牌」里单独吊销。`,
       '注销其他会话',
       { type: 'warning', confirmButtonText: '注销', cancelButtonText: '取消' },
     )
@@ -219,6 +283,89 @@ async function handleRevokeOthers() {
   } finally {
     revokingOthers.value = false
   }
+}
+
+async function handleRevokeUser() {
+  try {
+    await ElMessageBox.confirm(
+      `将清除用户面板 / 客户端里的 ${userSessions.value.count} 个登录，这些地方需要重新登录。后台登录和接口令牌不受影响。`,
+      '清除用户面板登录',
+      { type: 'warning', confirmButtonText: '清除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  revokingUser.value = true
+  try {
+    const count = await revokeUserSessions()
+    ElMessage.success(`已清除 ${count} 个用户面板登录`)
+    await Promise.all([loadSessions(), loadLoginLog()])
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '清除失败')
+  } finally {
+    revokingUser.value = false
+  }
+}
+
+function openTokenDialog() {
+  tokenDialogStage.value = 'form'
+  tokenDialogError.value = ''
+  tokenForm.value = { name: '', scope: 'read', otp: '' }
+  createdToken.value = null
+  tokenDialogVisible.value = true
+}
+
+async function submitToken() {
+  if (!tokenFormReady.value || tokenDialogLoading.value) return
+  tokenDialogLoading.value = true
+  tokenDialogError.value = ''
+  try {
+    createdToken.value = await createApiToken(tokenForm.value.name.trim(), tokenForm.value.scope, tokenForm.value.otp)
+    tokenDialogStage.value = 'done'
+  } catch (error) {
+    tokenDialogError.value = error instanceof Error ? error.message : '创建失败'
+  } finally {
+    tokenForm.value.otp = ''
+    tokenDialogLoading.value = false
+  }
+}
+
+function closeTokenDialog() {
+  tokenDialogVisible.value = false
+  if (tokenDialogStage.value === 'done') {
+    createdToken.value = null
+    loadApiTokens()
+    loadLoginLog()
+  }
+}
+
+async function handleRevokeToken(token) {
+  try {
+    await ElMessageBox.confirm(
+      `吊销后，用「${token.name}」这个令牌的程序会立刻失去后台权限。`,
+      '吊销接口令牌',
+      { type: 'warning', confirmButtonText: '吊销', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  revokingTokenId.value = token.id
+  try {
+    await revokeApiToken(token.id)
+    ElMessage.success('令牌已吊销')
+    await Promise.all([loadApiTokens(), loadLoginLog()])
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '吊销失败')
+  } finally {
+    revokingTokenId.value = 0
+  }
+}
+
+function describeUserAgent(ua) {
+  if (!ua) return ''
+  if (/^(Go-http-client|curl|python-requests|python-httpx|axios|node-fetch|okhttp)\b/i.test(ua) || /^Python|^Java\//.test(ua)) return '程序'
+  if (/Mozilla\//.test(ua)) return '浏览器'
+  return '客户端'
 }
 
 function describeClient(session) {
@@ -306,7 +453,7 @@ onMounted(refreshAll)
       </p>
     </SectionCard>
 
-    <SectionCard title="登录会话" description="当前账号在各设备上的登录状态。怀疑泄露时先「注销其他会话」，再改密码并重新绑定验证器。">
+    <SectionCard title="登录会话" description="后台登录逐条列出，用户面板和客户端里的登录合成一行。怀疑泄露时先「注销其他会话」，再改密码并重新绑定验证器。">
       <template #actions>
         <el-button type="danger" plain :disabled="otherSessionCount === 0" :loading="revokingOthers" @click="handleRevokeOthers">
           <el-icon><LogOut /></el-icon>
@@ -316,7 +463,7 @@ onMounted(refreshAll)
 
       <el-alert v-if="sessionsError" type="error" :closable="false" :title="sessionsError" style="margin-bottom: 12px" />
 
-      <el-table :data="sessions" v-loading="sessionsLoading" class="dashboard-table" empty-text="没有活动会话">
+      <el-table :data="sessions" v-loading="sessionsLoading" class="dashboard-table" empty-text="没有后台登录">
         <el-table-column label="设备" min-width="220">
           <template #default="{ row }">
             <div class="session-cell">
@@ -350,6 +497,67 @@ onMounted(refreshAll)
             >
               注销
             </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="user-sessions" :class="{ 'user-sessions--flood': userSessions.count >= USER_SESSION_FLOOD }">
+        <div class="user-sessions__icon">
+          <el-icon><Users /></el-icon>
+        </div>
+        <div class="user-sessions__body">
+          <strong>用户面板 / 客户端登录：{{ userSessions.count }} 个</strong>
+          <span v-if="userSessions.count > 0" class="user-sessions__meta">
+            最近一次登录 {{ formatTimestamp(userSessions.lastCreatedAt) }}
+            <template v-if="userSessions.latestIp"> · {{ userSessions.latestIp }}</template>
+            <template v-if="userSessions.latestUserAgent">
+              · <span :title="userSessions.latestUserAgent">{{ describeUserAgent(userSessions.latestUserAgent) }}（{{ userSessions.latestUserAgent }}）</span>
+            </template>
+          </span>
+          <span v-else class="user-sessions__meta">这个账号没有在用户面板或客户端里登录。</span>
+          <span v-if="userSessions.count >= USER_SESSION_FLOOD" class="user-sessions__hint">
+            数量这么多，通常是某个程序在用邮箱密码反复登录。给它在下面新建一个「接口令牌」，改用令牌后就不会再增加。
+          </span>
+        </div>
+        <el-button plain :disabled="userSessions.count === 0" :loading="revokingUser" @click="handleRevokeUser">全部清除</el-button>
+      </div>
+    </SectionCard>
+
+    <SectionCard title="接口令牌" description="给通知机器人、对账脚本等程序用，代替邮箱密码登录。只读令牌只能查询订单、工单、用户等数据，改不了任何东西；所有令牌都打不开本页、签不出新令牌。令牌不会过期，不用了请吊销。">
+      <template #actions>
+        <el-button type="primary" plain :disabled="!status.enabled" @click="openTokenDialog">
+          <el-icon><Plus /></el-icon>
+          <span>新建令牌</span>
+        </el-button>
+      </template>
+
+      <el-alert v-if="apiTokensError" type="error" :closable="false" :title="apiTokensError" style="margin-bottom: 12px" />
+
+      <el-table :data="apiTokens" v-loading="apiTokensLoading" class="dashboard-table" empty-text="还没有接口令牌">
+        <el-table-column label="名称" min-width="200">
+          <template #default="{ row }">
+            <div class="session-cell">
+              <el-icon class="api-token__icon"><Bot /></el-icon>
+              <strong>{{ row.name }}</strong>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="权限" min-width="110">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.scope === 'full' ? 'warning' : 'info'" effect="light" round>
+              {{ row.scope === 'full' ? '完整权限' : '只读' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" min-width="150">
+          <template #default="{ row }">{{ formatTimestamp(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="最近使用" min-width="150">
+          <template #default="{ row }">{{ row.lastUsedAt ? formatTimestamp(row.lastUsedAt) : '从未使用' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" align="right">
+          <template #default="{ row }">
+            <el-button link type="danger" size="small" :loading="revokingTokenId === row.id" @click="handleRevokeToken(row)">吊销</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -467,6 +675,71 @@ onMounted(refreshAll)
           <el-button type="primary" :disabled="!otpReady" :loading="dialogLoading" @click="submitOtp">
             {{ dialogStage === 'scan' ? '确认更换' : '下一步' }}
           </el-button>
+        </template>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="tokenDialogVisible"
+      :title="tokenDialogStage === 'done' ? '令牌已创建' : '新建接口令牌'"
+      width="min(560px, calc(100vw - 32px))"
+      :close-on-click-modal="false"
+      @closed="closeTokenDialog"
+    >
+      <el-alert v-if="tokenDialogError" type="error" :closable="false" show-icon :title="tokenDialogError" style="margin-bottom: 12px" />
+
+      <el-form v-if="tokenDialogStage === 'form'" label-position="top" class="api-token-form" @submit.prevent="submitToken">
+        <el-form-item label="名称">
+          <el-input v-model="tokenForm.name" maxlength="40" show-word-limit placeholder="例如：订单通知机器人" />
+        </el-form-item>
+        <el-form-item label="权限">
+          <el-radio-group v-model="tokenForm.scope" class="api-token-scope">
+            <el-radio value="read" border>
+              <strong>只读（推荐）</strong>
+              <span>只能查询订单、工单、用户、支付等数据，适合通知机器人。</span>
+            </el-radio>
+            <el-radio value="full" border>
+              <strong>完整权限</strong>
+              <span>能做后台里的一切操作（账号安全页除外）。只给确实要改数据的程序。</span>
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="验证码">
+          <el-input
+            v-model="tokenForm.otp"
+            placeholder="当前验证器里的 6 位码（或一个恢复码）"
+            maxlength="11"
+            autocomplete="one-time-code"
+            spellcheck="false"
+            @keyup.enter="submitToken"
+          >
+            <template #prefix>
+              <el-icon><KeyRound /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+      </el-form>
+
+      <template v-else-if="tokenDialogStage === 'done' && createdToken">
+        <p class="dialog-copy">令牌只显示这一次，关掉后无法再查看，请现在复制并填进程序。</p>
+        <div class="api-token-secret">
+          <code>{{ createdToken.token }}</code>
+          <CopyButton :value="createdToken.token" label="复制令牌" variant="plain" success-message="令牌已复制" />
+        </div>
+        <ul class="api-token-usage">
+          <li>请求头：<code>Authorization: Bearer 令牌</code></li>
+          <li v-if="apiBaseUrl">接口地址：<code class="api-token-usage__url">{{ apiBaseUrl }}</code>（后面接 <code>order/fetch</code>、<code>ticket/fetch</code> 等，与后台页面调用的一致）</li>
+          <li>不需要再调用登录接口，也不需要验证码。{{ createdToken.scope === 'read' ? '这是只读令牌，任何修改请求都会被拒绝。' : '这是完整权限令牌，请只放在可信的服务器上。' }}</li>
+        </ul>
+      </template>
+
+      <template #footer>
+        <template v-if="tokenDialogStage === 'done'">
+          <el-button type="primary" @click="tokenDialogVisible = false">我已保存</el-button>
+        </template>
+        <template v-else>
+          <el-button @click="tokenDialogVisible = false">取消</el-button>
+          <el-button type="primary" :disabled="!tokenFormReady" :loading="tokenDialogLoading" @click="submitToken">创建</el-button>
         </template>
       </template>
     </el-dialog>

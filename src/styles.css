@@ -4438,6 +4438,128 @@ a:hover {
     color: var(--text);
 }
 
+/* 用户面板 / 客户端登录汇总行（登录会话卡片底部） */
+.user-sessions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--surface-muted, #f8f9fb);
+}
+
+.user-sessions--flood {
+    border-color: var(--el-color-warning-light-5, #f3d19e);
+    background: var(--el-color-warning-light-9, #fdf6ec);
+}
+
+.user-sessions__icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--muted);
+}
+
+.user-sessions__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.user-sessions__meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.user-sessions__hint {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--el-color-warning-dark-2, #b88230);
+}
+
+.api-token__icon {
+    color: var(--muted);
+}
+
+.api-token-scope.el-radio-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+.api-token-scope .el-radio {
+    height: auto;
+    margin-right: 0;
+    padding: 10px 14px;
+    align-items: flex-start;
+    white-space: normal;
+}
+
+.api-token-scope .el-radio__label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.5;
+}
+
+.api-token-scope .el-radio__label span {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.api-token-secret {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.api-token-secret code {
+    flex: 1 1 260px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--surface-muted, #f3f4f6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.api-token-usage {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.api-token-usage code {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--surface-muted, #f3f4f6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.api-token-usage .api-token-usage__url {
+    white-space: normal;
+    word-break: break-all;
+}
+
 @media (max-width: 720px) {
     .totp-setup,
     .totp-setup--dialog {
@@ -4451,5 +4573,21 @@ a:hover {
 
     .recovery-codes {
         grid-template-columns: 1fr;
+    }
+
+    .user-sessions {
+        flex-wrap: wrap;
+    }
+
+    .user-sessions__body {
+        flex-basis: calc(100% - 50px);
+    }
+
+    .user-sessions > .el-button {
+        margin-left: 50px;
+    }
+
+    .user-sessions__meta {
+        white-space: normal;
     }
 }
