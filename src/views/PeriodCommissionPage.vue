@@ -99,7 +99,9 @@ function openUser(row) {
   window.open(href, '_blank', 'noopener,noreferrer')
 }
 
+// 只对待审核 / 已开通的标红：这两种才需要关心「现在还够不够」
 function belowThreshold(row) {
+  if (row.status !== 0 && row.status !== 1) return false
   const min = settings.value?.minInvitees || row.minInvitees
   return min > 0 && row.currentActiveCount < min
 }
@@ -221,7 +223,7 @@ onMounted(function onMount() {
 
       <el-table v-loading="loading" :data="list" stripe style="width: 100%">
         <el-table-column label="#" prop="id" width="70" />
-        <el-table-column label="用户" min-width="200">
+        <el-table-column label="用户" min-width="230">
           <template #default="{ row }">
             <span class="x-link" @click="openUser(row)">{{ row.userEmail }}</span>
             <div v-if="row.userCommissionType !== 0" class="muted small">已在用户编辑里单设返佣方式，以单设为准</div>
@@ -236,7 +238,7 @@ onMounted(function onMount() {
             <div class="muted small">申请时 {{ row.activeCount }}（门槛 {{ row.minInvitees }}）</div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="110">
           <template #default="{ row }">
             <el-tag :type="row.statusType" size="small" effect="dark">{{ row.statusText }}</el-tag>
           </template>
