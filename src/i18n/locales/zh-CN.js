@@ -845,6 +845,17 @@ export default {
         description: '小于门槛金额的提现单将不会被提交。',
         placeholder: '请输入提现门槛',
       },
+      commissionWithdrawMinInvitees: {
+        label: '提现所需付费被邀请人数',
+        description:
+          '不同的付费被邀请人（有已完成且实付大于 0 的订单，按人去重）达到该数量才能申请提现，与金额门槛叠加；0 表示不限制。用来抬高「自己邀请自己」的成本：要先养出这么多真实付费账号才能把佣金提成现金。',
+        placeholder: '0 表示不限制',
+      },
+      commissionTransferRequireInvitees: {
+        label: '佣金划转余额同样受人数门槛',
+        description:
+          '开启后，佣金划转到账户余额也要求付费被邀请人数达标。不开启时自邀者可以不提现、直接把佣金划成余额抵下一单，提现门槛就被绕过了。',
+      },
       commissionWithdrawMethod: {
         label: '提现方式（旧版前端）',
         description: '仅供未升级的旧前端使用，多个用逗号分隔。新前端使用下方的「提现链」列表。',

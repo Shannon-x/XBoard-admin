@@ -72,6 +72,9 @@ export function createEmptySiteSettings() {
     commissionFirstTimeEnable: false,
     commissionAutoCheckEnable: false,
     commissionWithdrawLimit: 0,
+    // 提现人数门槛：不同付费被邀请人 ≥ N 才能提现（0 = 不限）；划转余额是否同样受限
+    commissionWithdrawMinInvitees: 0,
+    commissionTransferRequireInvitees: false,
     commissionWithdrawMethod: '',
     // 提现工作流（链列表 / 单笔上限 / USDT 参考汇率 / 是否必须二维码 / 结算感谢语）
     commissionWithdrawChains: [],
@@ -660,6 +663,8 @@ function normalizeInviteSettings(invite) {
       commissionFirstTimeEnable: fallback.commissionFirstTimeEnable,
       commissionAutoCheckEnable: fallback.commissionAutoCheckEnable,
       commissionWithdrawLimit: fallback.commissionWithdrawLimit,
+      commissionWithdrawMinInvitees: fallback.commissionWithdrawMinInvitees,
+      commissionTransferRequireInvitees: fallback.commissionTransferRequireInvitees,
       commissionWithdrawMethod: fallback.commissionWithdrawMethod,
       commissionWithdrawChains: fallback.commissionWithdrawChains,
       commissionWithdrawMax: fallback.commissionWithdrawMax,
@@ -686,6 +691,8 @@ function normalizeInviteSettings(invite) {
     commissionAutoCheckEnable: Boolean(invite.commission_auto_check_enable),
     commissionWithdrawLimit:
       Number(invite.commission_withdraw_limit ?? fallback.commissionWithdrawLimit) || 0,
+    commissionWithdrawMinInvitees: Number(invite.commission_withdraw_min_invitees ?? 0) || 0,
+    commissionTransferRequireInvitees: Boolean(Number(invite.commission_transfer_require_invitees ?? 0)),
     commissionWithdrawMethod: Array.isArray(invite.commission_withdraw_method)
       ? invite.commission_withdraw_method.join(',')
       : String(invite.commission_withdraw_method || ''),
@@ -728,6 +735,8 @@ function createInviteSettingsPayload(settings = {}) {
     commission_first_time_enable: settings.commissionFirstTimeEnable ? 1 : 0,
     commission_auto_check_enable: settings.commissionAutoCheckEnable ? 1 : 0,
     commission_withdraw_limit: Number(settings.commissionWithdrawLimit || 0),
+    commission_withdraw_min_invitees: Math.max(0, Math.floor(Number(settings.commissionWithdrawMinInvitees || 0))),
+    commission_transfer_require_invitees: settings.commissionTransferRequireInvitees ? 1 : 0,
     commission_withdraw_method: String(settings.commissionWithdrawMethod || '')
       .split(',')
       .map(function trimMethod(item) {
