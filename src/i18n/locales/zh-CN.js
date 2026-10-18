@@ -65,6 +65,10 @@ export default {
       title: '佣金提现',
       eyebrow: '用户支持',
     },
+    periodCommission: {
+      title: '周期返佣申请',
+      eyebrow: '用户支持',
+    },
     notices: {
       title: '公告管理',
       eyebrow: '内容运营',
@@ -198,6 +202,7 @@ export default {
     users: '用户管理',
     tickets: '工单管理',
     withdrawals: '佣金提现',
+    periodCommission: '周期返佣申请',
     coupons: '优惠券管理',
     giftcards: '礼品卡管理',
     knowledge: '知识库',
@@ -888,13 +893,13 @@ export default {
         placeholder: '例如 20',
       },
       commissionPeriodAutoEnable: {
-        label: '大推广者自动开启周期返佣',
+        label: '开放周期返佣申请',
         description:
-          '开启后，跟随站点默认返佣方式的推广者只要「当前仍在订阅有效期内的付费被邀请人」达到下方人数，就自动按周期返佣（好友每次续费都返）；低于该人数时自动恢复为站点默认（通常只返首单）。每笔订单结算时实时判断。用户管理里单独设置的返佣方式优先。',
+          '开启后，跟随站点默认返佣方式的推广者在「当前仍在订阅有效期内的付费被邀请人」达到下方人数时，可以在邀请页申请周期返佣（好友每次付费、含续费都返），要在「用户管理 → 周期返佣申请」审核通过才开通。已开通的人数低于该值时自动取消资格（下单时、打开邀请页时、每天 04:10 巡检），之后再达标要重新申请。用户管理里单独设置的返佣方式优先。关闭后已开通的也暂停按周期返佣，重新打开后仍达标的照常生效。',
       },
       commissionPeriodAutoMinInvitees: {
-        label: '自动周期返佣所需有效付费被邀请人数',
-        description: '按当前订阅有效的付费被邀请人去重计数，订阅到期会使人数下降。',
+        label: '申请周期返佣所需有效付费被邀请人数',
+        description: '按当前订阅有效的付费被邀请人去重计数，订阅到期会使人数下降；已开通的推广者低于该人数会被自动取消资格。',
         placeholder: '例如 50',
       },
       commissionNotifyEnable: {
