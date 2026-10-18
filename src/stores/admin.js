@@ -853,6 +853,21 @@ export const useAdminStore = defineStore("admin", () => {
           min: 0,
         },
         {
+          key: "commissionWithdrawMinInvitees",
+          labelKey: "systemSettings.fields.commissionWithdrawMinInvitees.label",
+          descriptionKey: "systemSettings.fields.commissionWithdrawMinInvitees.description",
+          placeholderKey: "systemSettings.fields.commissionWithdrawMinInvitees.placeholder",
+          type: "number",
+          min: 0,
+        },
+        {
+          key: "commissionTransferRequireInvitees",
+          labelKey: "systemSettings.fields.commissionTransferRequireInvitees.label",
+          descriptionKey: "systemSettings.fields.commissionTransferRequireInvitees.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
           key: "commissionWithdrawMethod",
           labelKey: "systemSettings.fields.commissionWithdrawMethod.label",
           descriptionKey: "systemSettings.fields.commissionWithdrawMethod.description",
