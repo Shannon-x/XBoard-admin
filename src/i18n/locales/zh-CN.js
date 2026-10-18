@@ -900,7 +900,12 @@ export default {
       commissionNotifyEnable: {
         label: '佣金入账通知',
         description:
-          '佣金结算入账时给推广者发一封汇总邮件（已绑定 Telegram 的再推一条），每轮结算每人最多一封；用户可在「通知偏好 → 推广与佣金」里关闭。',
+          '给推广者发佣金入账的汇总邮件（已绑定 Telegram 的再推一条），多久一封见下面的「发送频率」；用户可在「通知偏好 → 推广与佣金」里关闭。',
+      },
+      commissionNotifyFrequency: {
+        label: '佣金入账通知发送频率',
+        description:
+          '每周：每周一 12:00 汇总上周入账，一人一封；每天：每天 12:00 汇总前一天；每笔：每轮结算后马上发，推广做得好的人一天可能收好几封。一封最多列 30 笔。',
       },
       commissionLeaderboardEnable: {
         label: '邀请页显示月度榜单',
@@ -1171,6 +1176,11 @@ export default {
       surfboard: 'Surfboard',
     },
     selectOptions: {
+      commissionNotifyFrequency: {
+        weekly: '每周一封（周一中午）',
+        daily: '每天一封（中午）',
+        instant: '每笔入账都发',
+      },
       emailVerifyRestrictMode: {
         features: '功能限制（工单、佣金提现前先验证，不拦付款）',
         subscribe: '暂停订阅（再加上订阅链接停更）',

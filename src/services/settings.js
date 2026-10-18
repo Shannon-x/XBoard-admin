@@ -4,6 +4,9 @@ import {
   requestDashboardMutation,
 } from './api'
 
+// 与后端 CommissionNotifier::FREQUENCIES 一致
+const COMMISSION_NOTIFY_FREQUENCIES = ['instant', 'daily', 'weekly']
+
 export function createEmptySiteSettings() {
   return {
     logo: '',
@@ -85,6 +88,8 @@ export function createEmptySiteSettings() {
     commissionPeriodAutoEnable: false,
     commissionPeriodAutoMinInvitees: 50,
     commissionNotifyEnable: true,
+    // 佣金入账通知多久一封：instant 每轮结算 / daily 每天 12:00 / weekly 每周一 12:00
+    commissionNotifyFrequency: 'weekly',
     commissionLeaderboardEnable: false,
     commissionWithdrawMethod: '',
     // 提现工作流（链列表 / 单笔上限 / USDT 参考汇率 / 是否必须二维码 / 结算感谢语）
@@ -685,6 +690,7 @@ function normalizeInviteSettings(invite) {
       commissionPeriodAutoEnable: fallback.commissionPeriodAutoEnable,
       commissionPeriodAutoMinInvitees: fallback.commissionPeriodAutoMinInvitees,
       commissionNotifyEnable: fallback.commissionNotifyEnable,
+      commissionNotifyFrequency: fallback.commissionNotifyFrequency,
       commissionLeaderboardEnable: fallback.commissionLeaderboardEnable,
       commissionWithdrawMethod: fallback.commissionWithdrawMethod,
       commissionWithdrawChains: fallback.commissionWithdrawChains,
@@ -724,6 +730,9 @@ function normalizeInviteSettings(invite) {
     commissionPeriodAutoMinInvitees:
       Number(invite.commission_period_auto_min_invitees ?? fallback.commissionPeriodAutoMinInvitees) || 0,
     commissionNotifyEnable: Boolean(Number(invite.commission_notify_enable ?? 1)),
+    commissionNotifyFrequency: COMMISSION_NOTIFY_FREQUENCIES.includes(String(invite.commission_notify_frequency))
+      ? String(invite.commission_notify_frequency)
+      : fallback.commissionNotifyFrequency,
     commissionLeaderboardEnable: Boolean(Number(invite.commission_leaderboard_enable ?? 0)),
     commissionWithdrawMethod: Array.isArray(invite.commission_withdraw_method)
       ? invite.commission_withdraw_method.join(',')
@@ -778,6 +787,9 @@ function createInviteSettingsPayload(settings = {}) {
     commission_period_auto_enable: settings.commissionPeriodAutoEnable ? 1 : 0,
     commission_period_auto_min_invitees: Math.max(0, Math.floor(Number(settings.commissionPeriodAutoMinInvitees || 0))),
     commission_notify_enable: settings.commissionNotifyEnable ? 1 : 0,
+    commission_notify_frequency: COMMISSION_NOTIFY_FREQUENCIES.includes(String(settings.commissionNotifyFrequency))
+      ? String(settings.commissionNotifyFrequency)
+      : 'weekly',
     commission_leaderboard_enable: settings.commissionLeaderboardEnable ? 1 : 0,
     commission_withdraw_method: String(settings.commissionWithdrawMethod || '')
       .split(',')
