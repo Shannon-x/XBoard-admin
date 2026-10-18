@@ -856,6 +856,56 @@ export default {
         description:
           '开启后，佣金划转到账户余额也要求付费被邀请人数达标。不开启时自邀者可以不提现、直接把佣金划成余额抵下一单，提现门槛就被绕过了。',
       },
+      inviteFirstOrderDiscount: {
+        label: '被邀请人首单优惠（%）',
+        description:
+          '通过邀请链接注册的用户第一笔套餐订单自动减价的百分比，填 12 表示 88 折，0 表示不给。与优惠券不叠加，自动取两者中较大的一个；佣金按折后实付金额计算。流量加油包不享受。',
+        placeholder: '0 表示不给',
+      },
+      commissionTierEnable: {
+        label: '按邀请人数阶梯提高佣金比例',
+        description:
+          '开启后，没有单独设置比例的推广者按「不同付费被邀请人数」自动升档：未达档位 2 用全局比例，达到档位 2 / 3 用对应比例。用户管理里单独设置的比例优先。',
+      },
+      commissionTier2Min: {
+        label: '档位 2：所需付费被邀请人数',
+        description: '付费被邀请人数达到该值起按档位 2 的比例发佣。',
+        placeholder: '例如 10',
+      },
+      commissionTier2Rate: {
+        label: '档位 2：佣金比例（%）',
+        description: '达到档位 2 后的佣金百分比。',
+        placeholder: '例如 15',
+      },
+      commissionTier3Min: {
+        label: '档位 3：所需付费被邀请人数',
+        description: '付费被邀请人数达到该值起按档位 3 的比例发佣，应大于档位 2。',
+        placeholder: '例如 30',
+      },
+      commissionTier3Rate: {
+        label: '档位 3：佣金比例（%）',
+        description: '达到档位 3 后的佣金百分比。',
+        placeholder: '例如 20',
+      },
+      commissionPeriodAutoEnable: {
+        label: '大推广者自动开启周期返佣',
+        description:
+          '开启后，跟随站点默认返佣方式的推广者只要「当前仍在订阅有效期内的付费被邀请人」达到下方人数，就自动按周期返佣（好友每次续费都返）；低于该人数时自动恢复为站点默认（通常只返首单）。每笔订单结算时实时判断。用户管理里单独设置的返佣方式优先。',
+      },
+      commissionPeriodAutoMinInvitees: {
+        label: '自动周期返佣所需有效付费被邀请人数',
+        description: '按当前订阅有效的付费被邀请人去重计数，订阅到期会使人数下降。',
+        placeholder: '例如 50',
+      },
+      commissionNotifyEnable: {
+        label: '佣金入账通知',
+        description:
+          '佣金结算入账时给推广者发一封汇总邮件（已绑定 Telegram 的再推一条），每轮结算每人最多一封；用户可在「通知偏好 → 推广与佣金」里关闭。',
+      },
+      commissionLeaderboardEnable: {
+        label: '邀请页显示月度榜单',
+        description: '用户邀请页显示本月佣金前 10 名（邮箱脱敏）和自己的名次。',
+      },
       commissionWithdrawMethod: {
         label: '提现方式（旧版前端）',
         description: '仅供未升级的旧前端使用，多个用逗号分隔。新前端使用下方的「提现链」列表。',
