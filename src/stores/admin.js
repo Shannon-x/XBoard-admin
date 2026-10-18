@@ -962,6 +962,17 @@ export const useAdminStore = defineStore("admin", () => {
           tone: "compact",
         },
         {
+          key: "commissionNotifyFrequency",
+          labelKey: "systemSettings.fields.commissionNotifyFrequency.label",
+          descriptionKey: "systemSettings.fields.commissionNotifyFrequency.description",
+          type: "select",
+          optionsKey: "systemSettings.selectOptions.commissionNotifyFrequency",
+          visibleWhen: {
+            key: "commissionNotifyEnable",
+            equals: true,
+          },
+        },
+        {
           key: "commissionLeaderboardEnable",
           labelKey: "systemSettings.fields.commissionLeaderboardEnable.label",
           descriptionKey: "systemSettings.fields.commissionLeaderboardEnable.description",
