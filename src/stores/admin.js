@@ -19,6 +19,7 @@ import {
   Paperclip,
   Puzzle,
   Receipt,
+  Repeat,
   Route,
   Server,
   Settings,
@@ -205,6 +206,7 @@ export const useAdminStore = defineStore("admin", () => {
         { labelKey: "nav.users", icon: Users, routeName: "users" },
         { labelKey: "nav.tickets", icon: MessageSquare, routeName: "tickets" },
         { labelKey: "nav.withdrawals", icon: BadgeDollarSign, routeName: "withdrawals" },
+        { labelKey: "nav.periodCommission", icon: Repeat, routeName: "periodCommission" },
       ],
     },
     {

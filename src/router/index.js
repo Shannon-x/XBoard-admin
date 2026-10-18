@@ -26,6 +26,7 @@ const BillingDocumentsPage = () => import('../views/BillingDocumentsPage.vue')
 const MailDeliveryPage = () => import('../views/MailDeliveryPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
 const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
+const PeriodCommissionPage = () => import('../views/PeriodCommissionPage.vue')
 const SecurityPage = () => import('../views/SecurityPage.vue')
 
 const ROUTE_META_KEYS = {
@@ -72,6 +73,10 @@ const ROUTE_META_KEYS = {
   withdrawals: {
     title: 'routes.withdrawals.title',
     eyebrow: 'routes.withdrawals.eyebrow',
+  },
+  periodCommission: {
+    title: 'routes.periodCommission.title',
+    eyebrow: 'routes.periodCommission.eyebrow',
   },
   notices: {
     title: 'routes.notices.title',
@@ -225,6 +230,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.withdrawals.title,
           eyebrowKey: ROUTE_META_KEYS.withdrawals.eyebrow,
+        },
+      },
+      {
+        path: 'period-commission',
+        name: 'periodCommission',
+        component: PeriodCommissionPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.periodCommission.title,
+          eyebrowKey: ROUTE_META_KEYS.periodCommission.eyebrow,
         },
       },
       {
