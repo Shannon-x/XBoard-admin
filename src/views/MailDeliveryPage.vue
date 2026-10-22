@@ -219,8 +219,9 @@ const notifyCategoryCards = computed(function notifyCategoryCards() {
       })
     return {
       ...row,
+      hint: NOTIFY_CATEGORY[row.category]?.hint || '',
       bulk: notifyStats.value.bulk.includes(row.category),
-      sourceText: parts.length ? parts.join(' · ') : '暂无退订',
+      sourceText: parts.length ? `关闭途径：${parts.join(' · ')}` : '还没有人关闭',
     }
   })
 })
@@ -665,8 +666,9 @@ onMounted(function onMount() {
                 <el-tag v-if="!card.optional" size="small" type="info" effect="plain" class="notify-metric__tag">不可退订</el-tag>
                 <el-tag v-else-if="card.bulk" size="small" type="warning" effect="plain" class="notify-metric__tag">一键退订</el-tag>
               </span>
-              <strong class="metric-value" :class="{ 'mail-metric__value--warn': card.disabled }">{{ card.disabled }}<small class="mail-metric__unit">人关闭</small></strong>
-              <span class="mail-metric__foot">{{ card.sourceText }}</span>
+              <span v-if="card.hint" class="mail-metric__foot notify-metric__hint">{{ card.hint }}</span>
+              <strong class="metric-value" :class="{ 'mail-metric__value--warn': card.disabled }"><small class="mail-metric__unit notify-metric__prefix">已关闭</small>{{ card.disabled }}<small class="mail-metric__unit">人</small></strong>
+              <span class="mail-metric__foot">{{ card.optional ? card.sourceText : '这类邮件始终发送，用户关不掉' }}</span>
             </el-card>
           </div>
 
@@ -900,6 +902,16 @@ onMounted(function onMount() {
 .notify-metric__tag {
   margin-left: 6px;
   vertical-align: middle;
+}
+
+.notify-metric__hint {
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+.notify-metric__prefix {
+  margin-left: 0;
+  margin-right: 6px;
 }
 
 .notify-lookup {

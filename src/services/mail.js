@@ -180,12 +180,13 @@ export const NOTIFY_CATEGORY = {
   billing: { text: '账单与到期提醒', hint: '续费账单、到期当天的服务暂停通知、自动续费结果（对应老的 remind_expire）' },
   usage: { text: '流量与用量', hint: '流量用到阈值的预警与用完通知，每周期各一封（对应老的 remind_traffic）' },
   support: { text: '工单回复', hint: '工单有新回复' },
+  commission: { text: '推广与佣金', hint: '佣金入账汇总邮件（绑定了 Telegram 的再推一条）' },
   announcement: { text: '服务公告', hint: '后台群发默认类别；带一键退订头' },
   marketing: { text: '活动与优惠', hint: '到期后的召回邮件、标为「活动」的群发；带一键退订头' },
 }
 
 export const NOTIFY_SOURCE = {
-  panel: { text: '面板设置', type: 'info' },
+  panel: { text: '账号设置页', type: 'info' },
   email_link: { text: '邮件页脚链接', type: 'warning' },
   list_unsubscribe: { text: '邮件客户端一键退订', type: 'danger' },
   admin: { text: '后台', type: '' },
