@@ -267,39 +267,37 @@ onMounted(function onMount() {
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table v-loading="loading" :data="list" stripe style="width: 100%" class="withdrawals-table" @row-click="openDetail">
-        <el-table-column label="#" prop="id" width="70" />
-        <el-table-column label="用户" min-width="200">
+        <!-- 1280 宽屏幕下地址、状态、申请时间原来藏在固定的「操作」列后面：USDT 并到金额下方，链与地址并成「收款」一列 -->
+        <el-table-column label="#" prop="id" width="56" />
+        <el-table-column label="用户" min-width="190">
           <template #default="{ row }">
-            <span class="x-link" @click.stop="openUser(row)">{{ row.userEmail }}</span>
+            <span class="x-link withdraw-user" :title="row.userEmail" @click.stop="openUser(row)">{{ row.userEmail }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="金额" width="120">
+        <el-table-column label="金额" width="110">
           <template #default="{ row }">
             <strong>¥{{ row.amountText }}</strong>
-          </template>
-        </el-table-column>
-        <el-table-column label="≈ USDT" width="120">
-          <template #default="{ row }">
-            <span v-if="row.paidUsdt">{{ row.paidUsdt }} <el-tag size="small" type="success" effect="plain">实付</el-tag></span>
-            <span v-else-if="row.usdtAmount" class="muted">{{ row.usdtAmount }}</span>
+            <div v-if="row.paidUsdt" class="muted small">实付 {{ row.paidUsdt }} USDT</div>
+            <div v-else-if="row.usdtAmount" class="muted small">≈ {{ row.usdtAmount }} USDT</div>
             <div v-if="Number(row.usdtFee) > 0" class="muted small">含通道费 {{ row.usdtFee }} USDT</div>
-            <span v-else class="muted">--</span>
           </template>
         </el-table-column>
-        <el-table-column label="链" min-width="160" prop="chainLabel" show-overflow-tooltip />
-        <el-table-column label="地址" min-width="180">
+        <el-table-column label="收款" min-width="150">
           <template #default="{ row }">
-            <span class="mono" :title="row.address">{{ shortAddress(row.address) }}</span>
-            <el-button link size="small" :icon="Copy" @click.stop="handleCopy(row.address, '地址已复制')" />
+            <div class="withdraw-chain">{{ row.chainLabel || '--' }}</div>
+            <div v-if="row.address" style="display: flex; align-items: center; gap: 2px">
+              <span class="mono" :title="row.address">{{ shortAddress(row.address) }}</span>
+              <el-button link size="small" :icon="Copy" @click.stop="handleCopy(row.address, '地址已复制')" />
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="84">
           <template #default="{ row }">
             <el-tag :type="row.statusType" size="small" effect="dark">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="申请时间" width="150" prop="createdAt" />
-        <el-table-column fixed="right" label="操作" width="200">
+        <el-table-column fixed="right" label="操作" width="172">
           <template #default="{ row }">
             <div style="display: flex; align-items: center; gap: 4px;">
               <el-button link size="small" type="primary" @click.stop="openDetail(row)">详情</el-button>
@@ -493,6 +491,18 @@ onMounted(function onMount() {
 .muted.small {
   margin-left: 0;
   font-size: 11px;
+}
+
+.withdraw-user {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.withdraw-chain {
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .settle-quote {

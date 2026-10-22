@@ -611,11 +611,11 @@ export async function fetchTrafficRank(options = {}) {
         ? Number(item.previousValue || 0)
         : prevMap.get(idStr) || 0;
 
+      // 上期为 0 时没有可比性：以前硬写成 +100%，排行里一片「+100.0%」看不出意义
       let change = 0;
-      if (previousValue > 0) {
+      const comparable = previousValue > 0;
+      if (comparable) {
         change = ((value - previousValue) / previousValue) * 100;
-      } else if (value > 0) {
-        change = 100; // If previous was 0 and now has value, consider it 100% growth
       }
 
       return {
@@ -627,7 +627,8 @@ export async function fetchTrafficRank(options = {}) {
         trafficText: formatTrafficValue(value),
         previousTrafficText: formatTrafficValue(previousValue),
         change: change,
-        changeText: formatChangeText(change),
+        changeText: comparable ? formatChangeText(change) : "上期无",
+        comparable,
         timestamp: item.timestamp || "",
       };
     }),

@@ -371,34 +371,38 @@ onMounted(function onMount() {
 
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
-      <el-table v-loading="loading" :data="plans" :row-class-name="planRowClass" stripe style="width: 100%" table-layout="auto">
-        <el-table-column label="ID" prop="id" width="70" align="center" />
-        <el-table-column label="名称" min-width="180" prop="name" show-overflow-tooltip />
-        <el-table-column label="权限组" min-width="130" show-overflow-tooltip>
+      <!-- 1280 宽屏幕下定价和显示 / 销售 / 续费开关原来被挤到右侧、藏在固定的「操作」列后面：
+           权限组并到名称下方，流量与限速并成一列，列宽改成固定布局，开关与操作逻辑不变 -->
+      <el-table v-loading="loading" :data="plans" :row-class-name="planRowClass" stripe style="width: 100%">
+        <el-table-column label="ID" prop="id" width="56" align="center" />
+        <el-table-column label="名称 / 权限组" min-width="150">
           <template #default="{ row }">
-            <span v-if="toNodeGroup(row.groupId)" class="x-link" @click="router.push(toNodeGroup(row.groupId))">{{ row.groupName }}</span>
-            <span v-else>{{ row.groupName }}</span>
+            <div class="plan-name-cell">
+              <span class="plan-name-cell__name" :title="row.name">{{ row.name }}</span>
+              <span class="plan-name-cell__group">
+                <span v-if="toNodeGroup(row.groupId)" class="x-link" @click="router.push(toNodeGroup(row.groupId))">{{ row.groupName }}</span>
+                <span v-else>{{ row.groupName }}</span>
+              </span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="流量" width="110">
+        <el-table-column label="流量 / 限速" width="104">
           <template #default="{ row }">
-            <span style="white-space:nowrap">{{ row.transferEnableText }}</span>
+            <div class="plan-name-cell">
+              <span style="white-space:nowrap">{{ row.transferEnableText }}</span>
+              <span class="plan-name-cell__group" style="white-space:nowrap">{{ row.speedLimit ? row.speedLimit + ' Mbps' : '不限速' }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="速率限制" width="110">
+        <el-table-column label="用户数" width="110">
           <template #default="{ row }">
-            <span style="white-space:nowrap">{{ row.speedLimit ? row.speedLimit + ' Mbps' : '--' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="用户数" width="120">
-          <template #default="{ row }">
-            <span style="white-space:nowrap">
+            <span style="white-space:nowrap" title="有效订阅 / 全部用户">
               <span style="color:var(--el-color-success);font-weight:600">{{ row.activeUsersCount }}</span>
               <span style="color:var(--el-text-color-secondary)"> / {{ row.usersCount }}</span>
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="定价" min-width="300">
+        <el-table-column label="定价" min-width="220">
           <template #default="{ row }">
             <div v-if="row.priceTexts.length > 0" style="display:flex;flex-wrap:wrap;gap:4px;">
               <el-tag
@@ -414,22 +418,22 @@ onMounted(function onMount() {
             <span v-else>--</span>
           </template>
         </el-table-column>
-        <el-table-column label="显示" width="70">
+        <el-table-column label="显示" width="58">
           <template #default="{ row }">
             <el-switch :model-value="row.show" size="small" @change="handleToggle(row, 'show')" />
           </template>
         </el-table-column>
-        <el-table-column label="销售" width="70">
+        <el-table-column label="销售" width="58">
           <template #default="{ row }">
             <el-switch :model-value="row.sell" size="small" @change="handleToggle(row, 'sell')" />
           </template>
         </el-table-column>
-        <el-table-column label="续费" width="70">
+        <el-table-column label="续费" width="58">
           <template #default="{ row }">
             <el-switch :model-value="row.renew" size="small" @change="handleToggle(row, 'renew')" />
           </template>
         </el-table-column>
-        <el-table-column fixed="right" label="操作" width="130">
+        <el-table-column fixed="right" label="操作" width="104">
           <template #default="{ row }">
             <el-button link size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
             <el-button link size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -635,6 +639,22 @@ onMounted(function onMount() {
 }
 :deep(.plan-row--highlight > td.el-table__cell:first-child) {
   box-shadow: inset 3px 0 0 0 var(--el-color-primary);
+}
+
+.plan-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.plan-name-cell__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-name-cell__group {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .plan-price-grid {

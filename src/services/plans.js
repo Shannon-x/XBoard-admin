@@ -3,23 +3,14 @@ import {
   requestDashboardApi,
   requestDashboardMutation,
 } from './api'
+import { formatBytes as formatBytesCompact } from '../utils/format'
 
 export function createEmptyManagedPlans() {
   return []
 }
 
-function formatBytes(value) {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-  let size = Number(value || 0)
-  let unitIndex = 0
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex += 1
-  }
-
-  return `${size.toFixed(2)} ${units[unitIndex]}`
-}
+// 套餐流量用全站统一的紧凑写法（300 GB、2 TB），不再是 300.00 GB
+const formatBytes = formatBytesCompact
 
 const PERIOD_LABELS = {
   month_price: '月付',
