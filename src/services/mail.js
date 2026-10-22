@@ -177,20 +177,21 @@ export async function unsuppressUser(userId) {
 
 /** 与后端 App\Services\Notification\NotificationPreference::CATEGORIES 一致，顺序即展示顺序 */
 export const NOTIFY_CATEGORY = {
-  billing: { text: '账单与到期提醒', hint: '续费账单、到期当天的服务暂停通知、自动续费结果（对应老的 remind_expire）' },
-  usage: { text: '流量与用量', hint: '流量用到阈值的预警与用完通知，每周期各一封（对应老的 remind_traffic）' },
-  support: { text: '工单回复', hint: '工单有新回复' },
-  commission: { text: '推广与佣金', hint: '佣金入账汇总邮件（绑定了 Telegram 的再推一条）' },
-  announcement: { text: '服务公告', hint: '后台群发默认类别；带一键退订头' },
-  marketing: { text: '活动与优惠', hint: '到期后的召回邮件、标为「活动」的群发；带一键退订头' },
+  // hint 写给运营看：这一类具体包含哪些邮件，不提内部字段名
+  billing: { text: '账单与到期提醒', hint: '续费账单、到期当天的暂停通知、自动续费结果' },
+  usage: { text: '流量与用量', hint: '流量快用完、已用完时的提醒，每个周期最多两封' },
+  support: { text: '工单回复', hint: '客服回复了用户的工单' },
+  commission: { text: '推广与佣金', hint: '佣金到账汇总（绑了 Telegram 的同时推一条）' },
+  announcement: { text: '服务公告', hint: '后台群发公告时默认用这一类' },
+  marketing: { text: '活动与优惠', hint: '到期后的召回邮件、群发时选了「活动」的邮件' },
 }
 
 export const NOTIFY_SOURCE = {
   panel: { text: '账号设置页', type: 'info' },
-  email_link: { text: '邮件页脚链接', type: 'warning' },
-  list_unsubscribe: { text: '邮件客户端一键退订', type: 'danger' },
-  admin: { text: '后台', type: '' },
-  legacy: { text: '旧版开关', type: 'info' },
+  email_link: { text: '邮件底部链接', type: 'warning' },
+  list_unsubscribe: { text: '邮箱自带的退订按钮', type: 'danger' },
+  admin: { text: '后台代改', type: '' },
+  legacy: { text: '旧版面板里关的', type: 'info' },
 }
 
 export function createEmptyNotifyStats() {

@@ -642,14 +642,14 @@ onMounted(function onMount() {
             :closable="false"
             show-icon
             style="margin-bottom: 16px"
-            title="用户可以在面板「账号设置」或邮件页脚的「管理通知偏好」链接里逐类关闭通知；收据、提现、安全类邮件始终发送。「服务公告」与「活动与优惠」还带邮件客户端的一键退订头（Gmail / Apple Mail 顶部的退订按钮）。可选类别与页脚文案在 系统设置 → 邮件 里调整。"
+            title="用户可以自己关掉某几类通知邮件：在面板「账号设置」里关，或点邮件底部的「管理通知偏好」。收据、提现、验证码这类邮件始终发送，关不掉。「服务公告」和「活动与优惠」两类邮件在 Gmail、Apple Mail 里顶部会有一个「退订」按钮，点了也算关闭。哪些类别允许关、邮件底部的文字，在 系统设置 → 邮件 里改。"
           />
 
           <div v-loading="notifyStatsLoading" class="notify-metrics">
             <el-card class="metric-card metric-card--unified metric-card--compact" shadow="never">
-              <span class="metric-label">关掉过任一通知的用户</span>
-              <strong class="metric-value">{{ notifyStats.usersWithOptout }}</strong>
-              <span class="mail-metric__foot">近 30 天新增退订 {{ notifyStats.recent30d }} 次</span>
+              <span class="metric-label">至少关了一类通知的用户</span>
+              <strong class="metric-value">{{ notifyStats.usersWithOptout }}<small class="mail-metric__unit">人</small></strong>
+              <span class="mail-metric__foot">近 30 天新关闭 {{ notifyStats.recent30d }} 次</span>
             </el-card>
             <el-card
               v-for="card in notifyCategoryCards"
@@ -664,7 +664,7 @@ onMounted(function onMount() {
               <span class="metric-label">
                 {{ card.text }}
                 <el-tag v-if="!card.optional" size="small" type="info" effect="plain" class="notify-metric__tag">不可退订</el-tag>
-                <el-tag v-else-if="card.bulk" size="small" type="warning" effect="plain" class="notify-metric__tag">一键退订</el-tag>
+                <el-tag v-else-if="card.bulk" size="small" type="warning" effect="plain" class="notify-metric__tag" title="Gmail、Apple Mail 会在这类邮件顶部显示「退订」按钮">邮箱里有退订按钮</el-tag>
               </span>
               <span v-if="card.hint" class="mail-metric__foot notify-metric__hint">{{ card.hint }}</span>
               <strong class="metric-value" :class="{ 'mail-metric__value--warn': card.disabled }"><small class="mail-metric__unit notify-metric__prefix">已关闭</small>{{ card.disabled }}<small class="mail-metric__unit">人</small></strong>
