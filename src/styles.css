@@ -3679,7 +3679,9 @@ body.is-sidebar-resizing * {
 }
 
 .el-table td.el-table__cell {
-    padding: 14px 12px;
+    /* 只加上下留白：Element 的 .cell 自带左右 12px，td 再加 12px 会让每列白白少 24px，
+       窄屏下 ID 折行、状态标签被截成「正常…」、节点名一字一行都是这么来的 */
+    padding: 14px 0;
     font-size: 14px;
 }
 
