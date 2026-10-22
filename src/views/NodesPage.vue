@@ -1342,7 +1342,7 @@ onUnmounted(function clearTimersOnUnmount() {
                 v-loading="adminStore.managedNodesLoading"
                 class="dashboard-table node-table"
             >
-                <el-table-column :label="t('nodes.table.id')" min-width="110">
+                <el-table-column :label="t('nodes.table.id')" min-width="76">
                     <template #default="{ row }">
                         <div class="node-name-cell">
                             <el-tag
@@ -1364,7 +1364,7 @@ onUnmounted(function clearTimersOnUnmount() {
                         </div>
                     </template>
                 </el-table-column>
-                <el-table-column :label="t('nodes.table.visible')" width="80">
+                <el-table-column :label="t('nodes.table.visible')" width="64">
                     <template #default="{ row }">
                         <el-switch
                             :model-value="Boolean(row.show)"
@@ -1377,34 +1377,38 @@ onUnmounted(function clearTimersOnUnmount() {
 
                 <el-table-column
                     :label="t('nodes.table.status')"
-                    min-width="70"
+                    width="76"
                 >
                     <template #default="{ row }">
                         <el-tag
                             :type="resolveStatusType(row.status)"
                             effect="dark"
+                            size="small"
                         >
                             {{ row.status }}
                         </el-tag>
                     </template>
                 </el-table-column>
 
-                <el-table-column :label="t('nodes.table.node')" min-width="160">
+                <el-table-column :label="t('nodes.table.node')" min-width="180">
                     <template #default="{ row }">
-                        <div class="node-name-cell">
-                            <strong>{{ row.name }}</strong>
-                            <span>{{ row.type }}</span>
+                        <!-- 名称一行显示（过长省略、悬停看全名）；倍率并到协议后面，省出一整列给权限组 -->
+                        <div class="node-name-cell node-name-cell--main">
+                            <strong class="node-name-text" :title="row.name">{{ row.name }}</strong>
+                            <span>{{ row.type }} · 倍率 {{ row.rate }}</span>
                         </div>
                     </template>
                 </el-table-column>
 
                 <el-table-column
                     :label="t('nodes.table.address')"
-                    min-width="280"
+                    min-width="240"
                 >
                     <template #default="{ row }">
                         <div class="node-address-cell">
-                            <strong class="node-address-text"
+                            <strong
+                                class="node-address-text"
+                                :title="`${row.host}:${row.port}(${row.serverPort})`"
                                 >{{ row.host }}:{{ row.port }}({{
                                     row.serverPort
                                 }})</strong
@@ -1434,14 +1438,8 @@ onUnmounted(function clearTimersOnUnmount() {
                 </el-table-column>
 
                 <el-table-column
-                    :label="t('nodes.table.rate')"
-                    min-width="60"
-                    prop="rate"
-                />
-
-                <el-table-column
                     :label="t('nodes.table.groups')"
-                    min-width="140"
+                    min-width="120"
                 >
                     <template #default="{ row }">
                         <div class="node-tags">
@@ -1601,9 +1599,13 @@ onUnmounted(function clearTimersOnUnmount() {
     gap: 12px;
     margin-bottom: 14px;
 }
+/* 筛选条在常见笔记本宽度（1280）下排成一行：搜索框占大头，三个下拉各 140 起 */
 .node-toolbar > * {
-    flex: 1 1 180px;
+    flex: 1 1 140px;
     min-width: 0;
+}
+.node-toolbar > .node-search {
+    flex: 2 1 220px;
 }
 .node-toolbar > .toolbar__btn-sort,
 .node-toolbar > .toolbar__btn-add {
@@ -1792,12 +1794,15 @@ onUnmounted(function clearTimersOnUnmount() {
     min-width: 0;
 }
 
+/* 地址一行显示，过长省略（悬停看全），不再在端口中间断行 */
 .node-address-text {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     font-family: "Fira Code", monospace;
     color: var(--text);
-    word-break: break-all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     line-height: 1.4;
 }
 
@@ -1810,6 +1815,17 @@ onUnmounted(function clearTimersOnUnmount() {
     color: var(--muted);
     font-size: 12px;
     line-height: 1.5;
+}
+
+.node-name-cell--main {
+    gap: 2px;
+    min-width: 0;
+}
+
+.node-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .node-type-tag {
@@ -2091,14 +2107,6 @@ onUnmounted(function clearTimersOnUnmount() {
     .node-pagination {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .node-toolbar > * {
-        flex: 1 1 calc(50% - 6px);
-    }
-
-    .node-toolbar > .node-id-search {
-        flex: 0 0 120px;
     }
 }
 

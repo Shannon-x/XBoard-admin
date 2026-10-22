@@ -5,6 +5,7 @@ import {
   requestDashboardMutation,
 } from './api'
 import { signalAuthExpired } from './auth'
+import { formatBytes as formatBytesCompact } from '../utils/format'
 
 export function createEmptyManagedUsers() {
   return []
@@ -47,18 +48,8 @@ function formatTimestamp(value) {
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
-function formatBytes(value) {
-  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-  let size = Number(value || 0)
-  let unitIndex = 0
-
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024
-    unitIndex += 1
-  }
-
-  return `${size.toFixed(2)} ${units[unitIndex]}`
-}
+// 列表里的流量用全站统一的紧凑写法（300 GB、12.4 GB），不再一律两位小数（300.00 GB 在窄列里会折行）
+const formatBytes = formatBytesCompact
 
 function normalizeUser(user) {
   const isBanned = Boolean(user?.banned)

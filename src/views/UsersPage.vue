@@ -1024,7 +1024,7 @@ onMounted(function onMount() {
       <el-alert v-if="errorMsg" :title="errorMsg" closable show-icon type="error" style="margin-bottom: 16px" @close="errorMsg = ''" />
 
       <el-table ref="usersTableRef" v-loading="loading" :data="users" stripe style="width: 100%" @sort-change="handleSortChange">
-        <el-table-column label="ID" prop="id" width="88" />
+        <el-table-column label="ID" prop="id" width="80" />
         <el-table-column label="邮箱" prop="email" min-width="230">
           <template #default="{ row }">
             <!-- 邮箱过长时只截邮箱本身，验证徽标始终可见（整格 show-overflow-tooltip 会把徽标一起截掉） -->
@@ -1050,11 +1050,39 @@ onMounted(function onMount() {
             <el-tag :type="row.statusType" effect="dark" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="订阅" min-width="120" show-overflow-tooltip>
+        <el-table-column label="订阅" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="toPlan(row.planId)" class="x-link" @click="router.push(toPlan(row.planId))">{{ row.planName }}</span>
             <span v-else>{{ row.planName }}</span>
             <el-tag v-if="row.autoRenew" size="small" type="success" title="用户已开启自动续费" style="margin-left: 6px">自动续费</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="到期时间" prop="expiredAtRaw" width="150" sortable="custom">
+          <template #default="{ row }">
+            <!-- 没订阅的用户没有到期一说，显示「—」；有订阅但没有到期时间的是长期有效 -->
+            <span v-if="!row.planId" style="color: var(--el-text-color-secondary)">—</span>
+            <span v-else-if="!row.expiredAtRaw">长期有效</span>
+            <span v-else :style="{ color: row.expiredAtRaw * 1000 < Date.now() ? 'var(--el-color-danger)' : '', fontWeight: row.expiredAtRaw * 1000 < Date.now() ? '600' : '' }">
+              {{ row.expiredAt }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="已用/总量" min-width="170" prop="totalUsedRaw" sortable="custom">
+          <template #default="{ row }">
+            <!-- 没订阅、也没有流量额度的用户显示「—」，不再是一串 0.00 B / 0.00 B -->
+            <span v-if="!row.planId && !row.transferEnableRaw && !row.totalUsedRaw" style="color: var(--el-text-color-secondary)">—</span>
+            <span
+              v-else
+              class="user-traffic-cell"
+              :class="{ 'is-over': row.transferEnableRaw && row.totalUsedRaw > row.transferEnableRaw }"
+            >{{ row.totalUsed }} / {{ row.transferEnable }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="在线设备" width="110" prop="onlineCount" sortable="custom">
+          <template #default="{ row }">
+            <span :style="{ color: row.deviceLimit && row.onlineCount > row.deviceLimit ? 'var(--el-color-danger)' : '' }">
+              {{ row.onlineCount }}<span v-if="row.deviceLimit" style="color:var(--el-text-color-secondary)"> / {{ row.deviceLimit }}</span>
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="增值组" min-width="150">
@@ -1068,20 +1096,6 @@ onMounted(function onMount() {
               :title="chip.title"
               style="margin: 1px 4px 1px 0"
             >{{ chip.name }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="已用/总量" min-width="140" prop="totalUsedRaw" sortable="custom">
-          <template #default="{ row }">
-            <span :style="{ color: row.totalUsedRaw > row.transferEnableRaw ? 'var(--el-color-danger)' : '', fontWeight: row.totalUsedRaw > row.transferEnableRaw ? '600' : '' }">
-              {{ row.totalUsed }} / {{ row.transferEnable }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="到期时间" prop="expiredAtRaw" width="140" sortable="custom">
-          <template #default="{ row }">
-            <span :style="{ color: !row.expiredAtRaw || row.expiredAtRaw * 1000 < Date.now() ? 'var(--el-color-danger)' : '', fontWeight: !row.expiredAtRaw || row.expiredAtRaw * 1000 < Date.now() ? '600' : '' }">
-              {{ row.expiredAt }}
-            </span>
           </template>
         </el-table-column>
         <el-table-column label="下次重置" prop="nextResetAtRaw" width="160" sortable="custom">
@@ -1102,13 +1116,6 @@ onMounted(function onMount() {
         </el-table-column>
         <el-table-column label="佣金" width="100" prop="commissionBalance" sortable="custom">
           <template #default="{ row }">¥{{ row.commissionBalance }}</template>
-        </el-table-column>
-        <el-table-column label="在线设备" width="110" prop="onlineCount" sortable="custom">
-          <template #default="{ row }">
-            <span :style="{ color: row.deviceLimit && row.onlineCount > row.deviceLimit ? 'var(--el-color-danger)' : '' }">
-              {{ row.onlineCount }}<span v-if="row.deviceLimit" style="color:var(--el-text-color-secondary)"> / {{ row.deviceLimit }}</span>
-            </span>
-          </template>
         </el-table-column>
         <el-table-column label="注册时间" prop="createdAt" width="140" />
         <el-table-column fixed="right" label="操作" width="120">
@@ -1506,5 +1513,16 @@ onMounted(function onMount() {
 
 .user-email-cell :deep(.el-tag) {
   flex-shrink: 0;
+}
+
+/* 「12.4 GB / 300 GB」整串不折行，数字等宽好对齐；超额标红加粗 */
+.user-traffic-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.user-traffic-cell.is-over {
+  color: var(--el-color-danger);
+  font-weight: 600;
 }
 </style>
