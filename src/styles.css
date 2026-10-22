@@ -1588,7 +1588,7 @@ body.is-sidebar-resizing * {
 
 .traffic-rank-item {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(150px, 0.8fr);
     gap: 11px;
     padding: 11px 13px;
     border: 1px solid var(--line);
