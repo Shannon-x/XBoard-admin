@@ -95,3 +95,18 @@ export function toMailDelivery(email) {
 export function toSettings(category) {
   return { name: 'settings', params: isLinkable(category) ? { category } : {} }
 }
+
+/**
+ * 跳转到「用户管理」并带上高级筛选（仪表盘的续费漏斗、套餐分布用）。
+ * 读取器在 UsersPage.applyQueryFilter：plan_id / expired_after / expired_before /
+ * auto_renew / active_only。时间是 unix 秒。
+ */
+export function toUsersFiltered({ planId, expiredAfter, expiredBefore, autoRenew, activeOnly } = {}) {
+  const query = {}
+  if (isLinkable(planId)) query.plan_id = String(planId)
+  if (isLinkable(expiredAfter)) query.expired_after = String(expiredAfter)
+  if (isLinkable(expiredBefore)) query.expired_before = String(expiredBefore)
+  if (autoRenew) query.auto_renew = '1'
+  if (activeOnly) query.active_only = '1'
+  return Object.keys(query).length ? { name: 'users', query } : null
+}

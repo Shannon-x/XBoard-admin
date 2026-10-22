@@ -875,6 +875,32 @@ function applyQueryFilter() {
     showFilters.value = true
     return true
   }
+  // 仪表盘「订阅与续费」卡片跳过来：套餐 / 到期区间 / 自动续费 / 只看有效订阅
+  const dashboardConds = []
+  if (q.plan_id) {
+    dashboardConds.push({ id: makeFilterCondId(), field: 'plan_id', operator: '等于', value: String(q.plan_id) })
+  }
+  if (q.expired_after) {
+    dashboardConds.push({ id: makeFilterCondId(), field: 'expired_at', operator: '晚于', value: String(q.expired_after) })
+  } else if (q.active_only) {
+    dashboardConds.push({ id: makeFilterCondId(), field: 'expired_at', operator: '晚于', value: String(Math.floor(Date.now() / 1000)) })
+  }
+  if (q.expired_before) {
+    dashboardConds.push({ id: makeFilterCondId(), field: 'expired_at', operator: '早于', value: String(q.expired_before) })
+  }
+  if (q.auto_renew) {
+    dashboardConds.push({ id: makeFilterCondId(), field: 'auto_renew', operator: '等于', value: '1' })
+  }
+  if (dashboardConds.length) {
+    if (q.active_only || q.expired_after) {
+      dashboardConds.push({ id: makeFilterCondId(), field: 'banned', operator: '等于', value: '0' })
+    }
+    pagination.value.page = 1
+    searchKeyword.value = ''
+    filterConditions.value = dashboardConds
+    showFilters.value = true
+    return true
+  }
   const email = q.email || q.user_email
   if (email) {
     // 邮箱 LIKE：直接填进主搜索框
