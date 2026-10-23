@@ -227,6 +227,24 @@ onBeforeUnmount(function stopAutoRefresh() {
     gap: 16px;
 }
 
+/* 进仪表盘时各区块自上而下依次浮现（只在挂载时播一次，每分钟的自动刷新不会重播） */
+.dash-page > * {
+    animation: dashSectionIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-page > :nth-child(2) { animation-delay: 0.05s; }
+.dash-page > :nth-child(3) { animation-delay: 0.1s; }
+.dash-page > :nth-child(4) { animation-delay: 0.15s; }
+.dash-page > :nth-child(5) { animation-delay: 0.2s; }
+.dash-page > :nth-child(n + 6) { animation-delay: 0.25s; }
+
+@keyframes dashSectionIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
 .dash-page__top {
     display: flex;
     align-items: stretch;

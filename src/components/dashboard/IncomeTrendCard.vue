@@ -440,6 +440,7 @@ function toneOf(item) {
                 v-for="(bar, index) in plot.bars"
                 :key="bar.key"
                 :d="barPath(bar)"
+                :style="{ '--i': index }"
                 class="dash-income__bar"
                 :class="{ 'is-partial': bar.partial, 'is-hover': index === hoverIndex }"
               />
@@ -671,6 +672,17 @@ function toneOf(item) {
   fill: var(--primary);
   opacity: 0.82;
   transition: opacity 0.12s ease;
+  /* 柱子从横轴往上长出来，从左到右依次；换时间范围时新柱子重新长 */
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: incomeBarGrow 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 14ms);
+}
+
+@keyframes incomeBarGrow {
+  from {
+    transform: scaleY(0);
+  }
 }
 
 .dash-income__bar.is-partial {

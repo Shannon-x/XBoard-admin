@@ -123,9 +123,10 @@ function toneClass(delta, upIsGood = true) {
 <template>
   <div v-loading="loading" class="dash-kpi-grid">
     <article
-      v-for="card in cards"
+      v-for="(card, index) in cards"
       :key="card.key"
       class="dash-kpi"
+      :style="{ '--i': index }"
       :class="{ 'dash-kpi--clickable': card.action, 'dash-kpi--warn': card.warn }"
       :role="card.action ? 'button' : undefined"
       :tabindex="card.action ? 0 : undefined"
@@ -174,6 +175,8 @@ function toneClass(delta, upIsGood = true) {
 }
 
 .dash-kpi {
+  animation: kpiIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(0.08s + var(--i, 0) * 0.05s);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -257,5 +260,12 @@ function toneClass(delta, upIsGood = true) {
 
 .dash-kpi--warn .dash-kpi__line:last-child {
   color: var(--primary-strong);
+}
+
+@keyframes kpiIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
 }
 </style>
