@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import {
@@ -255,6 +255,27 @@ function handleAccountCommand(command) {
     router.push({ name: "login" });
 }
 
+// 切页时新页面上浮 8px 淡入（Web Animations，不重挂页面、不拖慢切换；
+// 不用 <transition>：插件页等多根节点页面没法被它动画）。系统开了「减少动态效果」就不播。
+const routeHost = ref(null);
+const prefersReducedMotion = typeof window !== "undefined"
+    && window.matchMedia?.("(prefers-reduced-motion: reduce)");
+
+watch(
+    () => route.name,
+    async function animateRouteEnter(next, prev) {
+        if (!prev || next === prev || prefersReducedMotion?.matches) return;
+        await nextTick();
+        routeHost.value?.animate?.(
+            [
+                { opacity: 0, transform: "translateY(8px)" },
+                { opacity: 1, transform: "none" },
+            ],
+            { duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+        );
+    },
+);
+
 onMounted(function attachResizeListener() {
     sidebarWidth.value = readStoredSidebarWidth();
     updateViewportMode();
@@ -426,7 +447,9 @@ onUnmounted(function detachResizeListener() {
                 </div>
             </header>
 
-            <router-view />
+            <div ref="routeHost" class="route-host">
+                <router-view />
+            </div>
         </el-main>
     </el-container>
 </template>
