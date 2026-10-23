@@ -10,6 +10,7 @@ import {
   Wallet,
 } from 'lucide-vue-next'
 
+import CountUpText from '../common/CountUpText.vue'
 import { formatBytes } from '../../utils/format'
 import {
   computeDelta,
@@ -146,7 +147,7 @@ function toneClass(delta, upIsGood = true) {
         </span>
       </header>
       <strong class="dash-kpi__value">
-        {{ card.value }}<small v-if="card.unit">{{ card.unit }}</small>
+        <CountUpText :text="card.value" /><small v-if="card.unit">{{ card.unit }}</small>
       </strong>
       <p v-for="(line, index) in card.lines" :key="index" class="dash-kpi__line">{{ line }}</p>
     </article>
