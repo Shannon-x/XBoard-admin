@@ -105,6 +105,10 @@ export default {
       title: '账单与收据',
       eyebrow: '财务管理',
     },
+    recharges: {
+      title: '充值记录',
+      eyebrow: '财务管理',
+    },
     security: {
       title: '账号安全',
       eyebrow: '系统管理',
@@ -210,6 +214,7 @@ export default {
     logs: '系统日志',
     finance: '财务管理',
     billingDocuments: '账单与收据',
+    recharges: '充值记录',
     mailDelivery: '邮件投递',
   },
   auth: {
@@ -442,6 +447,10 @@ export default {
         title: '订阅模板',
         description: '配置各个客户端的订阅模板。',
       },
+      recharge: {
+        title: '余额充值',
+        description: '用户在面板里给余额充值，之后买套餐、续费、加购时余额自动抵扣。充值单与订单共用支付方式、回调和付款核验；充值记录在「充值记录」页面查看，网关没回调的可以手动确认到账。',
+      },
       billing: {
         title: '收据与账单',
         description: '付款后自动寄送收据 PDF，到期前寄送续费账单；到期后的暂停提醒与召回邮件也在这里开关。所有文档都会留档，可在「账单与收据」页面查看与重发；每份只存约 2 KB 的内容快照，下载时按快照现生成 PDF。',
@@ -520,6 +529,27 @@ export default {
         label: '文档 Logo',
         description: 'PDF 抬头使用的 Logo 图片地址（PNG / JPG），留空则使用站点 Logo。',
         placeholder: 'https://',
+      },
+      rechargeEnable: {
+        label: '开启余额充值',
+        description: '关闭后用户端隐藏充值入口、不能新下充值单；已经发出的收款链接付了钱照样入账。',
+      },
+      rechargeMinAmount: {
+        label: '单笔最低充值（元）',
+        description: '最多两位小数。',
+      },
+      rechargeMaxAmount: {
+        label: '单笔最高充值（元）',
+        description: '不能低于最低金额。',
+      },
+      rechargeBonusTiers: {
+        label: '充值赠送',
+        description: '充值满门槛即赠送对应金额，多档时取满足条件的最高一档；赠送额在下单时定死，之后改档位不影响已下的单。赠送不能超过该档门槛。',
+      },
+      rechargeQuickAmounts: {
+        label: '快捷金额（元）',
+        description: '充值弹窗里的快捷按钮，用逗号分隔；超出上下限的会被忽略。留空则用前端默认（30 / 50 / 100 / 200 / 300 / 500）。',
+        placeholder: '30,50,100,200,300,500',
       },
       billingInvoiceRetentionDays: {
         label: '旧账单保留天数',

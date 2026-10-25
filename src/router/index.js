@@ -23,6 +23,7 @@ const SystemLogsPage = () => import('../views/SystemLogsPage.vue')
 const ThemeConfigPage = () => import('../views/ThemeConfigPage.vue')
 const TicketsPage = () => import('../views/TicketsPage.vue')
 const BillingDocumentsPage = () => import('../views/BillingDocumentsPage.vue')
+const RechargesPage = () => import('../views/RechargesPage.vue')
 const MailDeliveryPage = () => import('../views/MailDeliveryPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
 const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
@@ -113,6 +114,10 @@ const ROUTE_META_KEYS = {
   billingDocuments: {
     title: 'routes.billingDocuments.title',
     eyebrow: 'routes.billingDocuments.eyebrow',
+  },
+  recharges: {
+    title: 'routes.recharges.title',
+    eyebrow: 'routes.recharges.eyebrow',
   },
   mailDelivery: {
     title: 'routes.mailDelivery.title',
@@ -248,6 +253,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.billingDocuments.title,
           eyebrowKey: ROUTE_META_KEYS.billingDocuments.eyebrow,
+        },
+      },
+      {
+        path: 'recharges',
+        name: 'recharges',
+        component: RechargesPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.recharges.title,
+          eyebrowKey: ROUTE_META_KEYS.recharges.eyebrow,
         },
       },
       {

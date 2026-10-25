@@ -109,7 +109,7 @@ const summaryItems = computed(function summaryItems() {
       value: `${formatCount(summary.paidCount)} 笔`,
       delta: computeDelta(summary.paidCount, previous.paidCount),
       compareLabel,
-      note: summary.zeroCount ? `另有 ${formatCount(summary.zeroCount)} 笔 0 元单（余额抵扣、赠送）未计入` : '只数实付大于 0 的订单',
+      note: summary.zeroCount ? `另有 ${formatCount(summary.zeroCount)} 笔 0 元单（余额抵扣、赠送）未计入` : '只数实付大于 0 的订单（含余额充值）',
     },
     {
       key: 'avg',
@@ -489,7 +489,7 @@ function toneOf(item) {
 
       <aside class="dash-income__types">
         <h4>收入构成</h4>
-        <p class="dash-income__types-hint">按订单类型，实付金额</p>
+        <p class="dash-income__types-hint">按订单类型，实付金额；余额充值按充值金额计（不含赠送），用余额付的订单记 0，不重复计算</p>
         <ul v-if="typeRows.length">
           <li v-for="row in typeRows" :key="row.type">
             <div class="dash-income__type-head">

@@ -154,6 +154,7 @@ async function handleAdjust() {
 function referenceText(row) {
   if (row.orderId) return `订单 #${row.orderId}`
   if (row.refType === 'admin') return '后台操作'
+  if (row.refType === 'recharge' && row.refId) return `充值单 ${row.refId}`
   if (row.refType && row.refId) return `${row.refType} ${row.refId}`
   if (row.refType) return row.refType
   return '--'

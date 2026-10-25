@@ -86,6 +86,15 @@ export function toBillingDocuments({ orderId, userId, email } = {}) {
   return { name: 'billingDocuments', query }
 }
 
+/** 跳转到「充值记录」，按充值单号 / 用户筛选。 */
+export function toRecharges({ tradeNo, userId, email } = {}) {
+  const query = {}
+  if (isLinkable(tradeNo)) query.trade_no = String(tradeNo)
+  if (isLinkable(userId)) query.user_id = String(userId)
+  if (isLinkable(email)) query.email = String(email)
+  return { name: 'recharges', query }
+}
+
 /** 跳转到「邮件投递」并按邮箱筛选投递日志。 */
 export function toMailDelivery(email) {
   return { name: 'mailDelivery', query: isLinkable(email) ? { email: String(email) } : {} }

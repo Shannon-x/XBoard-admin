@@ -188,6 +188,13 @@ export function createEmptySiteSettings() {
     emailVerifyRestrictMode: 'features',
     emailVerifyRemindDays: 3,
     emailVerifyMxCheck: true,
+    // 余额充值（后端 recharge 组，金额单位元）
+    rechargeEnable: false,
+    rechargeMinAmount: 1,
+    rechargeMaxAmount: 99999,
+    rechargeBonusTiers: [],
+    // 快捷金额：逗号分隔的元，例如 30,50,100；留空用前端默认
+    rechargeQuickAmounts: '',
   }
 }
 
@@ -254,6 +261,11 @@ const SETTINGS_GROUP_CONFIG = {
     normalize: normalizeBillingSettings,
     createPayload: createBillingSettingsPayload,
   },
+  recharge: {
+    fetchKey: 'recharge',
+    normalize: normalizeRechargeSettings,
+    createPayload: createRechargeSettingsPayload,
+  },
 }
 
 export function createEmptySiteSettingsGroup(groupKey) {
@@ -276,7 +288,7 @@ export async function fetchSiteSettingsGroup(groupKey) {
 }
 
 export async function fetchSiteSettings() {
-  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload] = await Promise.all([
+  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload, rechargePayload] = await Promise.all([
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'site']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'safe']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe']])),
@@ -287,6 +299,7 @@ export async function fetchSiteSettings() {
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'app']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe_template']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'ticket']])),
+    requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'recharge']])),
   ])
   const site = sitePayload?.data?.site
   const safe = safePayload?.data?.safe
@@ -298,6 +311,7 @@ export async function fetchSiteSettings() {
   const app = appPayload?.data?.app
   const subscribeTemplate = subscribeTemplatePayload?.data?.subscribe_template
   const ticket = ticketPayload?.data?.ticket
+  const recharge = rechargePayload?.data?.recharge
 
   return {
     ...normalizeSiteSettings(site),
@@ -312,6 +326,7 @@ export async function fetchSiteSettings() {
     ...normalizeTicketAttachmentSettings(ticket),
     ...normalizeTicketWorkflowSettings(ticket),
     ...normalizeBillingSettings(email),
+    ...normalizeRechargeSettings(recharge),
   }
 }
 
@@ -1335,5 +1350,66 @@ function createBillingSettingsPayload(settings = {}) {
     billing_winback_days: normalizeDayList(settings.billingWinbackDays, ''),
     billing_winback_coupon: String(settings.billingWinbackCoupon || '').trim(),
     billing_invoice_retention_days: normalizeRetentionDays(settings.billingInvoiceRetentionDays, 0),
+  }
+}
+
+/** 元 → 保留两位小数的数字；非法输入返回 null */
+function toYuan(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+  return Math.round(parsed * 100) / 100
+}
+
+function normalizeRechargeTiers(raw) {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+  return raw
+    .map(function mapTier(tier) {
+      return { amount: toYuan(tier?.amount), bonus: toYuan(tier?.bonus) }
+    })
+    .filter(function keepValid(tier) {
+      return tier.amount !== null && tier.bonus !== null
+    })
+}
+
+function normalizeRechargeSettings(recharge) {
+  const fallback = createEmptySiteSettings()
+
+  if (!recharge || typeof recharge !== 'object') {
+    return {
+      rechargeEnable: fallback.rechargeEnable,
+      rechargeMinAmount: fallback.rechargeMinAmount,
+      rechargeMaxAmount: fallback.rechargeMaxAmount,
+      rechargeBonusTiers: fallback.rechargeBonusTiers,
+      rechargeQuickAmounts: fallback.rechargeQuickAmounts,
+    }
+  }
+
+  return {
+    rechargeEnable: Boolean(recharge.recharge_enable),
+    rechargeMinAmount: toYuan(recharge.recharge_min_amount) ?? fallback.rechargeMinAmount,
+    rechargeMaxAmount: toYuan(recharge.recharge_max_amount) ?? fallback.rechargeMaxAmount,
+    rechargeBonusTiers: normalizeRechargeTiers(recharge.recharge_bonus_tiers),
+    rechargeQuickAmounts: Array.isArray(recharge.recharge_quick_amounts)
+      ? recharge.recharge_quick_amounts.map(toYuan).filter(Boolean).join(',')
+      : String(recharge.recharge_quick_amounts || ''),
+  }
+}
+
+function createRechargeSettingsPayload(settings = {}) {
+  const quickAmounts = String(settings.rechargeQuickAmounts || '')
+    .split(/[\s,，;；]+/)
+    .map(toYuan)
+    .filter(Boolean)
+
+  return {
+    recharge_enable: settings.rechargeEnable ? 1 : 0,
+    recharge_min_amount: toYuan(settings.rechargeMinAmount) ?? 1,
+    recharge_max_amount: toYuan(settings.rechargeMaxAmount) ?? 99999,
+    recharge_bonus_tiers: normalizeRechargeTiers(settings.rechargeBonusTiers),
+    recharge_quick_amounts: Array.from(new Set(quickAmounts)),
   }
 }
