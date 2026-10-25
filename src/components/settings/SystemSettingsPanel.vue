@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import MonacoTemplateEditor from './MonacoTemplateEditor.vue'
+import RechargeTiersEditor from './RechargeTiersEditor.vue'
 import WithdrawChainsEditor from './WithdrawChainsEditor.vue'
 import WithdrawRateField from './WithdrawRateField.vue'
 
@@ -280,7 +281,7 @@ function resolveSelectOptions(field) {
             class="settings-field"
             :class="{
               'settings-field--code-tabs': field.type === 'codeTabs',
-              'settings-field--block': field.type === 'withdrawChains' || field.type === 'withdrawRate' || field.type === 'checkboxGroup',
+              'settings-field--block': field.type === 'withdrawChains' || field.type === 'withdrawRate' || field.type === 'checkboxGroup' || field.type === 'rechargeTiers',
               'settings-field--switch': field.type === 'switch',
               'settings-field--compact': field.tone === 'compact',
             }"
@@ -341,6 +342,12 @@ function resolveSelectOptions(field) {
                 :model-value="resolveFieldValue(field)"
                 :presets="props.form?.commissionWithdrawPresets || []"
                 :networks="props.form?.commissionWithdrawNetworks || []"
+                @update:model-value="updateFieldValue(field, $event)"
+              />
+
+              <RechargeTiersEditor
+                v-else-if="field.type === 'rechargeTiers'"
+                :model-value="resolveFieldValue(field)"
                 @update:model-value="updateFieldValue(field, $event)"
               />
 
