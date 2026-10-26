@@ -348,6 +348,9 @@ function resolveSelectOptions(field) {
               <RechargeTiersEditor
                 v-else-if="field.type === 'rechargeTiers'"
                 :model-value="resolveFieldValue(field)"
+                :max-tiers="field.maxTiers"
+                :empty-text="field.emptyKey ? safeT(field.emptyKey) : undefined"
+                :tip="field.tipKey ? safeT(field.tipKey) : undefined"
                 @update:model-value="updateFieldValue(field, $event)"
               />
 
