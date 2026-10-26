@@ -195,6 +195,13 @@ export function createEmptySiteSettings() {
     rechargeBonusTiers: [],
     // 快捷金额：逗号分隔的元，例如 30,50,100；留空用前端默认
     rechargeQuickAmounts: '',
+    // 上网按量（后端 payg 组，金额单位元）；默认值与后端 PaygConfig::DEFAULTS 一致
+    paygPlanIds: '',
+    paygMonthlyFloor: 5,
+    paygFirstBonusGb: 10,
+    paygBonusTiers: [{ amount: 100, bonus: 10 }, { amount: 300, bonus: 45 }],
+    paygAutoTopupEnable: true,
+    paygAutoTopupThreshold: 3,
   }
 }
 
@@ -266,6 +273,11 @@ const SETTINGS_GROUP_CONFIG = {
     normalize: normalizeRechargeSettings,
     createPayload: createRechargeSettingsPayload,
   },
+  payg: {
+    fetchKey: 'payg',
+    normalize: normalizePaygSettings,
+    createPayload: createPaygSettingsPayload,
+  },
 }
 
 export function createEmptySiteSettingsGroup(groupKey) {
@@ -288,7 +300,7 @@ export async function fetchSiteSettingsGroup(groupKey) {
 }
 
 export async function fetchSiteSettings() {
-  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload, rechargePayload] = await Promise.all([
+  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload, rechargePayload, paygPayload] = await Promise.all([
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'site']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'safe']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe']])),
@@ -300,6 +312,7 @@ export async function fetchSiteSettings() {
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe_template']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'ticket']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'recharge']])),
+    requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'payg']])),
   ])
   const site = sitePayload?.data?.site
   const safe = safePayload?.data?.safe
@@ -312,6 +325,7 @@ export async function fetchSiteSettings() {
   const subscribeTemplate = subscribeTemplatePayload?.data?.subscribe_template
   const ticket = ticketPayload?.data?.ticket
   const recharge = rechargePayload?.data?.recharge
+  const payg = paygPayload?.data?.payg
 
   return {
     ...normalizeSiteSettings(site),
@@ -327,6 +341,7 @@ export async function fetchSiteSettings() {
     ...normalizeTicketWorkflowSettings(ticket),
     ...normalizeBillingSettings(email),
     ...normalizeRechargeSettings(recharge),
+    ...normalizePaygSettings(payg),
   }
 }
 
@@ -1362,6 +1377,18 @@ function toYuan(value) {
   return Math.round(parsed * 100) / 100
 }
 
+// 与 toYuan 相同，但 0 是有效值（按量保底 / 自动补充门槛填 0 = 关掉这一项）
+function toYuanOrZero(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null
+  }
+  return Math.round(parsed * 100) / 100
+}
+
 function normalizeRechargeTiers(raw) {
   if (!Array.isArray(raw)) {
     return []
@@ -1411,5 +1438,57 @@ function createRechargeSettingsPayload(settings = {}) {
     recharge_max_amount: toYuan(settings.rechargeMaxAmount) ?? 99999,
     recharge_bonus_tiers: normalizeRechargeTiers(settings.rechargeBonusTiers),
     recharge_quick_amounts: Array.from(new Set(quickAmounts)),
+  }
+}
+
+function parsePaygPlanIds(raw) {
+  const list = Array.isArray(raw) ? raw : String(raw || '').split(/[\s,，;；]+/)
+  const ids = list
+    .map(function toId(value) {
+      return Number.parseInt(String(value).replace(/^#/, ''), 10)
+    })
+    .filter(function keepPositive(id) {
+      return Number.isInteger(id) && id > 0
+    })
+  return Array.from(new Set(ids))
+}
+
+function normalizePaygSettings(payg) {
+  const fallback = createEmptySiteSettings()
+
+  if (!payg || typeof payg !== 'object') {
+    return {
+      paygPlanIds: fallback.paygPlanIds,
+      paygMonthlyFloor: fallback.paygMonthlyFloor,
+      paygFirstBonusGb: fallback.paygFirstBonusGb,
+      paygBonusTiers: fallback.paygBonusTiers,
+      paygAutoTopupEnable: fallback.paygAutoTopupEnable,
+      paygAutoTopupThreshold: fallback.paygAutoTopupThreshold,
+    }
+  }
+
+  const firstBonusGb = Number.parseInt(payg.payg_first_bonus_gb, 10)
+
+  return {
+    paygPlanIds: parsePaygPlanIds(payg.payg_plan_ids).join(','),
+    // 0 是有效值（不设保底 / 不送 / 门槛 0），不能用 || 回落默认
+    paygMonthlyFloor: toYuanOrZero(payg.payg_monthly_floor) ?? fallback.paygMonthlyFloor,
+    paygFirstBonusGb: Number.isInteger(firstBonusGb) && firstBonusGb >= 0 ? firstBonusGb : fallback.paygFirstBonusGb,
+    paygBonusTiers: normalizeRechargeTiers(payg.payg_bonus_tiers),
+    paygAutoTopupEnable: Boolean(Number(payg.payg_auto_topup_enable ?? 0)),
+    paygAutoTopupThreshold: toYuanOrZero(payg.payg_auto_topup_threshold) ?? fallback.paygAutoTopupThreshold,
+  }
+}
+
+function createPaygSettingsPayload(settings = {}) {
+  const firstBonusGb = Number.parseInt(settings.paygFirstBonusGb, 10)
+
+  return {
+    payg_plan_ids: parsePaygPlanIds(settings.paygPlanIds),
+    payg_monthly_floor: toYuanOrZero(settings.paygMonthlyFloor) ?? 0,
+    payg_first_bonus_gb: Number.isInteger(firstBonusGb) && firstBonusGb >= 0 ? firstBonusGb : 0,
+    payg_bonus_tiers: normalizeRechargeTiers(settings.paygBonusTiers),
+    payg_auto_topup_enable: settings.paygAutoTopupEnable ? 1 : 0,
+    payg_auto_topup_threshold: toYuanOrZero(settings.paygAutoTopupThreshold) ?? 0,
   }
 }

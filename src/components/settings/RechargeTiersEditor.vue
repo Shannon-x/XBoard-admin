@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { Plus, Trash2 } from 'lucide-vue-next'
 
 /**
- * 余额充值赠送档位：每档「充值满 X 元，赠送 Y 元」，金额单位元。
+ * 充值赠送档位：每档「充值满 X 元，赠送 Y 元」，金额单位元。余额充值与上网按量共用。
  * 后端取满足门槛的档位里赠送最多的一档，并拒绝「赠送超过门槛」的档位（防止把 100:10 手误成 10:100）。
  */
 const props = defineProps({
@@ -13,11 +13,26 @@ const props = defineProps({
       return []
     },
   },
+  // 余额充值后端上限 20 档，上网按量 10 档
+  maxTiers: {
+    type: Number,
+    default: 20,
+  },
+  emptyText: {
+    type: String,
+    default: '没有赠送档位，充值多少到账多少',
+  },
+  tip: {
+    type: String,
+    default: '用户充值时取满足条件的最高一档；改档位只影响之后新下的充值单。',
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-const MAX_TIERS = 20
+const MAX_TIERS = computed(function maxTiers() {
+  return props.maxTiers || 20
+})
 
 const rows = computed(function rows() {
   return Array.isArray(props.modelValue) ? props.modelValue : []
@@ -34,7 +49,7 @@ function updateRow(index, patch) {
 }
 
 function addRow() {
-  if (rows.value.length >= MAX_TIERS) {
+  if (rows.value.length >= MAX_TIERS.value) {
     return
   }
   const last = rows.value[rows.value.length - 1]
@@ -88,10 +103,10 @@ function ratioText(row) {
         <el-button size="small" text type="danger" :icon="Trash2" @click="removeRow(index)">删除</el-button>
       </div>
     </div>
-    <el-empty v-else description="没有赠送档位，充值多少到账多少" :image-size="60" />
+    <el-empty v-else :description="props.emptyText" :image-size="60" />
     <div class="recharge-tiers__footer">
       <el-button size="small" :icon="Plus" :disabled="rows.length >= MAX_TIERS" @click="addRow">添加一档</el-button>
-      <span class="recharge-tiers__tip">用户充值时取满足条件的最高一档；改档位只影响之后新下的充值单。</span>
+      <span class="recharge-tiers__tip">{{ props.tip }}</span>
     </div>
   </div>
 </template>
