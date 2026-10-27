@@ -451,6 +451,10 @@ export default {
         title: '余额充值',
         description: '用户在面板里给余额充值，之后买套餐、续费、加购时余额自动抵扣。充值单与订单共用支付方式、回调和付款核验；充值记录在「充值记录」页面查看，网关没回调的可以手动确认到账。',
       },
+      mcp: {
+        title: 'AI 助手',
+        description: '客户在面板「AI 助手」页（账号设置里有入口）照着教程把自己的 AI 连上：ChatGPT（含 Dots）、Claude、Grok 网页版走一键授权，填接入地址后跳到本站授权页点「允许」即可；OpenClaw、Hermes Agent、DeepSeek Harness 等自己装的智能体在页面上生成令牌填进配置。连上后 AI 能替他查流量、到期、订单，并按他的话下单、买流量、重置流量、开关自动续费、提交工单、提现佣金、把佣金转进余额。钱始终由客户本人在免登录付款链接里付；提现只能打到客户在邀请页填过的收款地址（AI 填不了新地址），提现工单里会注明「由客户的 AI 助手代为提交」。AI 只能操作客户自己的账户，不能登录面板、改密码、改邮箱，也拿不到订阅链接；客户随时可以在页面上断开。每次调用都记审计。节日优惠：写进公告里的优惠码，AI 会在客户购买、续费时主动推荐并自动填上；只在后台启用、没写进公告的码不会被推荐。',
+      },
       payg: {
         title: '上网按量',
         description: '按 GB 付费的上网套餐：用户先买一份流量（钱包），用完再充，同一按量套餐再买会叠加流量、已用不清零。这里设置哪些套餐算按量、月度保底、首充与档位赠送、自动补充。按量套餐本身（单价、权限组、三网是否包含）在套餐管理里配置。',
@@ -549,6 +553,39 @@ export default {
       rechargeBonusTiers: {
         label: '充值赠送',
         description: '充值满门槛即赠送对应金额，多档时取满足条件的最高一档；赠送额在下单时定死，之后改档位不影响已下的单。赠送不能超过该档门槛。',
+      },
+      mcpEnable: {
+        label: '开启 AI 助手',
+        description: '打开后所有付过款的客户都能在面板「AI 助手」页连接自己的 AI（后台管理员账号始终不能连）。关闭时 /mcp 一律拒绝，已发的令牌也用不了，面板不显示「AI 助手」入口和页面；下单与付款和关闭前完全一样。',
+      },
+      mcpEndpointUrl: {
+        label: '接入地址',
+        description: '客户填进 AI 的完整地址（含 https:// 与 /mcp）。用一个独立子域名：经 Cloudflare 代理、不经加密中间件，只转发 /mcp、/oauth/ 和 /.well-known/oauth- 开头的路径（后两类是一键授权用的）。留空则按站点网址拼出 <站点网址>/mcp，此时一键授权不可用。',
+        placeholder: 'https://ai.example.com/mcp',
+      },
+      mcpOauthEnable: {
+        label: '一键授权（OAuth）',
+        description: 'ChatGPT、Claude、Grok 网页版只认这种方式：客户在 AI 里填接入地址，跳到本站授权页登录并点「允许」就连上，不用碰令牌。关闭后这些软件连不上，只剩手动生成令牌（OpenClaw、Hermes Agent 等）；已经连上的照常可用，到期换新时才失效。',
+      },
+      mcpOrderEnable: {
+        label: '允许 AI 替客户操作',
+        description: '总闸。关闭后所有令牌都只剩查询：下单、充值、取消订单、重置流量、开关自动续费、工单、礼品卡、重置订阅、佣金提现与转余额这些工具整个不出现；已建的订单、付款链接和已提交的提现不受影响。',
+      },
+      mcpDailyOrderLimit: {
+        label: '每个令牌每天最多下单',
+        description: '新购、续费、换套餐、买流量、重置包、充值合计。填 0 = 不能下单，其他操作不受影响。',
+      },
+      mcpRatePerMinute: {
+        label: '每分钟调用上限',
+        description: '按令牌计，超过返回「调用太频繁」。',
+      },
+      mcpRatePerDay: {
+        label: '每天调用上限',
+        description: '按令牌计。',
+      },
+      mcpTokenIdleDays: {
+        label: '令牌闲置失效（天）',
+        description: '这么多天没用过的令牌自动失效（一键授权的连接同样），每次使用都会往后顺延。',
       },
       paygPlanIds: {
         label: '按量套餐',

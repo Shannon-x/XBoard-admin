@@ -202,6 +202,15 @@ export function createEmptySiteSettings() {
     paygBonusTiers: [{ amount: 100, bonus: 10 }, { amount: 300, bonus: 45 }],
     paygAutoTopupEnable: true,
     paygAutoTopupThreshold: 3,
+    // 客户 AI 助手（后端 mcp 组）；默认值与后端 McpConfig::DEFAULTS 一致
+    mcpEnable: false,
+    mcpEndpointUrl: '',
+    mcpOrderEnable: true,
+    mcpDailyOrderLimit: 10,
+    mcpRatePerMinute: 60,
+    mcpRatePerDay: 2000,
+    mcpTokenIdleDays: 90,
+    mcpOauthEnable: true,
   }
 }
 
@@ -278,6 +287,11 @@ const SETTINGS_GROUP_CONFIG = {
     normalize: normalizePaygSettings,
     createPayload: createPaygSettingsPayload,
   },
+  mcp: {
+    fetchKey: 'mcp',
+    normalize: normalizeMcpSettings,
+    createPayload: createMcpSettingsPayload,
+  },
 }
 
 export function createEmptySiteSettingsGroup(groupKey) {
@@ -300,7 +314,7 @@ export async function fetchSiteSettingsGroup(groupKey) {
 }
 
 export async function fetchSiteSettings() {
-  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload, rechargePayload, paygPayload] = await Promise.all([
+  const [sitePayload, safePayload, subscribePayload, invitePayload, serverPayload, emailPayload, telegramPayload, appPayload, subscribeTemplatePayload, ticketPayload, rechargePayload, paygPayload, mcpPayload] = await Promise.all([
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'site']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'safe']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'subscribe']])),
@@ -313,6 +327,7 @@ export async function fetchSiteSettings() {
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'ticket']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'recharge']])),
     requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'payg']])),
+    requestDashboardApi(buildSecureV2ApiUrl('config/fetch', [['key', 'mcp']])),
   ])
   const site = sitePayload?.data?.site
   const safe = safePayload?.data?.safe
@@ -326,6 +341,7 @@ export async function fetchSiteSettings() {
   const ticket = ticketPayload?.data?.ticket
   const recharge = rechargePayload?.data?.recharge
   const payg = paygPayload?.data?.payg
+  const mcp = mcpPayload?.data?.mcp
 
   return {
     ...normalizeSiteSettings(site),
@@ -342,6 +358,7 @@ export async function fetchSiteSettings() {
     ...normalizeBillingSettings(email),
     ...normalizeRechargeSettings(recharge),
     ...normalizePaygSettings(payg),
+    ...normalizeMcpSettings(mcp),
   }
 }
 
@@ -1490,5 +1507,54 @@ function createPaygSettingsPayload(settings = {}) {
     payg_bonus_tiers: normalizeRechargeTiers(settings.paygBonusTiers),
     payg_auto_topup_enable: settings.paygAutoTopupEnable ? 1 : 0,
     payg_auto_topup_threshold: toYuanOrZero(settings.paygAutoTopupThreshold) ?? 0,
+  }
+}
+
+function clampInt(value, min, max, fallback) {
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
+}
+
+// 客户 AI 助手：总开关、接入地址、一键授权、AI 下单总闸与各项上限（范围与后端 McpConfig 一致）
+function normalizeMcpSettings(mcp) {
+  const fallback = createEmptySiteSettings()
+
+  if (!mcp || typeof mcp !== 'object') {
+    return {
+      mcpEnable: fallback.mcpEnable,
+      mcpEndpointUrl: fallback.mcpEndpointUrl,
+      mcpOrderEnable: fallback.mcpOrderEnable,
+      mcpDailyOrderLimit: fallback.mcpDailyOrderLimit,
+      mcpRatePerMinute: fallback.mcpRatePerMinute,
+      mcpRatePerDay: fallback.mcpRatePerDay,
+      mcpTokenIdleDays: fallback.mcpTokenIdleDays,
+      mcpOauthEnable: fallback.mcpOauthEnable,
+    }
+  }
+
+  return {
+    mcpEnable: Boolean(Number(mcp.mcp_enable ?? 0)),
+    mcpEndpointUrl: String(mcp.mcp_endpoint_url ?? ''),
+    mcpOrderEnable: Boolean(Number(mcp.mcp_order_enable ?? 1)),
+    mcpDailyOrderLimit: clampInt(mcp.mcp_daily_order_limit, 0, 100, fallback.mcpDailyOrderLimit),
+    mcpRatePerMinute: clampInt(mcp.mcp_rate_per_minute, 1, 600, fallback.mcpRatePerMinute),
+    mcpRatePerDay: clampInt(mcp.mcp_rate_per_day, 1, 100000, fallback.mcpRatePerDay),
+    mcpTokenIdleDays: clampInt(mcp.mcp_token_idle_days, 1, 365, fallback.mcpTokenIdleDays),
+    mcpOauthEnable: Boolean(Number(mcp.mcp_oauth_enable ?? 1)),
+  }
+}
+
+function createMcpSettingsPayload(settings = {}) {
+  const fallback = createEmptySiteSettings()
+
+  return {
+    mcp_enable: settings.mcpEnable ? 1 : 0,
+    mcp_endpoint_url: String(settings.mcpEndpointUrl ?? '').trim(),
+    mcp_order_enable: settings.mcpOrderEnable ? 1 : 0,
+    mcp_daily_order_limit: clampInt(settings.mcpDailyOrderLimit, 0, 100, fallback.mcpDailyOrderLimit),
+    mcp_rate_per_minute: clampInt(settings.mcpRatePerMinute, 1, 600, fallback.mcpRatePerMinute),
+    mcp_rate_per_day: clampInt(settings.mcpRatePerDay, 1, 100000, fallback.mcpRatePerDay),
+    mcp_token_idle_days: clampInt(settings.mcpTokenIdleDays, 1, 365, fallback.mcpTokenIdleDays),
+    mcp_oauth_enable: settings.mcpOauthEnable ? 1 : 0,
   }
 }
