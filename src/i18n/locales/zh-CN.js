@@ -451,6 +451,10 @@ export default {
         title: '余额充值',
         description: '用户在面板里给余额充值，之后买套餐、续费、加购时余额自动抵扣。充值单与订单共用支付方式、回调和付款核验；充值记录在「充值记录」页面查看，网关没回调的可以手动确认到账。',
       },
+      mcp: {
+        title: 'AI 助手',
+        description: '客户在面板「账号设置 → AI 助手」生成令牌，填进自己的 AI（Claude、Cursor、Cherry Studio 等），AI 就能替他查流量、到期、订单，并按他的话下单。钱始终由客户本人在免登录付款链接里付；令牌不能登录面板、改密码、提现，也拿不到订阅链接。每次调用都记审计。',
+      },
       payg: {
         title: '上网按量',
         description: '按 GB 付费的上网套餐：用户先买一份流量（钱包），用完再充，同一按量套餐再买会叠加流量、已用不清零。这里设置哪些套餐算按量、月度保底、首充与档位赠送、自动补充。按量套餐本身（单价、权限组、三网是否包含）在套餐管理里配置。',
@@ -549,6 +553,40 @@ export default {
       rechargeBonusTiers: {
         label: '充值赠送',
         description: '充值满门槛即赠送对应金额，多档时取满足条件的最高一档；赠送额在下单时定死，之后改档位不影响已下的单。赠送不能超过该档门槛。',
+      },
+      mcpEnable: {
+        label: '开启 AI 助手',
+        description: '关闭时 /mcp 一律拒绝，已发的令牌也用不了，面板不显示「AI 助手」卡片；下单与付款和关闭前完全一样。',
+      },
+      mcpWhitelist: {
+        label: '试点名单',
+        description: '邮箱或用户 ID，逗号或换行分隔。填了就只有名单里的账号能生成令牌（其他人看不到卡片）；留空 = 所有付过款的账号。后台管理员账号始终不发令牌。',
+        placeholder: '每行一个邮箱或用户 ID',
+      },
+      mcpEndpointUrl: {
+        label: '接入地址',
+        description: '客户填进 AI 的完整地址（含 https:// 与 /mcp），应指向不经加密中间件、直连后端的子域名。留空则按站点网址拼出 <站点网址>/mcp。',
+        placeholder: 'https://ai.example.com/mcp',
+      },
+      mcpOrderEnable: {
+        label: '允许 AI 下单',
+        description: '总闸。关闭后所有令牌都只剩查询，下单 / 充值 / 取消订单的工具整个不出现；已建的订单和付款链接不受影响。',
+      },
+      mcpDailyOrderLimit: {
+        label: '每个令牌每天最多下单',
+        description: '新购、续费、换套餐、充值合计。填 0 = 只能查询。',
+      },
+      mcpRatePerMinute: {
+        label: '每分钟调用上限',
+        description: '按令牌计，超过返回「调用太频繁」。',
+      },
+      mcpRatePerDay: {
+        label: '每天调用上限',
+        description: '按令牌计。',
+      },
+      mcpTokenIdleDays: {
+        label: '令牌闲置失效（天）',
+        description: '这么多天没用过的令牌自动失效；每次使用都会往后顺延。',
       },
       paygPlanIds: {
         label: '按量套餐',
