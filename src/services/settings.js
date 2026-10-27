@@ -211,6 +211,7 @@ export function createEmptySiteSettings() {
     mcpRatePerMinute: 60,
     mcpRatePerDay: 2000,
     mcpTokenIdleDays: 90,
+    mcpOauthEnable: true,
   }
 }
 
@@ -1529,6 +1530,7 @@ function normalizeMcpSettings(mcp) {
       mcpRatePerMinute: fallback.mcpRatePerMinute,
       mcpRatePerDay: fallback.mcpRatePerDay,
       mcpTokenIdleDays: fallback.mcpTokenIdleDays,
+      mcpOauthEnable: fallback.mcpOauthEnable,
     }
   }
 
@@ -1541,6 +1543,7 @@ function normalizeMcpSettings(mcp) {
     mcpRatePerMinute: clampInt(mcp.mcp_rate_per_minute, 1, 600, fallback.mcpRatePerMinute),
     mcpRatePerDay: clampInt(mcp.mcp_rate_per_day, 1, 100000, fallback.mcpRatePerDay),
     mcpTokenIdleDays: clampInt(mcp.mcp_token_idle_days, 1, 365, fallback.mcpTokenIdleDays),
+    mcpOauthEnable: Boolean(Number(mcp.mcp_oauth_enable ?? 1)),
   }
 }
 
@@ -1556,5 +1559,6 @@ function createMcpSettingsPayload(settings = {}) {
     mcp_rate_per_minute: clampInt(settings.mcpRatePerMinute, 1, 600, fallback.mcpRatePerMinute),
     mcp_rate_per_day: clampInt(settings.mcpRatePerDay, 1, 100000, fallback.mcpRatePerDay),
     mcp_token_idle_days: clampInt(settings.mcpTokenIdleDays, 1, 365, fallback.mcpTokenIdleDays),
+    mcp_oauth_enable: settings.mcpOauthEnable ? 1 : 0,
   }
 }

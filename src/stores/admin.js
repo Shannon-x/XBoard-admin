@@ -1569,6 +1569,12 @@ export const useAdminStore = defineStore("admin", () => {
           type: "text",
         },
         {
+          key: "mcpOauthEnable",
+          labelKey: "systemSettings.fields.mcpOauthEnable.label",
+          descriptionKey: "systemSettings.fields.mcpOauthEnable.description",
+          type: "switch",
+        },
+        {
           key: "mcpOrderEnable",
           labelKey: "systemSettings.fields.mcpOrderEnable.label",
           descriptionKey: "systemSettings.fields.mcpOrderEnable.description",
