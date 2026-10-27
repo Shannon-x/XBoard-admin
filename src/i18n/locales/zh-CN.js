@@ -556,12 +556,7 @@ export default {
       },
       mcpEnable: {
         label: '开启 AI 助手',
-        description: '关闭时 /mcp 一律拒绝，已发的令牌也用不了，面板不显示「AI 助手」入口和页面；下单与付款和关闭前完全一样。',
-      },
-      mcpWhitelist: {
-        label: '试点名单',
-        description: '邮箱或用户 ID，逗号或换行分隔。填了就只有名单里的账号能生成令牌（其他人看不到入口）；留空 = 所有付过款的账号。后台管理员账号始终不发令牌。',
-        placeholder: '每行一个邮箱或用户 ID',
+        description: '打开后所有付过款的客户都能在面板「AI 助手」页连接自己的 AI（后台管理员账号始终不能连）。关闭时 /mcp 一律拒绝，已发的令牌也用不了，面板不显示「AI 助手」入口和页面；下单与付款和关闭前完全一样。',
       },
       mcpEndpointUrl: {
         label: '接入地址',

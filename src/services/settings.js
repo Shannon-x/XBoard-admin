@@ -204,7 +204,6 @@ export function createEmptySiteSettings() {
     paygAutoTopupThreshold: 3,
     // 客户 AI 助手（后端 mcp 组）；默认值与后端 McpConfig::DEFAULTS 一致
     mcpEnable: false,
-    mcpWhitelist: '',
     mcpEndpointUrl: '',
     mcpOrderEnable: true,
     mcpDailyOrderLimit: 10,
@@ -1516,14 +1515,13 @@ function clampInt(value, min, max, fallback) {
   return Number.isInteger(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
 }
 
-// 客户 AI 助手：总开关、试点名单、接入地址、AI 下单总闸与各项上限（范围与后端 McpConfig 一致）
+// 客户 AI 助手：总开关、接入地址、一键授权、AI 下单总闸与各项上限（范围与后端 McpConfig 一致）
 function normalizeMcpSettings(mcp) {
   const fallback = createEmptySiteSettings()
 
   if (!mcp || typeof mcp !== 'object') {
     return {
       mcpEnable: fallback.mcpEnable,
-      mcpWhitelist: fallback.mcpWhitelist,
       mcpEndpointUrl: fallback.mcpEndpointUrl,
       mcpOrderEnable: fallback.mcpOrderEnable,
       mcpDailyOrderLimit: fallback.mcpDailyOrderLimit,
@@ -1536,7 +1534,6 @@ function normalizeMcpSettings(mcp) {
 
   return {
     mcpEnable: Boolean(Number(mcp.mcp_enable ?? 0)),
-    mcpWhitelist: String(mcp.mcp_whitelist ?? ''),
     mcpEndpointUrl: String(mcp.mcp_endpoint_url ?? ''),
     mcpOrderEnable: Boolean(Number(mcp.mcp_order_enable ?? 1)),
     mcpDailyOrderLimit: clampInt(mcp.mcp_daily_order_limit, 0, 100, fallback.mcpDailyOrderLimit),
@@ -1552,7 +1549,6 @@ function createMcpSettingsPayload(settings = {}) {
 
   return {
     mcp_enable: settings.mcpEnable ? 1 : 0,
-    mcp_whitelist: String(settings.mcpWhitelist ?? '').trim(),
     mcp_endpoint_url: String(settings.mcpEndpointUrl ?? '').trim(),
     mcp_order_enable: settings.mcpOrderEnable ? 1 : 0,
     mcp_daily_order_limit: clampInt(settings.mcpDailyOrderLimit, 0, 100, fallback.mcpDailyOrderLimit),

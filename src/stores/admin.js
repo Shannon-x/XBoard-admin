@@ -1551,17 +1551,6 @@ export const useAdminStore = defineStore("admin", () => {
           type: "switch",
         },
         {
-          key: "mcpWhitelist",
-          labelKey: "systemSettings.fields.mcpWhitelist.label",
-          descriptionKey: "systemSettings.fields.mcpWhitelist.description",
-          placeholderKey: "systemSettings.fields.mcpWhitelist.placeholder",
-          type: "textarea",
-          autosize: {
-            minRows: 2,
-            maxRows: 6,
-          },
-        },
-        {
           key: "mcpEndpointUrl",
           labelKey: "systemSettings.fields.mcpEndpointUrl.label",
           descriptionKey: "systemSettings.fields.mcpEndpointUrl.description",
