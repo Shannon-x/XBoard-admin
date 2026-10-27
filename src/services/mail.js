@@ -192,6 +192,7 @@ export const NOTIFY_SOURCE = {
   list_unsubscribe: { text: '邮箱自带的退订按钮', type: 'danger' },
   admin: { text: '后台代改', type: '' },
   legacy: { text: '旧版面板里关的', type: 'info' },
+  mcp: { text: '客户的 AI 助手', type: 'success' },
 }
 
 export function createEmptyNotifyStats() {

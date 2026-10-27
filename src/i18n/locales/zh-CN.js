@@ -453,7 +453,7 @@ export default {
       },
       mcp: {
         title: 'AI 助手',
-        description: '客户在面板「账号设置 → AI 助手」生成令牌，填进自己的 AI（Claude、Cursor、Cherry Studio 等），AI 就能替他查流量、到期、订单，并按他的话下单。钱始终由客户本人在免登录付款链接里付；令牌不能登录面板、改密码、提现，也拿不到订阅链接。每次调用都记审计。',
+        description: '客户在面板「账号设置 → AI 助手」生成令牌，填进自己的 AI（Claude、Cursor、Cherry Studio 等），AI 就能替他查流量、到期、订单，并按他的话下单、买流量、重置流量、开关自动续费、提交工单。钱始终由客户本人在免登录付款链接里付；令牌只能操作客户自己的账户，不能登录面板、改密码、提现，也拿不到订阅链接。每次调用都记审计。',
       },
       payg: {
         title: '上网按量',
@@ -565,16 +565,16 @@ export default {
       },
       mcpEndpointUrl: {
         label: '接入地址',
-        description: '客户填进 AI 的完整地址（含 https:// 与 /mcp），应指向不经加密中间件、直连后端的子域名。留空则按站点网址拼出 <站点网址>/mcp。',
+        description: '客户填进 AI 的完整地址（含 https:// 与 /mcp）。用一个独立子域名：经 Cloudflare 代理、只转发 /mcp、不经加密中间件。留空则按站点网址拼出 <站点网址>/mcp。',
         placeholder: 'https://ai.example.com/mcp',
       },
       mcpOrderEnable: {
-        label: '允许 AI 下单',
-        description: '总闸。关闭后所有令牌都只剩查询，下单 / 充值 / 取消订单的工具整个不出现；已建的订单和付款链接不受影响。',
+        label: '允许 AI 替客户操作',
+        description: '总闸。关闭后所有令牌都只剩查询：下单、充值、取消订单、重置流量、开关自动续费、工单、礼品卡、重置订阅这些工具整个不出现；已建的订单和付款链接不受影响。',
       },
       mcpDailyOrderLimit: {
         label: '每个令牌每天最多下单',
-        description: '新购、续费、换套餐、充值合计。填 0 = 只能查询。',
+        description: '新购、续费、换套餐、买流量、重置包、充值合计。填 0 = 不能下单，其他操作不受影响。',
       },
       mcpRatePerMinute: {
         label: '每分钟调用上限',
