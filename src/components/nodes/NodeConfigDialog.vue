@@ -331,8 +331,15 @@ const showTransportConfigEditor = computed(function showTransportConfigEditor() 
 });
 
 const transportOptions = computed(function transportOptions() {
-    if (isVlessProtocol.value || isAnytlsProtocol.value) {
+    if (isVlessProtocol.value) {
         return vmessTransportOptions;
+    }
+
+    // V2bX / v2node 的 Xray 内核只给 AnyTLS 接了这几种传输（无 mKCP），后端校验同步限制
+    if (isAnytlsProtocol.value) {
+        return vmessTransportOptions.filter(function filterOption(option) {
+            return ["tcp", "ws", "grpc", "httpupgrade", "xhttp"].includes(option.value);
+        });
     }
 
     if (isMieruProtocol.value) {
@@ -1845,6 +1852,12 @@ onBeforeUnmount(destroyRouteSortable);
                         :value="option.value"
                     />
                 </el-select>
+                <p
+                    v-if="isAnytlsProtocol && form.transportProtocol && form.transportProtocol !== 'tcp'"
+                    class="node-config-form__hint"
+                >
+                    非 TCP 传输仅 V2bX / v2node 的 Xray 内核节点支持；mihomo、sing-box、Surge 等客户端的 AnyTLS 不支持外层传输，该节点不会出现在订阅中。
+                </p>
             </el-form-item>
 
             <el-form-item v-if="isMieruProtocol" label="多路复用" class="node-config-form__item">
