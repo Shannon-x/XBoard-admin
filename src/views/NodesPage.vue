@@ -924,6 +924,16 @@ async function handleNodeDialogSubmit(payload) {
                                   .map(function trimLine(line) { return line.trim(); })
                                   .filter(Boolean),
                               alpn: String(payload.anytlsAlpn || "").trim() || undefined,
+                              // Xray 内核（V2bX / v2node）按 network + network_settings 选外层传输；
+                              // sing-box 内核忽略。不回传的话后端会把它重置为 null（= tcp）
+                              network: String(payload.transportProtocol || "tcp"),
+                              network_settings: (function() {
+                                  try {
+                                      return payload.transportConfig ? JSON.parse(payload.transportConfig) : null;
+                                  } catch (e) {
+                                      return null;
+                                  }
+                              })(),
                           }
                       : protocolType === "fbnode"
                         ? {}
