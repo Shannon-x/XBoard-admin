@@ -122,17 +122,19 @@ const anytlsSecurityOptions = [
 ];
 const vlessFlowOptions = [
     { label: "none", value: "none" },
-    { label: "xtls-rprx-direct", value: "xtls-rprx-direct" },
-    { label: "xtls-rprx-splice", value: "xtls-rprx-splice" },
     { label: "xtls-rprx-vision", value: "xtls-rprx-vision" },
 ];
+// Xray 已删除 direct / splice 流控，配置里出现会直接启动失败，保存时拦截旧节点残留的值
+const deprecatedVlessFlows = ["xtls-rprx-direct", "xtls-rprx-splice"];
 const vlessEncryptionOptions = [
     { label: "无", value: null },
     { label: "mlkem768x25519plus", value: "mlkem768x25519plus" },
 ];
+// 与 Xray 的 mlkem768x25519plus 外观模式一一对应，random 不能 splice
 const vlessEncryptionModeOptions = [
     { label: "native", value: "native" },
-    { label: "pq", value: "pq" },
+    { label: "xorpub", value: "xorpub" },
+    { label: "random", value: "random" },
 ];
 const vlessEncryptionRttOptions = [
     { label: "0rtt", value: "0rtt" },
@@ -672,6 +674,76 @@ function generateRealityKeys() {
     }
 }
 
+// VLESS Encryption 用 X25519 作认证密钥：服务端填私钥，客户端（Password）填公钥，与 xray vlessenc 的 X25519 输出一致
+function generateVlessEncKeys() {
+    try {
+        // 与 xray vlessenc 相同，先按 X25519 规则钳位再算公钥，生成的私钥和命令行输出同一形态
+        const privateKey = nacl.randomBytes(X25519_KEY_LENGTH);
+        privateKey[0] &= 248;
+        privateKey[31] &= 127;
+        privateKey[31] |= 64;
+        form.vlessEncPrivateKey = toBase64Url(privateKey);
+        form.vlessEncPassword = toBase64Url(nacl.scalarMult.base(privateKey));
+        ElMessage.success("VLESS Encryption 密钥对已生成");
+    } catch (error) {
+        ElMessage.error("密钥生成失败");
+        console.error(error);
+    }
+}
+
+// Xray 用 base64.RawURLEncoding 解析密钥：只认 URL 安全字符、不带 = 补位
+function fromBase64Url(value) {
+    if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+        return null;
+    }
+    try {
+        const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    } catch (error) {
+        return null;
+    }
+}
+
+const X25519_KEY_LENGTH = 32;
+const MLKEM768_SEED_LENGTH = 64;
+const MLKEM768_PUBLIC_KEY_LENGTH = 1184;
+
+// 返回错误提示，通过时返回空字符串。
+// X25519：私钥推出的公钥必须等于 Password；ML-KEM-768：浏览器里没有 ML-KEM 实现，只核对长度
+function validateVlessEncKeys(privateKeyText, passwordText) {
+    if (!privateKeyText || !passwordText) {
+        return "VLESS Encryption 的 Private Key 和 Password 都要填写，可点钥匙按钮生成";
+    }
+    const privateKey = fromBase64Url(privateKeyText);
+    const password = fromBase64Url(passwordText);
+    if (!privateKey || !password) {
+        return "VLESS Encryption 密钥必须是不带 = 的 base64url 字符串";
+    }
+    if (privateKey.length === X25519_KEY_LENGTH) {
+        if (password.length !== X25519_KEY_LENGTH) {
+            return "Private Key 是 X25519 私钥，Password 也必须是 X25519 公钥";
+        }
+        const derived = nacl.scalarMult.base(privateKey);
+        if (!nacl.verify(derived, password)) {
+            return "Private Key 和 Password 不是一对，客户端会连不上，请重新生成";
+        }
+        return "";
+    }
+    if (privateKey.length === MLKEM768_SEED_LENGTH) {
+        if (password.length !== MLKEM768_PUBLIC_KEY_LENGTH) {
+            return "Private Key 是 ML-KEM-768 种子，Password 也必须是 ML-KEM-768 公钥";
+        }
+        return "";
+    }
+    return "Private Key 长度不对，应为 X25519 私钥或 ML-KEM-768 种子";
+}
+
 function generateShortId() {
     try {
         const randomBytes = new Uint8Array(8);
@@ -841,6 +913,28 @@ function handleSubmit() {
     if (normalizePortValue(form.serverPort) === "") {
         ElMessage.warning("服务端口只允许输入 0-65535 的数字");
         return;
+    }
+
+    if (isVlessProtocol.value) {
+        if (deprecatedVlessFlows.includes(String(form.vlessFlow || ""))) {
+            ElMessage.warning("流控 direct / splice 已被 Xray 删除，请改为 xtls-rprx-vision 或 none");
+            return;
+        }
+        if (form.vlessEncryption) {
+            const encMode = String(form.vlessEncMode || "");
+            if (!vlessEncryptionModeOptions.some((option) => option.value === encMode)) {
+                ElMessage.warning("VLESS Encryption 的 Mode 只能是 native、xorpub 或 random");
+                return;
+            }
+            const keyError = validateVlessEncKeys(
+                String(form.vlessEncPrivateKey || "").trim(),
+                String(form.vlessEncPassword || "").trim(),
+            );
+            if (keyError) {
+                ElMessage.warning(keyError);
+                return;
+            }
+        }
     }
 
     // file 模式下发空路径会让节点端加载证书失败起不来，必须前置拦截
@@ -1752,8 +1846,12 @@ onBeforeUnmount(destroyRouteSortable);
             >
                 <el-input
                     v-model="form.vlessEncPrivateKey"
-                    placeholder="留空自动生成，需抗量子加密请自行替换"
-                />
+                    placeholder="点右侧钥匙生成 X25519 密钥对，或填 xray vlessenc 生成的私钥"
+                >
+                    <template #append>
+                        <el-button :icon="KeyRound" @click="generateVlessEncKeys" title="生成密钥对" />
+                    </template>
+                </el-input>
             </el-form-item>
 
             <el-form-item
@@ -1774,7 +1872,7 @@ onBeforeUnmount(destroyRouteSortable);
             >
                 <el-input
                     v-model="form.vlessEncPassword"
-                    placeholder="留空自动生成，需抗量子加密请自行替换"
+                    placeholder="与 Private Key 成对的公钥，生成私钥时会一并填好"
                 />
             </el-form-item>
 
