@@ -95,6 +95,19 @@ export function toRecharges({ tradeNo, userId, email } = {}) {
   return { name: 'recharges', query }
 }
 
+/** 跳转到「AI 助手」并只看某位客户（AiAssistantPage 读 user_id / user_email / email / tab）。 */
+export function toAiAssistant(id, email, tab) {
+  const query = {}
+  if (isLinkable(id)) {
+    query.user_id = String(id)
+    if (isLinkable(email)) query.user_email = String(email)
+  } else if (isLinkable(email)) {
+    query.email = String(email)
+  }
+  if (isLinkable(tab)) query.tab = String(tab)
+  return { name: 'aiAssistant', query }
+}
+
 /** 跳转到「邮件投递」并按邮箱筛选投递日志。 */
 export function toMailDelivery(email) {
   return { name: 'mailDelivery', query: isLinkable(email) ? { email: String(email) } : {} }

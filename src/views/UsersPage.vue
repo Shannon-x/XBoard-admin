@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { toPlan } from '../utils/crossLink'
+import { toAiAssistant, toPlan } from '../utils/crossLink'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshCw, Download, Plus, SlidersHorizontal, Mail, PlusCircle, X, HelpCircle } from 'lucide-vue-next'
 import SectionCard from '../components/common/SectionCard.vue'
@@ -748,6 +748,10 @@ function navigateToUserTickets(user) {
   router.push({ name: 'tickets', query: { user_email: user.email } })
 }
 
+function navigateToUserAiAssistant(user) {
+  router.push(toAiAssistant(user.id, user.email))
+}
+
 async function handleResetTraffic(user) {
   try {
     await ElMessageBox.confirm(
@@ -1132,6 +1136,7 @@ onMounted(function onMount() {
                   <el-dropdown-item divided @click="navigateToUserOrders(row)">TA的订单</el-dropdown-item>
                   <el-dropdown-item @click="navigateToUserTickets(row)">TA的工单</el-dropdown-item>
                   <el-dropdown-item @click="navigateToUserInvites(row)">TA的邀请</el-dropdown-item>
+                  <el-dropdown-item @click="navigateToUserAiAssistant(row)">TA的 AI 调用</el-dropdown-item>
                   <el-dropdown-item divided @click="handleResetTraffic(row)">重置流量</el-dropdown-item>
                   <el-dropdown-item @click="handleViewTraffic(row)">流量详情</el-dropdown-item>
                   <el-dropdown-item @click="handleResetSecret(row)">重置订阅链接/UUID</el-dropdown-item>

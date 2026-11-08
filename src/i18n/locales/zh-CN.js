@@ -117,6 +117,10 @@ export default {
       title: '邮件投递',
       eyebrow: '财务管理',
     },
+    aiAssistant: {
+      title: 'AI 助手',
+      eyebrow: '用户管理',
+    },
   },
   themeConfigPage: {
     sectionTitle: '主题配置',
@@ -216,6 +220,7 @@ export default {
     billingDocuments: '账单与收据',
     recharges: '充值记录',
     mailDelivery: '邮件投递',
+    aiAssistant: 'AI 助手',
   },
   auth: {
     login: '登录',
