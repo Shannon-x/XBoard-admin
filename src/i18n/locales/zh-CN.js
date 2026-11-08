@@ -117,6 +117,10 @@ export default {
       title: '邮件投递',
       eyebrow: '财务管理',
     },
+    aiAssistant: {
+      title: 'AI 助手',
+      eyebrow: '用户管理',
+    },
   },
   themeConfigPage: {
     sectionTitle: '主题配置',
@@ -216,6 +220,7 @@ export default {
     billingDocuments: '账单与收据',
     recharges: '充值记录',
     mailDelivery: '邮件投递',
+    aiAssistant: 'AI 助手',
   },
   auth: {
     login: '登录',
@@ -572,16 +577,16 @@ export default {
         description: '总闸。关闭后所有令牌都只剩查询：下单、充值、取消订单、重置流量、开关自动续费、工单、礼品卡、重置订阅、佣金提现与转余额这些工具整个不出现；已建的订单、付款链接和已提交的提现不受影响。',
       },
       mcpDailyOrderLimit: {
-        label: '每个令牌每天最多下单',
-        description: '新购、续费、换套餐、买流量、重置包、充值合计。填 0 = 不能下单，其他操作不受影响。',
+        label: '每个账号每天最多通过 AI 下单',
+        description: '新购、续费、换套餐、买流量、重置包、充值合计，同一账号的所有 AI 连接一起算。填 0 = 不能下单，其他操作不受影响。',
       },
       mcpRatePerMinute: {
         label: '每分钟调用上限',
-        description: '按令牌计，超过返回「调用太频繁」。',
+        description: '按账号计（同一账号的所有 AI 连接合计），超过返回「调用太频繁」。',
       },
       mcpRatePerDay: {
         label: '每天调用上限',
-        description: '按令牌计。',
+        description: '按账号计（同一账号的所有 AI 连接合计）。',
       },
       mcpTokenIdleDays: {
         label: '令牌闲置失效（天）',

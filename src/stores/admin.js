@@ -209,6 +209,7 @@ export const useAdminStore = defineStore("admin", () => {
         { labelKey: "nav.tickets", icon: MessageSquare, routeName: "tickets" },
         { labelKey: "nav.withdrawals", icon: BadgeDollarSign, routeName: "withdrawals" },
         { labelKey: "nav.periodCommission", icon: Repeat, routeName: "periodCommission" },
+        { labelKey: "nav.aiAssistant", icon: Bot, routeName: "aiAssistant" },
       ],
     },
     {
