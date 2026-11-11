@@ -104,6 +104,9 @@ export async function fetchWithdrawalRate({ id = null, force = false } = {}) {
     currency: String(data.currency || ''),
     currencySymbol: String(data.currency_symbol || ''),
     rateSourceMode: String(data.rate_source_mode || 'auto'),
+    // 行情原价（上浮前）；老后端没有这个字段时等于 rate
+    marketRate: data.market_rate ?? data.rate ?? null,
+    markupApplied: Boolean(data.markup_applied),
     error: data.error ? String(data.error) : '',
     quote: data.quote ? normalizeQuote(data.quote) : null,
   }

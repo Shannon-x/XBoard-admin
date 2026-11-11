@@ -358,7 +358,11 @@ function resolveSelectOptions(field) {
                 v-else-if="field.type === 'withdrawRate'"
                 :model-value="resolveFieldValue(field)"
                 :source="props.form?.commissionWithdrawRateSource || 'auto'"
+                :markup-type="props.form?.commissionWithdrawRateMarkupType || 'percent'"
+                :markup="props.form?.commissionWithdrawRateMarkup || 0"
                 @update:model-value="updateFieldValue(field, $event)"
+                @update:markup-type="props.form.commissionWithdrawRateMarkupType = $event"
+                @update:markup="props.form.commissionWithdrawRateMarkup = $event"
               />
 
               <el-checkbox-group

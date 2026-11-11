@@ -97,6 +97,9 @@ export function createEmptySiteSettings() {
     commissionWithdrawMax: 0,
     commissionWithdrawRateSource: 'auto',
     commissionWithdrawUsdtRate: 0,
+    // 自动行情的上浮：percent 在行情价上加 N%，fixed 在行情价上加 N 元；0 = 不上浮
+    commissionWithdrawRateMarkupType: 'percent',
+    commissionWithdrawRateMarkup: 0,
     commissionWithdrawRequireQrcode: false,
     commissionWithdrawThanks: '',
     // 只读：后端提供的地址格式预设
@@ -744,6 +747,8 @@ function normalizeInviteSettings(invite) {
       commissionWithdrawMax: fallback.commissionWithdrawMax,
       commissionWithdrawRateSource: fallback.commissionWithdrawRateSource,
       commissionWithdrawUsdtRate: fallback.commissionWithdrawUsdtRate,
+      commissionWithdrawRateMarkupType: fallback.commissionWithdrawRateMarkupType,
+      commissionWithdrawRateMarkup: fallback.commissionWithdrawRateMarkup,
       commissionWithdrawRequireQrcode: fallback.commissionWithdrawRequireQrcode,
       commissionWithdrawThanks: fallback.commissionWithdrawThanks,
       commissionWithdrawPresets: fallback.commissionWithdrawPresets,
@@ -789,6 +794,9 @@ function normalizeInviteSettings(invite) {
     commissionWithdrawRateSource:
       invite.commission_withdraw_rate_source === 'manual' ? 'manual' : 'auto',
     commissionWithdrawUsdtRate: Number(invite.commission_withdraw_usdt_rate ?? fallback.commissionWithdrawUsdtRate) || 0,
+    commissionWithdrawRateMarkupType:
+      invite.commission_withdraw_rate_markup_type === 'fixed' ? 'fixed' : 'percent',
+    commissionWithdrawRateMarkup: Math.max(0, Number(invite.commission_withdraw_rate_markup ?? 0) || 0),
     commissionWithdrawRequireQrcode: Boolean(Number(invite.commission_withdraw_require_qrcode ?? 0)),
     commissionWithdrawThanks: String(invite.commission_withdraw_thanks ?? ''),
     commissionWithdrawNetworks: Array.isArray(invite.commission_withdraw_networks)
@@ -860,6 +868,9 @@ function createInviteSettingsPayload(settings = {}) {
     commission_withdraw_rate_source:
       settings.commissionWithdrawRateSource === 'manual' ? 'manual' : 'auto',
     commission_withdraw_usdt_rate: Number(settings.commissionWithdrawUsdtRate || 0),
+    commission_withdraw_rate_markup_type:
+      settings.commissionWithdrawRateMarkupType === 'fixed' ? 'fixed' : 'percent',
+    commission_withdraw_rate_markup: Math.max(0, Number(settings.commissionWithdrawRateMarkup || 0)),
     commission_withdraw_require_qrcode: settings.commissionWithdrawRequireQrcode ? 1 : 0,
     commission_withdraw_thanks: String(settings.commissionWithdrawThanks || '').trim(),
     withdraw_close_enable: settings.withdrawCloseEnable ? 1 : 0,

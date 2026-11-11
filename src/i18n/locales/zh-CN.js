@@ -1036,12 +1036,12 @@ export default {
       commissionWithdrawRateSource: {
         label: '汇率来源',
         description:
-          '自动获取时，系统每 10 分钟从公开行情接口取一次 USDT 价格（人民币优先取币安 C2C 场外价），申请与结算都按当时的实时汇率折算，无需人工维护。',
+          '自动：系统每 10 分钟取一次 USDT 行情（人民币取币安 C2C 场外价），可以在行情价上加上浮；手动：你自己定一个固定汇率，不跟行情。',
       },
       commissionWithdrawUsdtRate: {
         label: 'USDT 汇率',
         description:
-          '用于把佣金金额折算成 USDT。默认自动获取实时行情；下面的兜底汇率只在行情接口全部不可用、或来源选为手动时才会用到。',
+          '用于把佣金金额折算成 USDT：应得 USDT = 佣金 ÷ 汇率。汇率越高，你打款时付的 USDT 越少。',
       },
       commissionWithdrawRequireQrcode: {
         label: '必须上传收款二维码',
@@ -1316,8 +1316,8 @@ export default {
         experience: '意见与体验',
       },
       commissionWithdrawRateSource: {
-        auto: '自动获取实时行情（推荐）',
-        manual: '手动固定汇率',
+        auto: '自动：币安 C2C 行情价（可加上浮）',
+        manual: '手动：固定汇率',
       },
       ticketAttachmentDriver: {
         local: '本地存储',
