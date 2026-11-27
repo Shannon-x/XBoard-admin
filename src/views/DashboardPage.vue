@@ -6,14 +6,17 @@ import DailyNewUsersDialog from "../components/dashboard/DailyNewUsersDialog.vue
 import DashboardKpiGrid from "../components/dashboard/DashboardKpiGrid.vue";
 import DashboardTodoBar from "../components/dashboard/DashboardTodoBar.vue";
 import IncomeTrendCard from "../components/dashboard/IncomeTrendCard.vue";
+import MailRelayCard from "../components/dashboard/MailRelayCard.vue";
 import SubscriptionCard from "../components/dashboard/SubscriptionCard.vue";
 import SystemHealthCard from "../components/dashboard/SystemHealthCard.vue";
 import TrafficRankCard from "../components/dashboard/TrafficRankCard.vue";
 import { formatMinutesWindow } from "../components/dashboard/dashboardFormat";
 import {
     createEmptyDashboardOverview,
+    createEmptyMailRelayStatus,
     createEmptySystemHealth,
     fetchDashboardOverview,
+    fetchMailRelayStatus,
     fetchSystemHealth,
 } from "../services/dashboardOverview";
 import { useAdminStore } from "../stores/admin";
@@ -32,6 +35,10 @@ const overviewError = ref("");
 const health = ref(createEmptySystemHealth());
 const healthLoading = ref(false);
 const healthError = ref("");
+
+const mailRelay = ref(createEmptyMailRelayStatus());
+const mailRelayLoading = ref(false);
+const mailRelayError = ref("");
 
 const incomeRefreshKey = ref(0);
 const updatedAt = ref(null);
@@ -62,9 +69,22 @@ async function loadHealth() {
     }
 }
 
+async function loadMailRelay() {
+    mailRelayLoading.value = true;
+    mailRelayError.value = "";
+    try {
+        mailRelay.value = await fetchMailRelayStatus();
+    } catch (err) {
+        mailRelayError.value = err?.message || "邮件投递状态加载失败";
+    } finally {
+        mailRelayLoading.value = false;
+    }
+}
+
 function refreshAll() {
     loadOverview();
     loadHealth();
+    loadMailRelay();
     incomeRefreshKey.value += 1;
     adminStore.loadNodeTrafficRank();
     adminStore.loadUserTrafficRank();
@@ -102,6 +122,7 @@ onMounted(function loadOnMount() {
     // AdminLayout 已经在 mount 时加载 userInfo，这里不再重复触发。
     loadOverview();
     loadHealth();
+    loadMailRelay();
     adminStore.loadNodeTrafficRank();
     adminStore.loadUserTrafficRank();
 
@@ -110,6 +131,7 @@ onMounted(function loadOnMount() {
         if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
         if (!overviewLoading.value) loadOverview();
         if (!healthLoading.value) loadHealth();
+        if (!mailRelayLoading.value) loadMailRelay();
     }, AUTO_REFRESH_MS);
 });
 
@@ -169,6 +191,13 @@ onBeforeUnmount(function stopAutoRefresh() {
                 @refresh="loadHealth"
             />
         </div>
+
+        <MailRelayCard
+            :status="mailRelay"
+            :loading="mailRelayLoading"
+            :error="mailRelayError"
+            @refresh="loadMailRelay"
+        />
 
         <div class="traffic-rank-grid">
             <div class="page-stack compact-stack">

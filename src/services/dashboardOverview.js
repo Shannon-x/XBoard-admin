@@ -302,3 +302,88 @@ export async function fetchSystemHealth() {
       .sort(function byBacklog(a, b) { return b.length - a.length || b.wait - a.wait || a.name.localeCompare(b.name) }),
   }
 }
+
+/**
+ * 仪表盘「邮件投递」卡片：system/getMailRelayStats（后端 App\Services\Mail\MailRelayStatus）。
+ * 数字来自 Rust 投递服务每 5 秒写一次的心跳，24 小时成功 / 失败来自 v2_mail_log。
+ */
+export function createEmptyMailRelayStatus() {
+  return {
+    loaded: false,
+    online: false,
+    anyEnabled: false,
+    heartbeatAge: null,
+    version: '',
+    startedAt: 0,
+    connections: 0,
+    inflight: 0,
+    delayed: null,
+    bulkFactor: 1,
+    lanes: [],
+    rate: { limit: null, lastMinute: 0, lastHour: 0, perMinute: [] },
+    daily: { used: 0, limit: 0, bulkCap: 0, bulkPaused: false, full: false },
+    sinceStart: { throttled: 0, retried: 0, deferred: 0, expired: 0, failed: 0 },
+    last24h: { sent: 0, failed: 0, byCategory: {} },
+  }
+}
+
+function numOrNull(value) {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+export async function fetchMailRelayStatus() {
+  const payload = await requestDashboardApi(buildDashboardApiUrl('system/getMailRelayStats'))
+  const d = payload?.data ?? {}
+  const rate = d.rate ?? {}
+  const daily = d.daily ?? {}
+  const since = d.since_start ?? {}
+  const log = d.last_24h ?? {}
+  const byCategory = {}
+  Object.entries(log.by_category ?? {}).forEach(function toCount([key, value]) {
+    byCategory[key] = num(value)
+  })
+  return {
+    loaded: true,
+    online: Boolean(d.online),
+    anyEnabled: Boolean(d.any_enabled),
+    heartbeatAge: numOrNull(d.heartbeat_age),
+    version: String(d.version || ''),
+    startedAt: num(d.started_at),
+    connections: num(d.connections),
+    inflight: num(d.inflight),
+    delayed: numOrNull(d.delayed),
+    bulkFactor: d.bulk_factor === undefined ? 1 : num(d.bulk_factor),
+    lanes: (Array.isArray(d.lanes) ? d.lanes : []).map(function toLane(lane) {
+      return {
+        name: String(lane.name || ''),
+        label: String(lane.label || lane.name || ''),
+        mode: String(lane.mode || 'direct'),
+        pending: numOrNull(lane.pending),
+        sent: num(lane.sent),
+      }
+    }),
+    rate: {
+      limit: numOrNull(rate.limit),
+      lastMinute: num(rate.last_minute),
+      lastHour: num(rate.last_hour),
+      perMinute: (Array.isArray(rate.per_minute) ? rate.per_minute : []).map(num),
+    },
+    daily: {
+      used: num(daily.used),
+      limit: num(daily.limit),
+      bulkCap: num(daily.bulk_cap),
+      bulkPaused: Boolean(daily.bulk_paused),
+      full: Boolean(daily.full),
+    },
+    sinceStart: {
+      throttled: num(since.throttled),
+      retried: num(since.retried),
+      deferred: num(since.deferred),
+      expired: num(since.expired),
+      failed: num(since.failed),
+    },
+    last24h: { sent: num(log.sent), failed: num(log.failed), byCategory },
+  }
+}
