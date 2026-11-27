@@ -402,6 +402,7 @@ function openPendingDocuments(row) {
 
 onMounted(function onMount() {
   if (route.query.email) emailSearch.value = String(route.query.email)
+  if (route.query.status === '0' || route.query.status === '1') statusFilter.value = String(route.query.status)
   if (route.query.tab === 'suppressed') activeTab.value = 'suppressed'
   if (route.query.tab === 'notify') {
     activeTab.value = 'notify'
