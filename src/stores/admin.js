@@ -23,6 +23,7 @@ import {
   Receipt,
   Repeat,
   Route,
+  ScrollText,
   Server,
   Settings,
   Shield,
@@ -93,6 +94,7 @@ import {
   saveSiteSettings,
   setupTelegramWebhook,
   testSendMail,
+  testAccessLogStorage,
   testTicketAttachmentStorage,
 } from "../services/settings";
 
@@ -160,6 +162,7 @@ export const useAdminStore = defineStore("admin", () => {
   const mailTestSending = ref(false);
   const telegramWebhookSetting = ref(false);
   const ticketStorageTesting = ref(false);
+  const accessLogStorageTesting = ref(false);
   const emailTemplateOptions = ref([]);
 
   const navigationGroups = [
@@ -210,6 +213,7 @@ export const useAdminStore = defineStore("admin", () => {
         { labelKey: "nav.withdrawals", icon: BadgeDollarSign, routeName: "withdrawals" },
         { labelKey: "nav.periodCommission", icon: Repeat, routeName: "periodCommission" },
         { labelKey: "nav.aiAssistant", icon: Bot, routeName: "aiAssistant" },
+        { labelKey: "nav.accessLogs", icon: ScrollText, routeName: "accessLogs" },
       ],
     },
     {
@@ -1856,6 +1860,92 @@ export const useAdminStore = defineStore("admin", () => {
       badgeKey: "systemSettings.badges.live",
     },
     {
+      key: "accessLog",
+      icon: ScrollText,
+      titleKey: "systemSettings.groups.accessLog.title",
+      descriptionKey: "systemSettings.groups.accessLog.description",
+      fields: [
+        {
+          key: "accessLogEnable",
+          labelKey: "systemSettings.fields.accessLogEnable.label",
+          descriptionKey: "systemSettings.fields.accessLogEnable.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "accessLogRetentionDays",
+          labelKey: "systemSettings.fields.accessLogRetentionDays.label",
+          descriptionKey: "systemSettings.fields.accessLogRetentionDays.description",
+          type: "number",
+          min: 1,
+          max: 365,
+        },
+        {
+          key: "accessLogInterval",
+          labelKey: "systemSettings.fields.accessLogInterval.label",
+          descriptionKey: "systemSettings.fields.accessLogInterval.description",
+          type: "number",
+          min: 60,
+          max: 3600,
+        },
+        {
+          key: "accessLogS3Endpoint",
+          labelKey: "systemSettings.fields.accessLogS3Endpoint.label",
+          descriptionKey: "systemSettings.fields.accessLogS3Endpoint.description",
+          placeholderKey: "systemSettings.fields.accessLogS3Endpoint.placeholder",
+          type: "text",
+        },
+        {
+          key: "accessLogS3Region",
+          labelKey: "systemSettings.fields.accessLogS3Region.label",
+          descriptionKey: "systemSettings.fields.accessLogS3Region.description",
+          placeholderKey: "systemSettings.fields.accessLogS3Region.placeholder",
+          type: "text",
+        },
+        {
+          key: "accessLogS3Bucket",
+          labelKey: "systemSettings.fields.accessLogS3Bucket.label",
+          descriptionKey: "systemSettings.fields.accessLogS3Bucket.description",
+          placeholderKey: "systemSettings.fields.accessLogS3Bucket.placeholder",
+          type: "text",
+        },
+        {
+          key: "accessLogS3AccessKey",
+          labelKey: "systemSettings.fields.accessLogS3AccessKey.label",
+          descriptionKey: "systemSettings.fields.accessLogS3AccessKey.description",
+          type: "text",
+        },
+        {
+          key: "accessLogS3SecretKey",
+          labelKey: "systemSettings.fields.accessLogS3SecretKey.label",
+          descriptionKey: "systemSettings.fields.accessLogS3SecretKey.description",
+          type: "password",
+        },
+        {
+          key: "accessLogS3PathStyle",
+          labelKey: "systemSettings.fields.accessLogS3PathStyle.label",
+          descriptionKey: "systemSettings.fields.accessLogS3PathStyle.description",
+          type: "switch",
+          tone: "compact",
+        },
+        {
+          key: "accessLogS3Prefix",
+          labelKey: "systemSettings.fields.accessLogS3Prefix.label",
+          descriptionKey: "systemSettings.fields.accessLogS3Prefix.description",
+          placeholderKey: "systemSettings.fields.accessLogS3Prefix.placeholder",
+          type: "text",
+        },
+        {
+          key: "accessLogStorageTestAction",
+          labelKey: "systemSettings.fields.accessLogStorageTestAction.label",
+          descriptionKey: "systemSettings.fields.accessLogStorageTestAction.description",
+          type: "action",
+          actionKey: "testAccessLogStorage",
+        },
+      ],
+      badgeKey: "systemSettings.badges.live",
+    },
+    {
       key: "subscribeTemplate",
       icon: FileText,
       titleKey: "systemSettings.groups.subscribeTemplate.title",
@@ -2227,6 +2317,16 @@ export const useAdminStore = defineStore("admin", () => {
       return await setupTelegramWebhook();
     } finally {
       telegramWebhookSetting.value = false;
+    }
+  }
+
+  async function testAccessLogStorageItem() {
+    accessLogStorageTesting.value = true;
+
+    try {
+      return await testAccessLogStorage(siteSettings.value);
+    } finally {
+      accessLogStorageTesting.value = false;
     }
   }
 
@@ -2635,6 +2735,8 @@ export const useAdminStore = defineStore("admin", () => {
     testSendMail: testSendMailItem,
     ticketStorageTesting,
     testTicketAttachmentStorage: testTicketAttachmentStorageItem,
+    accessLogStorageTesting,
+    testAccessLogStorage: testAccessLogStorageItem,
     systemStatus,
     systemStatusError,
     systemStatusLoading,
