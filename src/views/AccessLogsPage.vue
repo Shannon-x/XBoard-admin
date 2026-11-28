@@ -127,6 +127,10 @@ async function pollResult(queryId, attempt = 0) {
       pollTimer = setTimeout(() => pollResult(queryId, attempt + 1), 2000)
       return
     }
+    // 查询前面板会把最近几分钟的小计并进日汇总，汇总表跟着刷新一下
+    if (result?.status === 2 && String(summary.value?.user?.id) === String(result.user_id)) {
+      loadSummary()
+    }
   } catch (error) {
     ElMessage.error(error?.message || '读取结果失败')
   }
