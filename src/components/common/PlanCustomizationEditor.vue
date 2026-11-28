@@ -70,9 +70,17 @@ function removeGroup(id) {
 function setAddonMode(id, selectedMode) {
   const old = addonRules.value[id] || {}
   const keep = { label: old.label || '', topup_price_per_gb: Number(old.topup_price_per_gb || 0), transfer_price_per_gb: Number(old.transfer_price_per_gb || 0), ...(old.topup_final_price_per_gb != null ? { topup_final_price_per_gb: old.topup_final_price_per_gb } : {}) }
+  // 「暂停新购」只对可选购有意义（后端拒绝 included + paused），切到包含时去掉，留在可选购时保留
   const rule = selectedMode === 'included'
     ? { mode: 'included', ...keep }
-    : { mode: 'optional', price: Number(old.price || 0), ...keep }
+    : { mode: 'optional', price: Number(old.price || 0), ...keep, ...(old.paused === true ? { paused: true } : {}) }
+  emitAddons({ ...addonRules.value, [id]: rule })
+}
+/** 暂停新购：未持有的客户看不到、选不了；已购客户续费 / 重置照常。关闭时删掉键，保持与未设置时一致。 */
+function setAddonPaused(id, paused) {
+  const rule = { ...addonRules.value[id] }
+  if (paused) rule.paused = true
+  else delete rule.paused
   emitAddons({ ...addonRules.value, [id]: rule })
 }
 function setAddonPrice(id, yuan) {
@@ -277,6 +285,13 @@ function updateChoices(field, text) {
                 @update:model-value="setAddonPrice(item.id, $event)"
               />
               <span class="customization-note">元 / 月</span>
+              <el-switch
+                :model-value="item.rule?.paused === true"
+                active-text="暂停新购"
+                size="small"
+                @change="setAddonPaused(item.id, $event)"
+              />
+              <span v-if="item.rule?.paused === true" class="customization-note">新客户看不到、选不了；已购客户续费照常</span>
             </template>
             <span v-else class="customization-note">随套餐赠送，不加价</span>
             <el-button class="addon-remove" text type="danger" size="small" :aria-label="`移除 ${item.group?.name || item.id}`" @click="removeGroup(item.id)">移除</el-button>
