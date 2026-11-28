@@ -137,9 +137,15 @@ function go(to) {
 
 .dash-subs__pipeline {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .dash-subs__pipeline {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .dash-subs__step {
