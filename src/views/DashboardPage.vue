@@ -7,16 +7,20 @@ import DashboardKpiGrid from "../components/dashboard/DashboardKpiGrid.vue";
 import DashboardTodoBar from "../components/dashboard/DashboardTodoBar.vue";
 import IncomeTrendCard from "../components/dashboard/IncomeTrendCard.vue";
 import MailRelayCard from "../components/dashboard/MailRelayCard.vue";
+import MonitorPanel from "../components/dashboard/MonitorPanel.vue";
+import NodeStatusCard from "../components/dashboard/NodeStatusCard.vue";
 import SubscriptionCard from "../components/dashboard/SubscriptionCard.vue";
-import SystemHealthCard from "../components/dashboard/SystemHealthCard.vue";
+import SystemStatusStrip from "../components/dashboard/SystemStatusStrip.vue";
 import TrafficRankCard from "../components/dashboard/TrafficRankCard.vue";
 import { formatMinutesWindow } from "../components/dashboard/dashboardFormat";
 import {
     createEmptyDashboardOverview,
     createEmptyMailRelayStatus,
+    createEmptyMonitorReport,
     createEmptySystemHealth,
     fetchDashboardOverview,
     fetchMailRelayStatus,
+    fetchMonitorReport,
     fetchSystemHealth,
 } from "../services/dashboardOverview";
 import { useAdminStore } from "../stores/admin";
@@ -35,6 +39,10 @@ const overviewError = ref("");
 const health = ref(createEmptySystemHealth());
 const healthLoading = ref(false);
 const healthError = ref("");
+
+const monitor = ref(createEmptyMonitorReport());
+const monitorLoading = ref(false);
+const monitorError = ref("");
 
 const mailRelay = ref(createEmptyMailRelayStatus());
 const mailRelayLoading = ref(false);
@@ -69,6 +77,24 @@ async function loadHealth() {
     }
 }
 
+async function loadMonitor() {
+    monitorLoading.value = true;
+    monitorError.value = "";
+    try {
+        monitor.value = await fetchMonitorReport();
+    } catch (err) {
+        monitorError.value = err?.message || "队列与定时任务状态加载失败";
+    } finally {
+        monitorLoading.value = false;
+    }
+}
+
+/** 队列面板的「刷新」：巡检报告和失败任务统计一起刷 */
+function refreshMonitor() {
+    loadMonitor();
+    loadHealth();
+}
+
 async function loadMailRelay() {
     mailRelayLoading.value = true;
     mailRelayError.value = "";
@@ -84,6 +110,7 @@ async function loadMailRelay() {
 function refreshAll() {
     loadOverview();
     loadHealth();
+    loadMonitor();
     loadMailRelay();
     incomeRefreshKey.value += 1;
     adminStore.loadNodeTrafficRank();
@@ -101,6 +128,16 @@ const updatedAtText = computed(function updatedAtText() {
 const failedWindowText = computed(function failedWindowText() {
     return formatMinutesWindow(health.value.failedWindowMinutes);
 });
+
+const anyLoading = computed(function anyLoading() {
+    return overviewLoading.value || monitorLoading.value || mailRelayLoading.value || healthLoading.value;
+});
+
+/** 顶部状态条点一下，滚到对应的详情区块 */
+function jumpTo(id) {
+    const el = typeof document === "undefined" ? null : document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 
 function refreshNodeTraffic() {
     adminStore.loadNodeTrafficRank();
@@ -122,15 +159,17 @@ onMounted(function loadOnMount() {
     // AdminLayout 已经在 mount 时加载 userInfo，这里不再重复触发。
     loadOverview();
     loadHealth();
+    loadMonitor();
     loadMailRelay();
     adminStore.loadNodeTrafficRank();
     adminStore.loadUserTrafficRank();
 
-    // 概况与系统状态每分钟静默刷新一次；标签页不可见时跳过
+    // 概况与运行状态每分钟静默刷新一次（和后端巡检同频）；标签页不可见时跳过
     autoRefreshTimer = setInterval(function tick() {
         if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
         if (!overviewLoading.value) loadOverview();
         if (!healthLoading.value) loadHealth();
+        if (!monitorLoading.value) loadMonitor();
         if (!mailRelayLoading.value) loadMailRelay();
     }, AUTO_REFRESH_MS);
 });
@@ -155,20 +194,28 @@ onBeforeUnmount(function stopAutoRefresh() {
             </template>
         </el-alert>
 
-        <div class="dash-page__top">
-            <DashboardTodoBar
-                class="dash-page__todo"
-                :todo="overview.todo"
-                :nodes="overview.nodes"
-                :failed-jobs="health.failedJobs"
-                :failed-window-text="failedWindowText"
-                :loaded="overview.loaded && health.loaded"
-            />
+        <SystemStatusStrip
+            :monitor="monitor"
+            :mail-relay="mailRelay"
+            :nodes="overview.nodes"
+            :nodes-loaded="overview.loaded"
+            @jump="jumpTo"
+        >
             <div class="dash-page__updated">
-                <span v-if="updatedAtText">数据更新于 {{ updatedAtText }}，每分钟自动刷新</span>
-                <el-button size="small" plain :loading="overviewLoading" @click="refreshAll">全部刷新</el-button>
+                <span v-if="updatedAtText" title="每分钟自动刷新一次">{{ updatedAtText }} 更新</span>
+                <el-button size="small" plain :loading="anyLoading" @click="refreshAll">全部刷新</el-button>
             </div>
-        </div>
+        </SystemStatusStrip>
+
+        <DashboardTodoBar
+            :todo="overview.todo"
+            :nodes="overview.nodes"
+            :failed-jobs="health.failedJobs"
+            :failed-window-text="failedWindowText"
+            :loaded="overview.loaded && health.loaded"
+        />
+
+        <h2 class="dash-page__section">经营概况</h2>
 
         <DashboardKpiGrid
             :overview="overview"
@@ -183,21 +230,36 @@ onBeforeUnmount(function stopAutoRefresh() {
                 :subscriptions="overview.subscriptions"
                 :loading="overviewLoading && !overview.loaded"
             />
-            <SystemHealthCard
-                :health="health"
+            <NodeStatusCard
+                id="dash-nodes"
+                class="dash-page__anchor"
                 :nodes="overview.nodes"
-                :loading="healthLoading"
-                :error="healthError"
-                @refresh="loadHealth"
+                :loading="overviewLoading && !overview.loaded"
             />
         </div>
 
+        <h2 class="dash-page__section">运行状态</h2>
+
+        <MonitorPanel
+            id="dash-monitor"
+            class="dash-page__anchor"
+            :report="monitor"
+            :failed-by-job="health.failedByJob"
+            :loading="monitorLoading"
+            :error="monitorError"
+            @refresh="refreshMonitor"
+        />
+
         <MailRelayCard
+            id="dash-mail"
+            class="dash-page__anchor"
             :status="mailRelay"
             :loading="mailRelayLoading"
             :error="mailRelayError"
             @refresh="loadMailRelay"
         />
+
+        <h2 class="dash-page__section">流量排行</h2>
 
         <div class="traffic-rank-grid">
             <div class="page-stack compact-stack">
@@ -274,21 +336,36 @@ onBeforeUnmount(function stopAutoRefresh() {
     }
 }
 
-.dash-page__top {
+/* 区块标题：把页面分成「经营概况 / 运行状态 / 流量排行」三段，不加卡片，只是一行小标题 */
+.dash-page__section {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
+    margin: 10px 0 -4px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
 
-.dash-page__todo {
-    flex: 1 1 520px;
+.dash-page__section::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+}
+
+/* 从顶部状态条跳过来时，别让区块顶到浏览器边缘 */
+.dash-page__anchor {
+    scroll-margin-top: 16px;
 }
 
 .dash-page__updated {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-left: auto;
     color: var(--muted);
     font-size: 12px;
 }
@@ -297,7 +374,7 @@ onBeforeUnmount(function stopAutoRefresh() {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
-    align-items: start;
+    align-items: stretch;
 }
 
 @media (max-width: 1100px) {

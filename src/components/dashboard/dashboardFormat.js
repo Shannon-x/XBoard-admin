@@ -87,3 +87,37 @@ export function formatWaitSeconds(seconds) {
   if (s < 3600) return `${Math.round(s / 60)} 分钟`
   return `${(s / 3600).toFixed(1)} 小时`
 }
+
+/** 秒 → 「8 秒」「3 分 10 秒」「1.5 小时」（任务耗时、排队时长） */
+export function formatDuration(seconds) {
+  if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds))) return '—'
+  const s = Math.max(0, Math.round(Number(seconds)))
+  if (s < 60) return `${s} 秒`
+  if (s < 3600) {
+    const m = Math.floor(s / 60)
+    const rest = s % 60
+    return rest && m < 10 ? `${m} 分 ${rest} 秒` : `${m} 分钟`
+  }
+  if (s < 86400) return `${(s / 3600).toFixed(1)} 小时`
+  return `${(s / 86400).toFixed(1)} 天`
+}
+
+/** 毫秒 → 「38 ms」「1.2 秒」 */
+export function formatLatency(ms) {
+  if (ms === null || ms === undefined) return '—'
+  const n = Number(ms)
+  if (n < 1000) return `${Math.round(n)} ms`
+  return formatDuration(n / 1000)
+}
+
+/** cron 表达式 + 间隔（秒）→ 「每分钟」「每 5 分钟」「每小时」「每天 04:30」 */
+export function formatSchedule(expression, interval) {
+  const parts = String(expression || '').trim().split(/\s+/)
+  const sec = Number(interval || 0)
+  if (sec && sec < 3600) return sec === 60 ? '每分钟' : `每 ${Math.round(sec / 60)} 分钟`
+  if (sec === 3600) return parts[0] && parts[0] !== '0' ? `每小时第 ${parts[0]} 分` : '每小时'
+  if (sec === 86400 && parts.length >= 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
+    return `每天 ${parts[1].padStart(2, '0')}:${parts[0].padStart(2, '0')}`
+  }
+  return expression || '—'
+}

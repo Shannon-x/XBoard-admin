@@ -12,6 +12,12 @@ function num(value) {
   return Number.isFinite(n) ? n : 0
 }
 
+function numOrNull(value) {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 function normalizePaid(raw) {
   return {
     amount: num(raw?.amount),
@@ -229,77 +235,167 @@ export async function fetchIncomeTrend({ startDate, endDate } = {}) {
   }
 }
 
-/**
- * 队列负载（Horizon WorkloadRepository）：每个队列等待中的任务数、预计等待秒数、进程数。
- */
-export async function fetchQueueWorkload() {
-  const payload = await requestDashboardApi(buildDashboardApiUrl('system/getQueueWorkload'))
-  const list = Array.isArray(payload?.data) ? payload.data : []
-  return list.map(function toQueue(row) {
-    return {
-      name: String(row.name || ''),
-      length: num(row.length),
-      wait: num(row.wait),
-      processes: num(row.processes),
-    }
-  })
-}
-
 export function createEmptySystemHealth() {
   return {
     loaded: false,
-    horizon: 'unknown', // running | paused | stopped | unknown
-    schedule: false,
-    scheduleLastRunAt: 0,
-    jobsPerMinute: 0,
-    recentJobs: 0,
-    recentWindowMinutes: 0,
     failedJobs: 0,
     failedWindowMinutes: 0,
     failedByJob: [],
     failedByJobScanned: 0,
-    processes: 0,
-    pausedMasters: 0,
-    queues: [],
   }
 }
 
 /**
- * 队列与定时任务的健康度。getQueueStats 里的 periods 是 Horizon 的保留窗口（分钟），
- * 不是数量 —— 旧卡片把 periods.failedJobs（10080 分钟 = 7 天）当成「近周期失败 10080」显示了。
+ * Horizon 失败任务（system/getQueueStats）：待办里的「N 个队列任务失败」和巡检面板里的「失败最多的任务」。
+ * 队列、进程、调度的现状改由 system/getMonitorReport 提供（fetchMonitorReport）。
  */
 export async function fetchSystemHealth() {
-  const [statsPayload, statusPayload, queues] = await Promise.all([
-    requestDashboardApi(buildDashboardApiUrl('system/getQueueStats')),
-    requestDashboardApi(buildDashboardApiUrl('system/getSystemStatus')),
-    fetchQueueWorkload().catch(function ignoreWorkloadError() { return [] }),
-  ])
+  const statsPayload = await requestDashboardApi(buildDashboardApiUrl('system/getQueueStats'))
   const stats = statsPayload?.data ?? {}
-  const status = statusPayload?.data ?? {}
-  const pausedMasters = num(stats.pausedMasters)
-  let horizon = 'stopped'
-  if (stats.status) horizon = 'running'
-  else if (pausedMasters > 0) horizon = 'paused'
-
   return {
     loaded: true,
-    horizon,
-    schedule: Boolean(status.schedule),
-    scheduleLastRunAt: num(status.schedule_last_runtime),
-    jobsPerMinute: num(stats.jobsPerMinute),
-    recentJobs: num(stats.recentJobs),
-    recentWindowMinutes: num(stats.periods?.recentJobs),
     failedJobs: num(stats.failedJobs),
     failedWindowMinutes: num(stats.periods?.failedJobs),
     failedByJob: (Array.isArray(stats.failedByJob) ? stats.failedByJob : []).map(function toFailed(row) {
       return { name: String(row.name || ''), total: num(row.total), lastFailedAt: num(row.last_failed_at) }
     }),
     failedByJobScanned: num(stats.failedByJobScanned),
-    processes: num(stats.processes),
-    pausedMasters,
-    queues: queues
-      .slice()
-      .sort(function byBacklog(a, b) { return b.length - a.length || b.wait - a.wait || a.name.localeCompare(b.name) }),
+  }
+}
+
+/**
+ * 仪表盘「队列与定时任务」面板：system/getMonitorReport（后端 App\Services\Monitor\SystemMonitor）。
+ * 和每分钟巡检 monitor:check 是同一份报告：面板上看到的问题，就是会（或已经）发到 Telegram 的那些。
+ */
+export function createEmptyMonitorReport() {
+  return {
+    loaded: false,
+    generatedAt: 0,
+    overall: 'unknown', // ok | warning | critical | unknown
+    issues: [],
+    horizon: { status: 'unknown', masters: 0, processes: 0, jobsPerMinute: null, supervisors: [] },
+    queues: [],
+    failed: { last10m: 0, last1h: 0, truncated: false },
+    scheduler: { status: 'unknown', heartbeatAge: null, fallbackAt: null, tickMode: 'auto', monitorAge: null },
+    schedule: [],
+    mailRelay: { enabled: [], online: false },
+    alerting: {
+      telegram: { botConfigured: false, recipients: 0, last: null },
+      heartbeatConfigured: false,
+      heartbeatLast: null,
+    },
+  }
+}
+
+function normalizeCanary(raw) {
+  if (!raw) return null
+  return {
+    ranAt: numOrNull(raw.ran_at),
+    latencyMs: numOrNull(raw.latency_ms),
+    pendingSince: numOrNull(raw.pending_since),
+  }
+}
+
+export async function fetchMonitorReport() {
+  const payload = await requestDashboardApi(buildDashboardApiUrl('system/getMonitorReport'))
+  const d = payload?.data ?? {}
+  const horizon = d.horizon ?? {}
+  const scheduler = d.scheduler ?? {}
+  const alerting = d.alerting ?? {}
+  const telegram = alerting.telegram ?? {}
+  const last = telegram.last
+  const push = alerting.heartbeat_last
+  return {
+    loaded: true,
+    generatedAt: num(d.generated_at),
+    overall: ['ok', 'warning', 'critical'].includes(d.overall) ? d.overall : 'unknown',
+    issues: (Array.isArray(d.issues) ? d.issues : []).map(function toIssue(row) {
+      return {
+        key: String(row.key || ''),
+        level: String(row.level || 'info'),
+        title: String(row.title || ''),
+        detail: String(row.detail || ''),
+        notify: Boolean(row.notify),
+        since: num(row.since),
+      }
+    }),
+    horizon: {
+      status: String(horizon.status || 'unknown'),
+      masters: num(horizon.masters),
+      processes: num(horizon.processes),
+      jobsPerMinute: numOrNull(horizon.jobs_per_minute),
+      supervisors: (Array.isArray(horizon.supervisors) ? horizon.supervisors : []).map(function toSupervisor(row) {
+        return { name: String(row.name || ''), status: String(row.status || ''), processes: num(row.processes) }
+      }),
+    },
+    queues: (Array.isArray(d.queues) ? d.queues : []).map(function toQueue(row) {
+      return {
+        name: String(row.name || ''),
+        label: String(row.label || row.name || ''),
+        length: numOrNull(row.length),
+        wait: numOrNull(row.wait),
+        waitThreshold: num(row.wait_threshold),
+        processes: num(row.processes),
+        canary: normalizeCanary(row.canary),
+        stallAfter: num(row.stall_after),
+        perMinute: numOrNull(row.throughput?.per_minute),
+        runtimeMs: numOrNull(row.throughput?.runtime_ms),
+        failed1h: num(row.failed_1h),
+        status: String(row.status || 'ok'),
+      }
+    }),
+    failed: {
+      last10m: num(d.failed?.last_10m),
+      last1h: num(d.failed?.last_1h),
+      truncated: Boolean(d.failed?.truncated),
+    },
+    scheduler: {
+      status: String(scheduler.status || 'unknown'),
+      heartbeatAge: numOrNull(scheduler.heartbeat_age),
+      fallbackAt: numOrNull(scheduler.fallback_at),
+      tickMode: String(scheduler.tick_mode || 'auto'),
+      monitorAge: numOrNull(scheduler.monitor_age),
+    },
+    schedule: (Array.isArray(d.schedule) ? d.schedule : []).map(function toTask(row) {
+      return {
+        command: String(row.command || ''),
+        args: String(row.args || ''),
+        label: String(row.label || row.command || ''),
+        expression: String(row.expression || ''),
+        interval: numOrNull(row.interval),
+        startedAt: numOrNull(row.started_at),
+        finishedAt: numOrNull(row.finished_at),
+        duration: numOrNull(row.duration),
+        running: Boolean(row.running),
+        exitCode: numOrNull(row.exit_code),
+        failures: num(row.failures),
+        lastSuccessAt: numOrNull(row.last_success_at),
+        status: String(row.status || 'ok'),
+      }
+    }),
+    mailRelay: {
+      enabled: Array.isArray(d.mail_relay?.enabled) ? d.mail_relay.enabled.map(String) : [],
+      online: Boolean(d.mail_relay?.online),
+    },
+    alerting: {
+      telegram: {
+        botConfigured: Boolean(telegram.bot_configured),
+        recipients: num(telegram.recipients),
+        last: last
+          ? {
+            at: num(last.at),
+            direct: num(last.direct),
+            queued: num(last.queued),
+            recipients: num(last.recipients),
+            error: last.error ? String(last.error) : '',
+          }
+          : null,
+      },
+      heartbeatConfigured: Boolean(alerting.heartbeat_configured),
+      heartbeatLast: push
+        ? { at: num(push.at), ok: Boolean(push.ok), status: String(push.status || ''), error: push.error ? String(push.error) : '' }
+        : null,
+    },
   }
 }
 
@@ -327,11 +423,6 @@ export function createEmptyMailRelayStatus() {
   }
 }
 
-function numOrNull(value) {
-  if (value === null || value === undefined || value === '') return null
-  const n = Number(value)
-  return Number.isFinite(n) ? n : null
-}
 
 export async function fetchMailRelayStatus() {
   const payload = await requestDashboardApi(buildDashboardApiUrl('system/getMailRelayStats'))
