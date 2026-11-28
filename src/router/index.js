@@ -25,6 +25,7 @@ const TicketsPage = () => import('../views/TicketsPage.vue')
 const BillingDocumentsPage = () => import('../views/BillingDocumentsPage.vue')
 const RechargesPage = () => import('../views/RechargesPage.vue')
 const MailDeliveryPage = () => import('../views/MailDeliveryPage.vue')
+const AccessLogsPage = () => import('../views/AccessLogsPage.vue')
 const AiAssistantPage = () => import('../views/AiAssistantPage.vue')
 const UsersPage = () => import('../views/UsersPage.vue')
 const WithdrawalsPage = () => import('../views/WithdrawalsPage.vue')
@@ -123,6 +124,10 @@ const ROUTE_META_KEYS = {
   mailDelivery: {
     title: 'routes.mailDelivery.title',
     eyebrow: 'routes.mailDelivery.eyebrow',
+  },
+  accessLogs: {
+    title: 'routes.accessLogs.title',
+    eyebrow: 'routes.accessLogs.eyebrow',
   },
   aiAssistant: {
     title: 'routes.aiAssistant.title',
@@ -276,6 +281,15 @@ const routes = [
         meta: {
           titleKey: ROUTE_META_KEYS.mailDelivery.title,
           eyebrowKey: ROUTE_META_KEYS.mailDelivery.eyebrow,
+        },
+      },
+      {
+        path: 'access-logs',
+        name: 'accessLogs',
+        component: AccessLogsPage,
+        meta: {
+          titleKey: ROUTE_META_KEYS.accessLogs.title,
+          eyebrowKey: ROUTE_META_KEYS.accessLogs.eyebrow,
         },
       },
       {

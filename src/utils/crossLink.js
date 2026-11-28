@@ -113,6 +113,11 @@ export function toMailDelivery(email) {
   return { name: 'mailDelivery', query: isLinkable(email) ? { email: String(email) } : {} }
 }
 
+/** 跳转到「用户访问记录」并打开某用户的日汇总。 */
+export function toAccessLogs(id) {
+  return { name: 'accessLogs', query: isLinkable(id) ? { user_id: String(id) } : {} }
+}
+
 /** 跳转到「系统设置」的某个分组（如 'security'），与 SettingsPage 的 :category 路由参数对应。 */
 export function toSettings(category) {
   return { name: 'settings', params: isLinkable(category) ? { category } : {} }

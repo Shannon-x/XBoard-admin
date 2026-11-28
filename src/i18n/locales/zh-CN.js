@@ -117,6 +117,10 @@ export default {
       title: '邮件投递',
       eyebrow: '财务管理',
     },
+    accessLogs: {
+      title: '用户访问记录',
+      eyebrow: '用户管理',
+    },
     aiAssistant: {
       title: 'AI 助手',
       eyebrow: '用户管理',
@@ -221,6 +225,7 @@ export default {
     recharges: '充值记录',
     mailDelivery: '邮件投递',
     aiAssistant: 'AI 助手',
+    accessLogs: '访问记录',
   },
   auth: {
     login: '登录',
@@ -472,6 +477,10 @@ export default {
         title: '工单分类',
         description: '控制用户前端的工单分类与「功能建议 / 意见反馈」入口。隐藏的分类不再出现在新建工单的选项里，已有工单不受影响。',
       },
+      accessLog: {
+        title: '用户访问记录',
+        description: 'Rust 节点按连接记下每个用户访问的目标、端口、客户端 IP 和上下行流量，每隔几分钟打包上传，面板写进 S3 兼容存储，库里只放索引和每日汇总。在「访问记录」页按用户查询和导出。Go 版 V2bX 节点不受影响。开启前请在服务条款里告知用户。',
+      },
       ticketAttachment: {
         title: '工单附件',
         description: '用户与客服在工单里互发截图 / 文件。支持剪贴板粘贴与拖拽上传，存储可选本地或 S3 兼容对象存储，并按保留期自动清理。',
@@ -627,6 +636,54 @@ export default {
       billingInvoiceRetentionDays: {
         label: '旧账单保留天数',
         description: '默认 0 = 永久保留，用户能看到完整的账单历史（每份只占约 2 KB）。填 N 后，到期日早于 N 天前、且已续费或已失效的续费账单在每天 03:40 删除（续费那一单自有收据）；待付款的账单和所有收据都不会删。',
+      },
+      accessLogEnable: {
+        label: '记录用户访问',
+        description: '开启并配好下方存储后，Rust 节点在 5 分钟内开始记录（每次握手时读取这个开关）。关闭后节点停止记录，已上传的记录按保留期清理。',
+      },
+      accessLogRetentionDays: {
+        label: '保留天数',
+        description: '1–365，默认 30。每天 03:25 删除过期的对象、索引和汇总；建议同时在存储桶上给「对象前缀/v1/」设同样天数的生命周期规则。',
+      },
+      accessLogInterval: {
+        label: '打包间隔（秒）',
+        description: '60–3600，默认 300。节点每隔这么久封一批上传；间隔越长对象越少，但最近的记录要等更久才能查到。',
+      },
+      accessLogS3Endpoint: {
+        label: 'S3 Endpoint',
+        description: '留空使用 AWS 官方地址（按 Region 拼接）。R2 填 https://账号ID.r2.cloudflarestorage.com，MinIO 填自建地址。',
+        placeholder: 'https://ACCOUNT_ID.r2.cloudflarestorage.com',
+      },
+      accessLogS3Region: {
+        label: 'Region',
+        description: 'R2 填 auto，AWS 填真实区域如 ap-northeast-1，MinIO 一般填 us-east-1。',
+        placeholder: 'auto',
+      },
+      accessLogS3Bucket: {
+        label: 'Bucket',
+        description: '建议单独建一个桶，不要公开读。导出的明细走 10 分钟有效的预签名链接下载。',
+        placeholder: 'xboard-access-logs',
+      },
+      accessLogS3AccessKey: {
+        label: 'Access Key ID',
+        description: '只需对该桶的读、写、删权限。',
+      },
+      accessLogS3SecretKey: {
+        label: 'Secret Access Key',
+        description: '只在服务端使用，不会下发给节点或任何前端。',
+      },
+      accessLogS3PathStyle: {
+        label: '路径式访问（Path-style）',
+        description: '开启后对象地址形如「端点 / 存储桶 / 对象键」，关闭则为「存储桶.端点 / 对象键」。R2 / MinIO 建议开启。',
+      },
+      accessLogS3Prefix: {
+        label: '对象前缀',
+        description: '记录放在「前缀/v1/」下，导出放在「前缀/exports/」下。',
+        placeholder: 'access-logs',
+      },
+      accessLogStorageTestAction: {
+        label: '测试存储连接',
+        description: '用上方当前填写的配置（无需先保存）写入、按字节范围读回并删除一个探针文件。',
       },
       ticketAttachmentEnable: {
         label: '启用工单附件',
@@ -1394,6 +1451,8 @@ export default {
       telegramWebhookFailed: 'Telegram Webhook 设置失败',
       testTicketStorageSuccess: '附件存储读写正常',
       testTicketStorageFailed: '附件存储测试失败',
+      testAccessLogStorageSuccess: '访问记录存储读写正常',
+      testAccessLogStorageFailed: '访问记录存储测试失败',
     },
     testMail: {
       title: '发送测试邮件',

@@ -159,6 +159,17 @@ export function createEmptySiteSettings() {
     // 只读：后端硬上限，表单用来限制输入范围
     ticketAttachmentHardMaxSizeMb: 20,
     ticketAttachmentHardMaxCount: 10,
+    // 用户访问记录（Rust 节点 → 面板 → S3），后端 access_log 组
+    accessLogEnable: false,
+    accessLogInterval: 300,
+    accessLogRetentionDays: 30,
+    accessLogS3Endpoint: '',
+    accessLogS3Region: 'auto',
+    accessLogS3Bucket: '',
+    accessLogS3AccessKey: '',
+    accessLogS3SecretKey: '',
+    accessLogS3PathStyle: true,
+    accessLogS3Prefix: 'access-logs',
     // 工单分类：隐藏哪些分类（用户新建时不可选）、是否开放「建议与反馈」
     ticketCategoryHidden: [],
     ticketFeedbackEnable: true,
@@ -273,6 +284,11 @@ const SETTINGS_GROUP_CONFIG = {
     fetchKey: 'ticket',
     normalize: normalizeTicketWorkflowSettings,
     createPayload: createTicketWorkflowSettingsPayload,
+  },
+  accessLog: {
+    fetchKey: 'access_log',
+    normalize: normalizeAccessLogSettings,
+    createPayload: createAccessLogSettingsPayload,
   },
   // billing_* 键挂在后端 email 组下
   billing: {
@@ -473,6 +489,19 @@ export async function testTicketAttachmentStorage(settings = {}) {
   const payload = await requestDashboardMutation(
     buildSecureV2ApiUrl('config/testTicketAttachmentStorage'),
     createTicketAttachmentSettingsPayload(settings),
+    'POST'
+  )
+
+  return payload?.data || {}
+}
+
+/**
+ * 访问记录「测试存储连接」：用表单当前值（可能尚未保存）写入、按范围读回、删除一个探针对象。
+ */
+export async function testAccessLogStorage(settings = {}) {
+  const payload = await requestDashboardMutation(
+    buildSecureV2ApiUrl('accessLog/testStorage'),
+    createAccessLogSettingsPayload(settings),
     'POST'
   )
 
@@ -1203,6 +1232,43 @@ function normalizeTicketAttachmentSettings(ticket) {
     ticketAttachmentS3PublicUrl: String(ticket.ticket_attachment_s3_public_url ?? ''),
     ticketAttachmentHardMaxSizeMb: numberOr(ticket.ticket_attachment_hard_max_size_mb, pick('ticketAttachmentHardMaxSizeMb')),
     ticketAttachmentHardMaxCount: numberOr(ticket.ticket_attachment_hard_max_count, pick('ticketAttachmentHardMaxCount')),
+  }
+}
+
+function normalizeAccessLogSettings(group) {
+  const fallback = createEmptySiteSettings()
+  const value = group && typeof group === 'object' ? group : {}
+  const numberOr = function numberOr(raw, defaultValue) {
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue
+  }
+
+  return {
+    accessLogEnable: Boolean(Number(value.access_log_enable ?? 0)),
+    accessLogInterval: numberOr(value.access_log_interval, fallback.accessLogInterval),
+    accessLogRetentionDays: numberOr(value.access_log_retention_days, fallback.accessLogRetentionDays),
+    accessLogS3Endpoint: String(value.access_log_s3_endpoint ?? ''),
+    accessLogS3Region: String(value.access_log_s3_region ?? 'auto'),
+    accessLogS3Bucket: String(value.access_log_s3_bucket ?? ''),
+    accessLogS3AccessKey: String(value.access_log_s3_access_key ?? ''),
+    accessLogS3SecretKey: String(value.access_log_s3_secret_key ?? ''),
+    accessLogS3PathStyle: Boolean(Number(value.access_log_s3_path_style ?? 1)),
+    accessLogS3Prefix: String(value.access_log_s3_prefix ?? fallback.accessLogS3Prefix),
+  }
+}
+
+function createAccessLogSettingsPayload(settings = {}) {
+  return {
+    access_log_enable: settings.accessLogEnable ? 1 : 0,
+    access_log_interval: Number(settings.accessLogInterval || 300),
+    access_log_retention_days: Number(settings.accessLogRetentionDays || 30),
+    access_log_s3_endpoint: String(settings.accessLogS3Endpoint || '').trim(),
+    access_log_s3_region: String(settings.accessLogS3Region || '').trim(),
+    access_log_s3_bucket: String(settings.accessLogS3Bucket || '').trim(),
+    access_log_s3_access_key: String(settings.accessLogS3AccessKey || '').trim(),
+    access_log_s3_secret_key: String(settings.accessLogS3SecretKey || '').trim(),
+    access_log_s3_path_style: settings.accessLogS3PathStyle ? 1 : 0,
+    access_log_s3_prefix: String(settings.accessLogS3Prefix || '').trim(),
   }
 }
 
